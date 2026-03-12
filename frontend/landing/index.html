@@ -305,15 +305,22 @@ left:0;
 }
 
 /* =========================
-   MODO HORIZONTAL MÓVIL
+   MÓVIL EN HORIZONTAL
 ========================= */
 
 @media (max-width:768px) and (orientation:landscape){
 
 body{
-justify-content:flex-start;
-padding-top:60px;
-overflow-y:auto;
+    display:block;          /* evita el bloqueo del flex */
+    overflow-y:auto;        /* permite scroll */
+    height:auto;
+    padding:20px;
+}
+
+#panel{
+    position:absolute;      /* permite que el panel se desplace */
+    height:auto;
+    min-height:100vh;
 }
 
 }
