@@ -19,11 +19,12 @@ margin:0;
 min-height:100vh;
 position:relative;
 overflow-x:hidden;
+overflow-y:auto;
 
 background-image:url("/static/landing/fondo.png");
 background-repeat:no-repeat;
 
-/* centra horizontalmente y enfoca el logo */
+/* DESKTOP: centrado */
 background-position:center 65%;
 
 background-size:cover;
@@ -38,6 +39,28 @@ justify-content:center;
 
 /* movimiento suave del fondo */
 animation:fondoMovimiento 25s ease-in-out infinite;
+}
+
+
+/* =========================
+   AJUSTE PARA MÓVIL
+========================= */
+
+@media (max-width:768px){
+
+body{
+
+/* mueve el foco hacia el logo ATU */
+background-position:70% center;
+
+/* evita que se recorte tanto */
+background-size:cover;
+
+/* evita pequeños saltos en móviles */
+animation:none;
+
+}
+
 }
 
 
@@ -216,15 +239,15 @@ display:block;
 @keyframes fondoMovimiento{
 
 0%{
-background-position:center 65%;
+background-position:60% 65%;
 }
 
 50%{
-background-position:center 60%;
+background-position:65% 60%;
 }
 
 100%{
-background-position:center 65%;
+background-position:60% 65%;
 }
 
 }
@@ -258,10 +281,18 @@ transform:scale(0.98);
 @media (max-width:768px){
 
 body{
+
+/* enfoca el logo ATU */
+background-position:70% center;
+
 background-size:cover;
-background-position:center 55%;
+
+/* evita saltos del fondo en móvil */
+animation:none;
+
 }
 
+/* panel login */
 #panel{
 width:85%;
 left:-100%;
@@ -269,6 +300,19 @@ left:-100%;
 
 #panel.activo{
 left:0;
+}
+
+}
+
+/* =========================
+   MODO HORIZONTAL MÓVIL
+========================= */
+
+@media (max-width:768px) and (orientation:landscape){
+
+.botonesLanding{
+bottom:10px;
+position:fixed;
 }
 
 }
@@ -289,7 +333,7 @@ style="position:absolute; left:30px; top:50%; transform:translateY(-50%); font-s
 
 <!-- BOTONES PRINCIPALES -->
 
-<div class="absolute bottom-24 w-full flex justify-center gap-4 flex-wrap fadeLanding" style="z-index:5;">
+<div class="botonesLanding absolute bottom-24 w-full flex justify-center gap-4 flex-wrap fadeLanding">
 
 <button onclick="irDashboard()" class="btnLanding">
 Dashboard
@@ -359,3 +403,4 @@ Ingresar
 </body>
 
 </html>
+
