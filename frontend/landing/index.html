@@ -313,16 +313,25 @@ left:0;
 @media (max-width:768px) and (orientation:landscape){
 
 body{
-    display:block;          /* evita el bloqueo del flex */
-    overflow-y:auto;        /* permite scroll */
-    height:auto;
+    display:block;
+    overflow-y:auto;
+    min-height:120vh;   /* fuerza scroll */
     padding:20px;
 }
 
+/* botones dejan de ser absolutos */
+.botonesLanding{
+    position:relative;
+    bottom:auto;
+    margin-top:40px;
+}
+
+/* panel login puede desplazarse */
 #panel{
-    position:absolute;      /* permite que el panel se desplace */
+    position:relative;
     height:auto;
     min-height:100vh;
+    overflow-y:auto;
 }
 
 }
