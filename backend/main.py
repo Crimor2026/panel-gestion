@@ -562,10 +562,20 @@ def login(data: LoginRequest):
             {"email": data.email}
         ).mappings().fetchone()
 
-    if not result:
+    if result is None:
         raise HTTPException(status_code=400, detail="Usuario no encontrado")
 
-    if not pwd_context.verify(data.password, result["password_hash"]):
+    password_hash = result.get("password_hash")
+
+    if not password_hash:
+        raise HTTPException(status_code=500, detail="Usuario sin contraseña configurada")
+
+    try:
+        valido = pwd_context.verify(data.password, password_hash)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Error verificando contraseña")
+
+    if not valido:
         raise HTTPException(status_code=400, detail="Contraseña incorrecta")
 
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
