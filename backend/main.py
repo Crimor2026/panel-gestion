@@ -554,14 +554,18 @@ def login(data: LoginRequest):
 
     with engine.connect() as connection:
         result = connection.execute(
-            text("SELECT * FROM usuarios WHERE email = :email"),
+            text("""
+            SELECT id, email, password_hash, rol
+            FROM usuarios
+            WHERE email = :email
+            """),
             {"email": data.email}
-        ).fetchone()
+        ).mappings().fetchone()
 
     if not result:
         raise HTTPException(status_code=400, detail="Usuario no encontrado")
 
-    if not pwd_context.verify(data.password, result.password_hash):
+    if not pwd_context.verify(data.password, result["password_hash"]):
         raise HTTPException(status_code=400, detail="Contraseña incorrecta")
 
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -569,7 +573,7 @@ def login(data: LoginRequest):
     token = jwt.encode(
         {
             "sub": data.email,
-            "rol": result.rol,
+            "rol": result["rol"],
             "exp": expire
         },
         SECRET_KEY,
@@ -579,7 +583,7 @@ def login(data: LoginRequest):
     return {
         "access_token": token,
         "token_type": "bearer",
-        "rol": result.rol
+        "rol": result["rol"]
     }
 
 # =====================================================
