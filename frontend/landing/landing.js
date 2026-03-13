@@ -88,7 +88,7 @@ function irReportes(){
     document.body.classList.add("pageFadeOut");
 
     setTimeout(()=>{
-        window.location.href="https://atugobpe-my.sharepoint.com/:x:/g/personal/hvillon_atu_gob_pe/IQAHBi-yfoZxRrPk0UQgu1FUAbOK3PxYxUIhs4bYbYc80ss?e=TLywy5";
+        window.location.href="https://atugobpe.sharepoint.com/sites/DOCUMENTOSEXTERNOSDSP/Documentos%20compartidos/Forms/AllItems.aspx?id=%2Fsites%2FDOCUMENTOSEXTERNOSDSP%2FDocumentos%20compartidos%2F006%5FCoordinaci%C3%B3n%2DProyectos%2F001%5FRegistro%2DReportes&viewid=b398b0bd%2Dc2c3%2D4d32%2Db67f%2D5d22ac4a0739&p=true";
     },350);
 
 }
