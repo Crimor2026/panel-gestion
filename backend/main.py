@@ -544,10 +544,7 @@ def obtener_historico(proyecto_id: int, fecha: str):
 # LOGIN
 # =====================================================
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-
+from passlib.hash import bcrypt
 
 @app.post("/login")
 def login(data: LoginRequest):
@@ -565,17 +562,9 @@ def login(data: LoginRequest):
     if result is None:
         raise HTTPException(status_code=400, detail="Usuario no encontrado")
 
-    password_hash = result.get("password_hash")
+    password_hash = result["password_hash"]
 
-    if not password_hash:
-        raise HTTPException(status_code=500, detail="Usuario sin contraseña configurada")
-
-    try:
-        valido = pwd_context.verify(data.password, password_hash)
-    except Exception:
-        raise HTTPException(status_code=500, detail="Error verificando contraseña")
-
-    if not valido:
+    if not bcrypt.verify(data.password, password_hash):
         raise HTTPException(status_code=400, detail="Contraseña incorrecta")
 
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
