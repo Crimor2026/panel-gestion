@@ -107,12 +107,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         window.location.href = "/login.html";
     });
 
-    if (token && rol === "admin") {
-
-        btnSubirProyectos?.classList.remove("hidden");
-        btnSubirARC?.classList.remove("hidden");
-
-    }
+    // mostrar siempre botones de carga
+    btnSubirProyectos?.classList.remove("hidden");
+    btnSubirARC?.classList.remove("hidden");
 
     // =====================================================
     // SUBIR PROYECTOS
