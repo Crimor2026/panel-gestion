@@ -3,6 +3,7 @@
 # =====================================================
 
 import os
+import unicodedata
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -18,6 +19,18 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from backend.database import engine
+
+def normalizar_texto(texto):
+
+    if texto is None:
+        return None
+
+    texto = str(texto).strip().lower()
+
+    texto = unicodedata.normalize("NFD", texto)
+    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
+
+    return texto
 
 # =====================================================
 # APP
@@ -638,9 +651,9 @@ def upload_excel(
         "dependencias_externas",
         "presupuesto_programado",
         "proyecto_inversion",
+        "clasificacion",
         "dependencias_internas"
     ]
-
     faltantes = [c for c in columnas_obligatorias if c not in df.columns]
 
     if faltantes:
@@ -697,7 +710,7 @@ def upload_excel(
             correo = str(row["correo"]).strip() if "correo" in df.columns and pd.notna(row["correo"]) else None
             celular = str(row["celular"]).strip() if "celular" in df.columns and pd.notna(row["celular"]) else None
 
-            # ================= CLASIFICACIÓN =================
+            # ================= PROYECTO INVERSIÓN =================
 
             if pd.isna(row["proyecto_inversion"]):
                 proyecto_inversion = None
@@ -711,12 +724,28 @@ def upload_excel(
                 else:
                     proyecto_inversion = None
 
-            if proyecto_inversion is True:
-                clasificacion_id = 2
-            elif proyecto_inversion is False:
-                clasificacion_id = 1
-            else:
-                clasificacion_id = 3
+
+            # ================= CLASIFICACIÓN =================
+
+            clasificacion_nombre = normalizar_texto(row["clasificacion"])
+
+            clasificaciones = conn.execute(text("""
+            SELECT id, nombre
+            FROM clasificaciones
+            """)).fetchall()
+
+            clasificacion_id = None
+
+            for c in clasificaciones:
+                if normalizar_texto(c.nombre) == clasificacion_nombre:
+                    clasificacion_id = c.id
+                    break
+
+            if not clasificacion_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"La clasificación '{row['clasificacion']}' no existe"
+                )
 
             # ================= DIRECCIÓN =================
 
@@ -1073,6 +1102,139 @@ def upload_excel(
 
     return {
         "mensaje": "Excel cargado correctamente",
+        "filas_procesadas": len(df)
+    }
+
+@app.post("/admin/upload-arc")
+def upload_arc(file: UploadFile = File(...), user: Any = Depends(obtener_usuario_actual)):
+
+    if user.rol != "admin":
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    df = pd.read_excel(file.file)
+
+    df.columns = (
+        df.columns
+        .str.strip()
+        .str.lower()
+        .str.replace(" ", "_")
+    )
+
+    columnas_obligatorias = [
+        "nombre",
+        "fecha_corte",
+        "codigo_arc"
+    ]
+
+    faltantes = [c for c in columnas_obligatorias if c not in df.columns]
+
+    if faltantes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Faltan columnas: {faltantes}"
+        )
+
+    with engine.begin() as conn:
+
+        for _, row in df.iterrows():
+
+            proyecto = conn.execute(text("""
+                SELECT id
+                FROM proyectos
+                WHERE nombre = :nombre
+            """), {"nombre": row["nombre"]}).fetchone()
+
+            if not proyecto:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Proyecto '{row['nombre']}' no existe"
+                )
+
+            proyecto_id = proyecto.id
+
+            fecha_corte = pd.to_datetime(row["fecha_corte"]).date()
+
+            descripcion = (
+                str(row["descripcion_arc"]).strip()
+                if "descripcion_arc" in df.columns and pd.notna(row["descripcion_arc"])
+                else None
+            )
+
+            inicio_programado = (
+                pd.to_datetime(row["inicio_programado_arc"]).date()
+                if "inicio_programado_arc" in df.columns and pd.notna(row["inicio_programado_arc"])
+                else None
+            )
+
+            fin_programado = (
+                pd.to_datetime(row["fin_programado_arc"]).date()
+                if "fin_programado_arc" in df.columns and pd.notna(row["fin_programado_arc"])
+                else None
+            )
+
+            inicio_ejecutado = (
+                pd.to_datetime(row["inicio_ejecutado_arc"]).date()
+                if "inicio_ejecutado_arc" in df.columns and pd.notna(row["inicio_ejecutado_arc"])
+                else None
+            )
+
+            fin_ejecutado = (
+                pd.to_datetime(row["fin_ejecutado_arc"]).date()
+                if "fin_ejecutado_arc" in df.columns and pd.notna(row["fin_ejecutado_arc"])
+                else None
+            )
+
+            avance_percent = (
+                float(row["avance_arc"] or 0)
+                if "avance_arc" in df.columns
+                else 0
+            )
+
+            conn.execute(text("""
+            INSERT INTO proyecto_arc (
+                proyecto_id,
+                fecha_corte,
+                codigo_arc,
+                descripcion,
+                inicio_programado,
+                fin_programado,
+                inicio_ejecutado,
+                fin_ejecutado,
+                avance_percent
+            )
+            VALUES (
+                :proyecto_id,
+                :fecha_corte,
+                :codigo_arc,
+                :descripcion,
+                :inicio_programado,
+                :fin_programado,
+                :inicio_ejecutado,
+                :fin_ejecutado,
+                :avance_percent
+            )
+            ON CONFLICT (proyecto_id, fecha_corte, codigo_arc)
+            DO UPDATE SET
+                descripcion = EXCLUDED.descripcion,
+                inicio_programado = EXCLUDED.inicio_programado,
+                fin_programado = EXCLUDED.fin_programado,
+                inicio_ejecutado = EXCLUDED.inicio_ejecutado,
+                fin_ejecutado = EXCLUDED.fin_ejecutado,
+                avance_percent = EXCLUDED.avance_percent
+            """), {
+                "proyecto_id": proyecto_id,
+                "fecha_corte": fecha_corte,
+                "codigo_arc": str(row["codigo_arc"]).strip(),
+                "descripcion": descripcion,
+                "inicio_programado": inicio_programado,
+                "fin_programado": fin_programado,
+                "inicio_ejecutado": inicio_ejecutado,
+                "fin_ejecutado": fin_ejecutado,
+                "avance_percent": avance_percent
+            })
+           
+    return {
+        "mensaje": "ARC cargados correctamente",
         "filas_procesadas": len(df)
     }
 

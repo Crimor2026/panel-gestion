@@ -15,9 +15,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const clasificacionFiltro = document.getElementById("clasificacionFiltro");
     const proyectoSelect = document.getElementById("proyectoSelect");
     const btnLogin = document.getElementById("btnLogin");
-    const btnSubirExcel = document.getElementById("btnSubirExcel");
-    const excelFileInput = document.getElementById("excelFile");
     const fechaInput = document.getElementById("fechaCorte");
+
+    const btnSubirProyectos = document.getElementById("btnSubirProyectos");
+    const btnSubirARC = document.getElementById("btnSubirARC");
+
+    const excelProyectos = document.getElementById("excelProyectos");
+    const excelARC = document.getElementById("excelARC");
 
     const token = sessionStorage.getItem("token");
     const rol = sessionStorage.getItem("rol");
@@ -104,42 +108,84 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     if (token && rol === "admin") {
-        btnSubirExcel?.classList.remove("hidden");
+
+        btnSubirProyectos?.classList.remove("hidden");
+        btnSubirARC?.classList.remove("hidden");
+
     }
 
     // =====================================================
-    // SUBIR ARCHIVO
+    // SUBIR PROYECTOS
     // =====================================================
 
-    btnSubirExcel?.addEventListener("click", () => {
-        excelFileInput.click();
+    btnSubirProyectos?.addEventListener("click", () => {
+        excelProyectos.click();
     });
 
-    excelFileInput?.addEventListener("change", async () => {
+    excelProyectos?.addEventListener("change", async () => {
 
-        const file = excelFileInput.files[0];
+        const file = excelProyectos.files[0];
         if (!file) return;
 
         const formData = new FormData();
         formData.append("file", file);
 
         try {
+
             const response = await fetch("/admin/upload-excel", {
-                method: "POST",
-                headers: {
-                    "Authorization": "Bearer " + token
+                method:"POST",
+                headers:{
+                    "Authorization":"Bearer " + token
                 },
-                body: formData
+                body:formData
             });
 
-            if (!response.ok) throw new Error();
+            if(!response.ok) throw new Error();
 
-            alert("Archivo cargado correctamente");
+            alert("Proyectos cargados correctamente");
             location.reload();
 
         } catch {
-            alert("Error al subir archivo");
+            alert("Error cargando proyectos");
         }
+
+    });
+
+    // =====================================================
+    // SUBIR ARC
+    // =====================================================
+
+    btnSubirARC?.addEventListener("click", () => {
+        excelARC.click();
+    });
+
+    excelARC?.addEventListener("change", async () => {
+
+        const file = excelARC.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+
+            const response = await fetch("/admin/upload-arc", {
+                method:"POST",
+                headers:{
+                    "Authorization":"Bearer " + token
+                },
+                body:formData
+            });
+
+            if(!response.ok) throw new Error();
+
+            alert("ARC cargados correctamente");
+            location.reload();
+
+        } catch {
+            alert("Error cargando ARC");
+        }
+
     });
 
     // =====================================================
@@ -700,44 +746,6 @@ async function cargarFechasDisponibles() {
     }
 
 // =====================================================
-// LINEA VERTICAL FECHA DE CORTE
-// =====================================================
-
-const lineaFechaCorte = {
-
-    id: "lineaFechaCorte",
-
-    afterDraw(chart) {
-
-        const fecha = document.getElementById("fechaCorte").value;
-        if(!fecha) return;
-
-        const ctx = chart.ctx;
-        const xScale = chart.scales.x;
-
-        const x = xScale.getPixelForValue(new Date(fecha));
-
-        ctx.save();
-
-        ctx.beginPath();
-        ctx.moveTo(x, chart.chartArea.top);
-        ctx.lineTo(x, chart.chartArea.bottom);
-
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "#dc2626"; // rojo PMO
-        ctx.stroke();
-
-        ctx.fillStyle = "#dc2626";
-        ctx.font = "12px sans-serif";
-        ctx.fillText("Fecha Corte", x + 5, chart.chartArea.top + 12);
-
-        ctx.restore();
-
-    }
-
-};
-
-// =====================================================
 // LEYENDA PERSONALIZADA DONUT - DEPENDENCIAS (ORDENADA)
 // =====================================================
 
@@ -792,9 +800,8 @@ function crearBarChartGlobal(id, labels, data) {
 
     charts[id] = new Chart(document.getElementById(id),{
 
-        plugins:[lineaFechaCorte],
-
         type:"bar",
+
         data: {
             labels,
             datasets: [{
@@ -804,11 +811,11 @@ function crearBarChartGlobal(id, labels, data) {
                 maxBarThickness: 60
             }]
         },
+
         options: {
             responsive: true,
             maintainAspectRatio: false,
 
-            // 🔥 Espacio superior para que no se corte el número
             layout: {
                 padding: {
                     top: 30
@@ -829,20 +836,16 @@ function crearBarChartGlobal(id, labels, data) {
             },
 
             scales: {
-                x: { 
-                    grid: { display: false } 
-                },
-                y: { 
-                    beginAtZero: true, 
-                    ticks: { precision: 0 },
-                    grace: "15%"   // 🔥 espacio adicional arriba
-                }
+                x: { grid: { display: false } },
+                y: { beginAtZero: true, ticks: { precision: 0 }, grace: "15%" }
             }
         },
-        plugins:[ChartDataLabels]
-    });
-}
 
+        plugins:[ChartDataLabels]
+
+    });
+    
+    }
 
 // =====================================================
 // GRÁFICO BARRAS VERTICALES - FILTRO (DEGRADADO ELEGANTE)

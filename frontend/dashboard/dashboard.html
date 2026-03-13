@@ -317,11 +317,22 @@
 
     <!-- Botón subir -->
     <div class="col-span-12 md:col-span-3 flex justify-end">
-      <input type="file" id="excelFile" class="hidden" accept=".xlsx">
-      <button id="btnSubirExcel"
-        class="hidden bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-md shadow transition w-full">
-        Subir Archivo
+      <input type="file" id="excelProyectos" class="hidden" accept=".xlsx">
+      <input type="file" id="excelARC" class="hidden" accept=".xlsx">
+
+      <div class="flex gap-3 w-full">
+
+      <button id="btnSubirProyectos"
+      class="hidden bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-md shadow transition w-full">
+      Subir Proyectos
       </button>
+
+      <button id="btnSubirARC"
+      class="hidden bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-md shadow transition w-full">
+      Subir ARC
+      </button>
+
+      </div>
     </div>
 
   </div>
