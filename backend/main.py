@@ -541,6 +541,14 @@ def obtener_historico(proyecto_id: int, fecha: str):
     }
 
 # =====================================================
+# MODELO LOGIN
+# =====================================================
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+# =====================================================
 # LOGIN
 # =====================================================
 
@@ -619,11 +627,7 @@ def obtener_usuario_actual(
 @app.post("/admin/upload-excel")
 def upload_excel(
     file: UploadFile = File(...),
-    user: Any = Depends(obtener_usuario_actual)
 ):
-
-    if user.rol != "admin":
-        raise HTTPException(status_code=403, detail="No autorizado")
 
     if not file.filename.lower().endswith(".xlsx"):
         raise HTTPException(status_code=400, detail="Solo se permiten archivos .xlsx")
@@ -1109,10 +1113,7 @@ def upload_excel(
     }
 
 @app.post("/admin/upload-arc")
-def upload_arc(file: UploadFile = File(...), user: Any = Depends(obtener_usuario_actual)):
-
-    if user.rol != "admin":
-        raise HTTPException(status_code=403, detail="No autorizado")
+def upload_arc(file: UploadFile = File(...)):
 
     df = pd.read_excel(file.file)
 
