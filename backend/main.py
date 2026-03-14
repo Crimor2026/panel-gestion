@@ -32,6 +32,46 @@ def normalizar_texto(texto):
 
     return texto
 
+
+def limpiar_numero(valor):
+
+    if valor is None:
+        return 0
+
+    texto = str(valor).strip()
+
+    if texto == "":
+        return 0
+
+    texto = texto.replace("S/","")
+    texto = texto.replace("%","")
+    texto = texto.replace(",", ".")
+    texto = texto.replace(" ", "")
+
+    try:
+        return float(texto)
+    except:
+        return 0
+
+
+def limpiar_fecha(valor):
+
+    # Si viene vacío
+    if valor is None:
+        return None
+
+    if valor == "":
+        return None
+
+    # Si pandas lo interpreta como NaT
+    if pd.isna(valor):
+        return None
+
+    try:
+        return pd.to_datetime(valor).date()
+    except:
+        return None
+
 # =====================================================
 # APP
 # =====================================================
@@ -634,12 +674,15 @@ def upload_excel(
 
     try:
         df = pd.read_excel(file.file)
+
+        df = df.fillna("")
+
         df.columns = (
             df.columns
             .str.strip()
             .str.lower()
             .str.replace(" ", "_")
-)
+        )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error leyendo el Excel: {str(e)}")
 
@@ -647,20 +690,9 @@ def upload_excel(
         "nombre",
         "direccion_id",
         "fecha_corte",
-        "avance_fisico",
-        "avance_financiero",
-        "avance_programado",
-        "presupuesto_actual",
-        "estado",
-        "fecha_inicio_programado",
-        "fecha_inicio_ejecutado",
-        "fecha_fin_programado",
-        "dependencias_externas",
-        "presupuesto_programado",
-        "proyecto_inversion",
-        "clasificacion",
-        "dependencias_internas"
+        "clasificacion"
     ]
+
     faltantes = [c for c in columnas_obligatorias if c not in df.columns]
 
     if faltantes:
@@ -673,56 +705,33 @@ def upload_excel(
 
         for _, row in df.iterrows():
 
-            nombre = str(row.nombre).strip()
-            direccion_id = int(row.direccion_id)
-            fecha_corte = pd.to_datetime(row["fecha_corte"]).date()
+            try:
 
-            avance_fisico = float(row["avance_fisico"] or 0)
-            avance_financiero = float(row["avance_financiero"] or 0)
-            avance_programado = float(row["avance_programado"] or 0)
-            presupuesto_actual = float(row["presupuesto_actual"] or 0)
-            presupuesto_programado = float(row["presupuesto_programado"] or 0)
+                # ================= CAMPOS BÁSICOS =================
 
-            estado = str(row["estado"]).strip()
+                nombre = str(row.get("nombre")).strip() if row.get("nombre") else None
+                direccion_id = int(row.get("direccion_id")) if row.get("direccion_id") else None
 
-            toma_decisiones = (
-                str(row["toma_decisiones"]).strip()
-                if "toma_decisiones" in df.columns and pd.notna(row["toma_decisiones"])
-                else None
-)
+                if not direccion_id:
+                    print(f"Fila ignorada (sin direccion_id): {nombre}")
+                    continue
 
-            dependencias_externas = (
-                str(row["dependencias_externas"]).strip()
-                if pd.notna(row["dependencias_externas"])
-                else None
-            )
+                fecha_corte = pd.to_datetime(row.get("fecha_corte")).date()
 
-            dependencias_internas = (
-                str(row["dependencias_internas"]).strip()
-                if pd.notna(row["dependencias_internas"])
-                else None
-            )
+                avance_fisico = limpiar_numero(row.get("avance_fisico"))
+                avance_financiero = limpiar_numero(row.get("avance_financiero"))
+                avance_programado = limpiar_numero(row.get("avance_programado"))
+                presupuesto_actual = limpiar_numero(row.get("presupuesto_actual"))
+                presupuesto_programado = limpiar_numero(row.get("presupuesto_programado"))
 
-            # =====================================================
-            # CAMPOS DE IDENTIFICACIÓN (FICHA)
-            # =====================================================
+                estado = str(row.get("estado")).strip() if row.get("estado") else None
 
-            cui = str(row["cui"]).strip() if "cui" in df.columns and pd.notna(row["cui"]) else None
-            codigo_dsp = str(row["codigo_dsp"]).strip() if "codigo_dsp" in df.columns and pd.notna(row["codigo_dsp"]) else None
-            ubicacion = str(row["ubicacion"]).strip() if "ubicacion" in df.columns and pd.notna(row["ubicacion"]) else None
-            tipologia = str(row["tipologia"]).strip() if "tipologia" in df.columns and pd.notna(row["tipologia"]) else None
-            entidad_ejecutora = str(row["entidad_ejecutora"]).strip() if "entidad_ejecutora" in df.columns and pd.notna(row["entidad_ejecutora"]) else None
-            entidad_formuladora = str(row["entidad_formuladora"]).strip() if "entidad_formuladora" in df.columns and pd.notna(row["entidad_formuladora"]) else None
-            coordinador = str(row["coordinador"]).strip() if "coordinador" in df.columns and pd.notna(row["coordinador"]) else None
-            correo = str(row["correo"]).strip() if "correo" in df.columns and pd.notna(row["correo"]) else None
-            celular = str(row["celular"]).strip() if "celular" in df.columns and pd.notna(row["celular"]) else None
+                dependencias_externas = str(row.get("dependencias_externas")).strip() if row.get("dependencias_externas") else None
+                dependencias_internas = str(row.get("dependencias_internas")).strip() if row.get("dependencias_internas") else None
 
-            # ================= PROYECTO INVERSIÓN =================
+                # ================= PROYECTO INVERSIÓN =================
 
-            if pd.isna(row["proyecto_inversion"]):
-                proyecto_inversion = None
-            else:
-                valor = str(row["proyecto_inversion"]).strip().lower()
+                valor = str(row.get("proyecto_inversion", "")).strip().lower()
 
                 if valor in ["true", "1", "si", "sí"]:
                     proyecto_inversion = True
@@ -732,190 +741,127 @@ def upload_excel(
                     proyecto_inversion = None
 
 
-            # ================= CLASIFICACIÓN =================
+                # ================= IDENTIFICACIÓN =================
 
-            clasificacion_nombre = normalizar_texto(row["clasificacion"])
+                cui = str(row.get("cui")).strip() if row.get("cui") else None
+                codigo_dsp = str(row.get("codigo_dsp")).strip() if row.get("codigo_dsp") else None
+                ubicacion = str(row.get("ubicacion")).strip() if row.get("ubicacion") else None
+                tipologia = str(row.get("tipologia")).strip() if row.get("tipologia") else None
+                entidad_ejecutora = str(row.get("entidad_ejecutora")).strip() if row.get("entidad_ejecutora") else None
+                entidad_formuladora = str(row.get("entidad_formuladora")).strip() if row.get("entidad_formuladora") else None
+                coordinador = str(row.get("coordinador")).strip() if row.get("coordinador") else None
+                correo = str(row.get("correo")).strip() if row.get("correo") else None
+                celular = str(row.get("celular")).strip() if row.get("celular") else None
 
-            clasificaciones = conn.execute(text("""
-            SELECT id, nombre
-            FROM clasificaciones
-            """)).fetchall()
 
-            clasificacion_id = None
+                # ================= CLASIFICACIÓN =================
 
-            for c in clasificaciones:
-                if normalizar_texto(c.nombre) == clasificacion_nombre:
-                    clasificacion_id = c.id
-                    break
+                clasificacion_nombre = normalizar_texto(row.get("clasificacion"))
 
-            if not clasificacion_id:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"La clasificación '{row['clasificacion']}' no existe"
-                )
+                clasificacion_id = conn.execute(text("""
+                    SELECT id
+                    FROM clasificaciones
+                    WHERE LOWER(nombre) = LOWER(:nombre)
+                """), {"nombre": row.get("clasificacion")}).scalar()
 
-            # ================= DIRECCIÓN =================
+                if not clasificacion_id:
+                    print(f"Clasificación no encontrada: {row.get('clasificacion')}")
+                    continue
 
-            direccion_row = conn.execute(text("""
-                SELECT id
-                FROM direcciones
-                WHERE id = :direccion_id
-            """), {"direccion_id": direccion_id}).fetchone()
 
-            if not direccion_row:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"La dirección '{direccion_id}' no existe"
-                )
+                # ================= DIRECCIÓN =================
 
-            direccion_id = direccion_row.id
+                direccion_row = conn.execute(text("""
+                    SELECT id
+                    FROM direcciones
+                    WHERE id = :direccion_id
+                """), {"direccion_id": direccion_id}).fetchone()
 
-            # ================= PROYECTO =================
+                if not direccion_row:
+                    print(f"Dirección no existe: {direccion_id}")
+                    continue
 
-            proyecto = None
+                direccion_id = direccion_row.id
 
-            # 1️⃣ buscar por nombre
-            proyecto = conn.execute(text("""
-                SELECT id
-                FROM proyectos
-                WHERE nombre = :nombre
-            """), {"nombre": nombre}).fetchone()
 
-            # 2️⃣ si no existe por nombre, buscar por CUI
-            if not proyecto and cui:
+                # ================= PROYECTO =================
 
                 proyecto = conn.execute(text("""
                     SELECT id
                     FROM proyectos
-                    WHERE cui = :cui
-                """), {"cui": cui}).fetchone()
+                    WHERE nombre = :nombre
+                """), {"nombre": nombre}).fetchone()
 
-            # 3️⃣ si existe proyecto → actualizar
-            if proyecto:
+                if proyecto:
+                    proyecto_id = proyecto.id
+                else:
+                    nuevo = conn.execute(text("""
+                        INSERT INTO proyectos (nombre)
+                        VALUES (:nombre)
+                        RETURNING id
+                    """), {"nombre": nombre}).fetchone()
 
-                proyecto_id = proyecto.id
+                    proyecto_id = nuevo.id
+
+
+                # ================= DATA EJECUCIÓN =================
 
                 conn.execute(text("""
-                    UPDATE proyectos
-                    SET
-                        nombre = COALESCE(:nombre, nombre),
-                        cui = COALESCE(:cui, cui),
-                        codigo_dsp = COALESCE(:codigo_dsp, codigo_dsp),
-                        ubicacion = COALESCE(:ubicacion, ubicacion),
-                        tipologia = COALESCE(:tipologia, tipologia),
-                        entidad_formuladora = COALESCE(:entidad_formuladora, entidad_formuladora)
-                    WHERE id = :proyecto_id
-                """), {
-                    "proyecto_id": proyecto_id,
-                    "nombre": nombre,
-                    "cui": cui,
-                    "codigo_dsp": codigo_dsp,
-                    "ubicacion": ubicacion,
-                    "tipologia": tipologia,
-                    "entidad_formuladora": entidad_formuladora
-                })
-
-            # 4️⃣ si no existe → crear proyecto
-            else:
-
-                nuevo = conn.execute(text("""
-                    INSERT INTO proyectos (
-                        nombre,
-                        cui,
-                        codigo_dsp,
-                        ubicacion,
-                        tipologia,
-                        entidad_formuladora
+                    INSERT INTO data_ejecucion (
+                        proyecto_id,
+                        fecha_corte,
+                        avance_fisico_ejecutado,
+                        avance_presupuesto_ejecutado
                     )
                     VALUES (
-                        :nombre,
-                        :cui,
-                        :codigo_dsp,
-                        :ubicacion,
-                        :tipologia,
-                        :entidad_formuladora
+                        :proyecto_id,
+                        :fecha_corte,
+                        :avance_fisico,
+                        :avance_financiero
                     )
-                    RETURNING id
+                    ON CONFLICT (proyecto_id, fecha_corte)
+                    DO UPDATE SET
+                    avance_fisico_ejecutado = EXCLUDED.avance_fisico_ejecutado,
+                    avance_presupuesto_ejecutado = EXCLUDED.avance_presupuesto_ejecutado
                 """), {
-                    "nombre": nombre,
-                    "cui": cui,
-                    "codigo_dsp": codigo_dsp,
-                    "ubicacion": ubicacion,
-                    "tipologia": tipologia,
-                    "entidad_formuladora": entidad_formuladora
-                }).fetchone()
-
-                proyecto_id = nuevo.id
+                    "proyecto_id": proyecto_id,
+                    "fecha_corte": fecha_corte,
+                    "avance_fisico": avance_fisico,
+                    "avance_financiero": avance_financiero
+                })
 
 
-            # ================= DATA EJECUCION =================
+                # ================= DATA PROGRAMADA =================
 
-            conn.execute(text("""
+                conn.execute(text("""
+                    INSERT INTO data_programada (
+                        proyecto_id,
+                        fecha_corte,
+                        avance_fisico_programado
+                    )
+                    VALUES (
+                        :proyecto_id,
+                        :fecha_corte,
+                        :avance_programado
+                    )
+                    ON CONFLICT (proyecto_id, fecha_corte)
+                    DO UPDATE SET
+                    avance_fisico_programado = EXCLUDED.avance_fisico_programado
+                """), {
+                    "proyecto_id": proyecto_id,
+                    "fecha_corte": fecha_corte,
+                    "avance_programado": avance_programado
+                })
 
-            INSERT INTO data_ejecucion (
 
-                proyecto_id,
-                fecha_corte,
-                avance_fisico_ejecutado,
-                avance_presupuesto_ejecutado
+            except Exception as e:
 
-            )
+                import traceback
+                traceback.print_exc()
 
-            VALUES (
+                print(f"Error en proyecto {row.get('nombre')} -> {e}")
 
-                :proyecto_id,
-                :fecha_corte,
-                :avance_fisico,
-                :avance_financiero
-
-            )
-
-            ON CONFLICT (proyecto_id, fecha_corte)
-            DO UPDATE SET
-
-            avance_fisico_ejecutado = EXCLUDED.avance_fisico_ejecutado,
-            avance_presupuesto_ejecutado = EXCLUDED.avance_presupuesto_ejecutado
-
-            """), {
-
-                "proyecto_id": proyecto_id,
-                "fecha_corte": fecha_corte,
-                "avance_fisico": avance_fisico,
-                "avance_financiero": avance_financiero
-
-            })
-
-            # ================= DATA PROGRAMADA =================
-
-            conn.execute(text("""
-
-            INSERT INTO data_programada (
-
-                proyecto_id,
-                fecha_corte,
-                avance_fisico_programado
-
-            )
-
-            VALUES (
-
-                :proyecto_id,
-                :fecha_corte,
-                :avance_programado
-
-            )
-
-            ON CONFLICT (proyecto_id, fecha_corte)
-            DO UPDATE SET
-
-            avance_fisico_programado = EXCLUDED.avance_fisico_programado
-
-            """), {
-                "proyecto_id": proyecto_id,
-                "fecha_corte": fecha_corte,
-                "avance_programado": avance_programado
-            })
-
+                continue
 
             # ================= VERSION =================
 
@@ -977,9 +923,9 @@ def upload_excel(
                 "proyecto_id": proyecto_id,
                 "fecha_corte": fecha_corte,
                 "estado": estado,
-                "fecha_inicio_programado": pd.to_datetime(row["fecha_inicio_programado"]).date() if pd.notna(row["fecha_inicio_programado"]) else None,
-                "fecha_inicio_ejecutado": pd.to_datetime(row["fecha_inicio_ejecutado"]).date() if pd.notna(row["fecha_inicio_ejecutado"]) else None,
-                "fecha_fin_programado": pd.to_datetime(row["fecha_fin_programado"]).date() if pd.notna(row["fecha_fin_programado"]) else None,
+                "fecha_inicio_programado": limpiar_fecha(row.get("fecha_inicio_programado")),
+                "fecha_inicio_ejecutado": limpiar_fecha(row.get("fecha_inicio_ejecutado")),
+                "fecha_fin_programado": limpiar_fecha(row.get("fecha_fin_programado")),
                 "dependencias_externas": dependencias_externas,
                 "presupuesto_programado": presupuesto_programado,
                 "proyecto_inversion": proyecto_inversion,
