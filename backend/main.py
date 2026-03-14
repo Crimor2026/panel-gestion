@@ -795,10 +795,13 @@ def upload_excel(file: UploadFile = File(...)):
                     proyecto_id = proyecto.id
                 else:
                     nuevo = conn.execute(text("""
-                        INSERT INTO proyectos (nombre)
-                        VALUES (:nombre)
+                        INSERT INTO proyectos (nombre, direccion_id)
+                        VALUES (:nombre, :direccion_id)
                         RETURNING id
-                    """), {"nombre": nombre}).fetchone()
+                    """), {
+                        "nombre": nombre,
+                        "direccion_id": direccion_id
+                    }).fetchone()
 
                     proyecto_id = nuevo.id
 
