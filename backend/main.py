@@ -861,6 +861,8 @@ def upload_excel(
 
                 print(f"Error en proyecto {row.get('nombre')} -> {e}")
 
+                conn.rollback()
+                
                 continue
 
             # ================= VERSION =================
