@@ -701,7 +701,7 @@ def upload_excel(
             detail=f"Faltan columnas en el Excel: {faltantes}"
         )
 
-    with engine.begin() as conn:
+    with engine.connect() as conn:
 
         for _, row in df.iterrows():
 
@@ -759,9 +759,9 @@ def upload_excel(
                 clasificacion_nombre = normalizar_texto(row.get("clasificacion"))
 
                 clasificacion_id = conn.execute(text("""
-                    SELECT id
-                    FROM clasificaciones
-                    WHERE LOWER(nombre) = LOWER(:nombre)
+                SELECT id
+                FROM clasificaciones
+                WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(:nombre))
                 """), {"nombre": row.get("clasificacion")}).scalar()
 
                 if not clasificacion_id:
@@ -1053,6 +1053,8 @@ def upload_excel(
 
                 })
 
+            conn.commit()
+
     return {
         "mensaje": "Excel cargado correctamente",
         "filas_procesadas": len(df)
@@ -1084,7 +1086,7 @@ def upload_arc(file: UploadFile = File(...)):
             detail=f"Faltan columnas: {faltantes}"
         )
 
-    with engine.begin() as conn:
+    with engine.connect() as conn:
 
         for _, row in df.iterrows():
 
