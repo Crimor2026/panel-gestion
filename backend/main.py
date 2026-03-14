@@ -664,19 +664,21 @@ def obtener_usuario_actual(
 # SUBIR EXCEL (ADMIN)
 # =====================================================
 
+# =====================================================
+# SUBIR EXCEL (ADMIN)
+# =====================================================
+
+print("UPLOAD_EXCEL VERSION NUEVA")
+
 @app.post("/admin/upload-excel")
-def upload_excel(
-    file: UploadFile = File(...),
-):
+def upload_excel(file: UploadFile = File(...)):
 
     if not file.filename.lower().endswith(".xlsx"):
         raise HTTPException(status_code=400, detail="Solo se permiten archivos .xlsx")
 
     try:
         df = pd.read_excel(file.file)
-
         df = df.fillna("")
-
         df.columns = (
             df.columns
             .str.strip()
@@ -721,7 +723,6 @@ def upload_excel(
                 avance_fisico = limpiar_numero(row.get("avance_fisico"))
                 avance_financiero = limpiar_numero(row.get("avance_financiero"))
                 avance_programado = limpiar_numero(row.get("avance_programado"))
-                presupuesto_actual = limpiar_numero(row.get("presupuesto_actual"))
                 presupuesto_programado = limpiar_numero(row.get("presupuesto_programado"))
 
                 estado = str(row.get("estado")).strip() if row.get("estado") else None
@@ -729,6 +730,19 @@ def upload_excel(
                 dependencias_externas = str(row.get("dependencias_externas")).strip() if row.get("dependencias_externas") else None
                 dependencias_internas = str(row.get("dependencias_internas")).strip() if row.get("dependencias_internas") else None
 
+                
+                # ================= IDENTIFICACIÓN =================
+
+                cui = str(row.get("cui")).strip() if row.get("cui") else None
+                codigo_dsp = str(row.get("codigo_dsp")).strip() if row.get("codigo_dsp") else None
+                ubicacion = str(row.get("ubicacion")).strip() if row.get("ubicacion") else None
+                tipologia = str(row.get("tipologia")).strip() if row.get("tipologia") else None
+                entidad_ejecutora = str(row.get("entidad_ejecutora")).strip() if row.get("entidad_ejecutora") else None
+                entidad_formuladora = str(row.get("entidad_formuladora")).strip() if row.get("entidad_formuladora") else None
+                coordinador = str(row.get("coordinador")).strip() if row.get("coordinador") else None
+                correo = str(row.get("correo")).strip() if row.get("correo") else None
+                celular = str(row.get("celular")).strip() if row.get("celular") else None
+                
                 # ================= PROYECTO INVERSIÓN =================
 
                 valor = str(row.get("proyecto_inversion", "")).strip().lower()
@@ -741,22 +755,7 @@ def upload_excel(
                     proyecto_inversion = None
 
 
-                # ================= IDENTIFICACIÓN =================
-
-                cui = str(row.get("cui")).strip() if row.get("cui") else None
-                codigo_dsp = str(row.get("codigo_dsp")).strip() if row.get("codigo_dsp") else None
-                ubicacion = str(row.get("ubicacion")).strip() if row.get("ubicacion") else None
-                tipologia = str(row.get("tipologia")).strip() if row.get("tipologia") else None
-                entidad_ejecutora = str(row.get("entidad_ejecutora")).strip() if row.get("entidad_ejecutora") else None
-                entidad_formuladora = str(row.get("entidad_formuladora")).strip() if row.get("entidad_formuladora") else None
-                coordinador = str(row.get("coordinador")).strip() if row.get("coordinador") else None
-                correo = str(row.get("correo")).strip() if row.get("correo") else None
-                celular = str(row.get("celular")).strip() if row.get("celular") else None
-
-
                 # ================= CLASIFICACIÓN =================
-
-                clasificacion_nombre = normalizar_texto(row.get("clasificacion"))
 
                 clasificacion_id = conn.execute(text("""
                 SELECT id
@@ -854,6 +853,80 @@ def upload_excel(
                 })
 
 
+                # ================= VERSION =================
+
+                version = conn.execute(text("""
+
+                INSERT INTO proyecto_version (
+                    proyecto_id,
+                    fecha_corte,
+                    estado,
+                    fecha_inicio_programado,
+                    fecha_inicio_ejecutado,
+                    fecha_fin_programado,
+                    dependencias_externas,
+                    presupuesto_programado,
+                    proyecto_inversion,
+                    clasificacion_id,
+                    direccion_id,
+                    entidad_ejecutora,
+                    coordinador,
+                    correo,
+                    celular
+                )
+
+                VALUES (
+                    :proyecto_id,
+                    :fecha_corte,
+                    :estado,
+                    :fecha_inicio_programado,
+                    :fecha_inicio_ejecutado,
+                    :fecha_fin_programado,
+                    :dependencias_externas,
+                    :presupuesto_programado,
+                    :proyecto_inversion,
+                    :clasificacion_id,
+                    :direccion_id,
+                    :entidad_ejecutora,
+                    :coordinador,
+                    :correo,
+                    :celular
+                )
+
+                ON CONFLICT (proyecto_id, fecha_corte)
+                DO UPDATE SET
+                    estado = EXCLUDED.estado,
+                    direccion_id = EXCLUDED.direccion_id,
+                    entidad_ejecutora = EXCLUDED.entidad_ejecutora,
+                    coordinador = EXCLUDED.coordinador,
+                    correo = EXCLUDED.correo,
+                    celular = EXCLUDED.celular
+
+                RETURNING id
+
+                """), {
+                    "proyecto_id": proyecto_id,
+                    "fecha_corte": fecha_corte,
+                    "estado": estado,
+                    "fecha_inicio_programado": limpiar_fecha(row.get("fecha_inicio_programado")),
+                    "fecha_inicio_ejecutado": limpiar_fecha(row.get("fecha_inicio_ejecutado")),
+                    "fecha_fin_programado": limpiar_fecha(row.get("fecha_fin_programado")),
+                    "dependencias_externas": dependencias_externas,
+                    "presupuesto_programado": presupuesto_programado,
+                    "proyecto_inversion": proyecto_inversion,
+                    "clasificacion_id": clasificacion_id,
+                    "direccion_id": direccion_id,
+                    "entidad_ejecutora": row.get("entidad_ejecutora"),
+                    "coordinador": row.get("coordinador"),
+                    "correo": row.get("correo"),
+                    "celular": row.get("celular")
+                }).fetchone()
+
+                version_id = version.id
+
+
+                conn.commit()
+
             except Exception as e:
 
                 import traceback
@@ -862,85 +935,8 @@ def upload_excel(
                 print(f"Error en proyecto {row.get('nombre')} -> {e}")
 
                 conn.rollback()
-                
+
                 continue
-
-            # ================= VERSION =================
-
-            version = conn.execute(text("""
-
-            INSERT INTO proyecto_version (
-
-                proyecto_id,
-                fecha_corte,
-                estado,
-                fecha_inicio_programado,
-                fecha_inicio_ejecutado,
-                fecha_fin_programado,
-                dependencias_externas,
-                presupuesto_programado,
-                proyecto_inversion,
-                clasificacion_id,
-                direccion_id,
-                entidad_ejecutora,
-                coordinador,
-                correo,
-                celular
-
-            )
-
-            VALUES (
-
-                :proyecto_id,
-                :fecha_corte,
-                :estado,
-                :fecha_inicio_programado,
-                :fecha_inicio_ejecutado,
-                :fecha_fin_programado,
-                :dependencias_externas,
-                :presupuesto_programado,
-                :proyecto_inversion,
-                :clasificacion_id,
-                :direccion_id,
-                :entidad_ejecutora,
-                :coordinador,
-                :correo,
-                :celular
-
-            )
-
-            ON CONFLICT (proyecto_id, fecha_corte)
-            DO UPDATE SET
-
-            estado = EXCLUDED.estado,
-            direccion_id = EXCLUDED.direccion_id,
-            entidad_ejecutora = EXCLUDED.entidad_ejecutora,
-            coordinador = EXCLUDED.coordinador,
-            correo = EXCLUDED.correo,
-            celular = EXCLUDED.celular
-
-            RETURNING id
-
-            """), {
-                "proyecto_id": proyecto_id,
-                "fecha_corte": fecha_corte,
-                "estado": estado,
-                "fecha_inicio_programado": limpiar_fecha(row.get("fecha_inicio_programado")),
-                "fecha_inicio_ejecutado": limpiar_fecha(row.get("fecha_inicio_ejecutado")),
-                "fecha_fin_programado": limpiar_fecha(row.get("fecha_fin_programado")),
-                "dependencias_externas": dependencias_externas,
-                "presupuesto_programado": presupuesto_programado,
-                "proyecto_inversion": proyecto_inversion,
-                "clasificacion_id": clasificacion_id,
-                "direccion_id": direccion_id,
-                "entidad_ejecutora": entidad_ejecutora,
-                "coordinador": coordinador,
-                "correo": correo,
-                "celular": celular
-            }).fetchone()
-
-
-            version_id = version.id
 
             # ================= DEPENDENCIAS INTERNAS =================
 
