@@ -822,7 +822,27 @@ def upload_excel(file: UploadFile = File(...)):
                 }).fetchone()
 
                 if proyecto:
+
                     proyecto_id = proyecto.id
+
+                    conn.execute(text("""
+                        UPDATE proyectos
+                        SET
+                            cui = :cui,
+                            codigo_dsp = :codigo_dsp,
+                            ubicacion = :ubicacion,
+                            tipologia = :tipologia,
+                            entidad_formuladora = :entidad_formuladora
+                        WHERE id = :id
+                    """), {
+                        "id": proyecto_id,
+                        "cui": cui,
+                        "codigo_dsp": codigo_dsp,
+                        "ubicacion": ubicacion,
+                        "tipologia": tipologia,
+                        "entidad_formuladora": entidad_formuladora
+                    })
+                    
                 else:
                     nuevo = conn.execute(text("""
                         INSERT INTO proyectos (nombre, direccion_id)
