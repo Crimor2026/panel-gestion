@@ -512,18 +512,29 @@ def obtener_historico(proyecto_id: int, fecha: str):
         for r in historico
     ]
 
-    arcs = [
-        {
+    import math
+
+    arcs = []
+
+    for r in arc_rows:
+
+        avance = 0
+
+        try:
+            if r.avance_percent is not None and not math.isnan(float(r.avance_percent)):
+                avance = float(r.avance_percent)
+        except:
+            avance = 0
+
+        arcs.append({
             "codigo": r.codigo_arc,
             "descripcion": r.descripcion,
             "inicio_programado": str(r.inicio_programado) if r.inicio_programado else None,
             "fin_programado": str(r.fin_programado) if r.fin_programado else None,
             "inicio_ejecutado": str(r.inicio_ejecutado) if r.inicio_ejecutado else None,
             "fin_ejecutado": str(r.fin_ejecutado) if r.fin_ejecutado else None,
-            "avance": float(r.avance_percent or 0)
-        }
-        for r in arc_rows
-    ]
+            "avance": avance
+        })
 
     # ARC actual según fecha
 
@@ -563,7 +574,7 @@ def obtener_historico(proyecto_id: int, fecha: str):
         "programado": programado,
 
         # ================= PRESUPUESTO =================
-        "presupuesto_programado": float(version.presupuesto_programado or 0) if version else 0,
+        "presupuesto_programado": float(version.presupuesto_programado) if version and version.presupuesto_programado else 0,
 
         # ================= PLAZOS =================
         "inicio_programado": str(version.fecha_inicio_programado) if version and version.fecha_inicio_programado else None,
