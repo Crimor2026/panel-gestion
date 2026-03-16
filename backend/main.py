@@ -532,13 +532,14 @@ def obtener_historico(proyecto_id: int, fecha: str):
     arc_actual = None
 
     for r in arc_rows:
-        if (
-            r.inicio_programado
-            and r.fin_programado
-            and r.inicio_programado <= fecha_corte <= r.fin_programado
-        ):
-            arc_actual = r.codigo_arc
-            break
+        if r.inicio_programado and r.fin_programado:
+            if r.inicio_programado <= fecha_corte <= r.fin_programado:
+                arc_actual = r.codigo_arc
+                break
+
+    # si ninguno está activo, mostrar el primero programado
+    if arc_actual is None and arc_rows:
+        arc_actual = arc_rows[0].codigo_arc
 
     return {
 
