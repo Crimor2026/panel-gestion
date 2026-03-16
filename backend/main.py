@@ -797,155 +797,155 @@ def upload_excel(file: UploadFile = File(...)):
                     direccion_id = direccion_row.id
 
 
-            # ================= PROYECTO =================
+                # ================= PROYECTO =================
 
-            proyecto = conn.execute(text("""
-                SELECT id
-                FROM proyectos
-                WHERE LOWER(TRIM(nombre)) = :nombre
-                AND direccion_id = :direccion_id
-            """), {
-                "nombre": nombre_normalizado,
-                "direccion_id": direccion_id
-            }).fetchone()
-
-            if proyecto:
-                proyecto_id = proyecto.id
-            else:
-                nuevo = conn.execute(text("""
-                    INSERT INTO proyectos (nombre, direccion_id)
-                    VALUES (:nombre, :direccion_id)
-                    RETURNING id
+                proyecto = conn.execute(text("""
+                    SELECT id
+                    FROM proyectos
+                    WHERE LOWER(TRIM(nombre)) = :nombre
+                    AND direccion_id = :direccion_id
                 """), {
-                    "nombre": nombre_original,
+                    "nombre": nombre_normalizado,
                     "direccion_id": direccion_id
                 }).fetchone()
 
-                proyecto_id = nuevo.id
+                if proyecto:
+                    proyecto_id = proyecto.id
+                else:
+                    nuevo = conn.execute(text("""
+                        INSERT INTO proyectos (nombre, direccion_id)
+                        VALUES (:nombre, :direccion_id)
+                        RETURNING id
+                    """), {
+                        "nombre": nombre_original,
+                        "direccion_id": direccion_id
+                    }).fetchone()
 
-                # ================= DATA EJECUCIÓN =================
+                    proyecto_id = nuevo.id
 
-                conn.execute(text("""
-                    INSERT INTO data_ejecucion (
+                    # ================= DATA EJECUCIÓN =================
+
+                    conn.execute(text("""
+                        INSERT INTO data_ejecucion (
+                            proyecto_id,
+                            fecha_corte,
+                            avance_fisico_ejecutado,
+                            avance_presupuesto_ejecutado
+                        )
+                        VALUES (
+                            :proyecto_id,
+                            :fecha_corte,
+                            :avance_fisico,
+                            :avance_financiero
+                        )
+                        ON CONFLICT (proyecto_id, fecha_corte)
+                        DO UPDATE SET
+                        avance_fisico_ejecutado = EXCLUDED.avance_fisico_ejecutado,
+                        avance_presupuesto_ejecutado = EXCLUDED.avance_presupuesto_ejecutado
+                    """), {
+                        "proyecto_id": proyecto_id,
+                        "fecha_corte": fecha_corte,
+                        "avance_fisico": avance_fisico,
+                        "avance_financiero": avance_financiero
+                    })
+
+
+                    # ================= DATA PROGRAMADA =================
+
+                    conn.execute(text("""
+                        INSERT INTO data_programada (
+                            proyecto_id,
+                            fecha_corte,
+                            avance_fisico_programado
+                        )
+                        VALUES (
+                            :proyecto_id,
+                            :fecha_corte,
+                            :avance_programado
+                        )
+                        ON CONFLICT (proyecto_id, fecha_corte)
+                        DO UPDATE SET
+                        avance_fisico_programado = EXCLUDED.avance_fisico_programado
+                    """), {
+                        "proyecto_id": proyecto_id,
+                        "fecha_corte": fecha_corte,
+                        "avance_programado": avance_programado
+                    })
+
+
+                    # ================= VERSION =================
+
+                    version = conn.execute(text("""
+
+                    INSERT INTO proyecto_version (
                         proyecto_id,
                         fecha_corte,
-                        avance_fisico_ejecutado,
-                        avance_presupuesto_ejecutado
+                        estado,
+                        fecha_inicio_programado,
+                        fecha_inicio_ejecutado,
+                        fecha_fin_programado,
+                        dependencias_externas,
+                        presupuesto_programado,
+                        proyecto_inversion,
+                        clasificacion_id,
+                        direccion_id,
+                        entidad_ejecutora,
+                        coordinador,
+                        correo,
+                        celular
                     )
+
                     VALUES (
                         :proyecto_id,
                         :fecha_corte,
-                        :avance_fisico,
-                        :avance_financiero
+                        :estado,
+                        :fecha_inicio_programado,
+                        :fecha_inicio_ejecutado,
+                        :fecha_fin_programado,
+                        :dependencias_externas,
+                        :presupuesto_programado,
+                        :proyecto_inversion,
+                        :clasificacion_id,
+                        :direccion_id,
+                        :entidad_ejecutora,
+                        :coordinador,
+                        :correo,
+                        :celular
                     )
+
                     ON CONFLICT (proyecto_id, fecha_corte)
                     DO UPDATE SET
-                    avance_fisico_ejecutado = EXCLUDED.avance_fisico_ejecutado,
-                    avance_presupuesto_ejecutado = EXCLUDED.avance_presupuesto_ejecutado
-                """), {
-                    "proyecto_id": proyecto_id,
-                    "fecha_corte": fecha_corte,
-                    "avance_fisico": avance_fisico,
-                    "avance_financiero": avance_financiero
-                })
+                        estado = EXCLUDED.estado,
+                        direccion_id = EXCLUDED.direccion_id,
+                        entidad_ejecutora = EXCLUDED.entidad_ejecutora,
+                        coordinador = EXCLUDED.coordinador,
+                        correo = EXCLUDED.correo,
+                        celular = EXCLUDED.celular
+
+                    RETURNING id
+
+                    """), {
+                        "proyecto_id": proyecto_id,
+                        "fecha_corte": fecha_corte,
+                        "estado": estado,
+                        "fecha_inicio_programado": limpiar_fecha(row.get("fecha_inicio_programado")),
+                        "fecha_inicio_ejecutado": limpiar_fecha(row.get("fecha_inicio_ejecutado")),
+                        "fecha_fin_programado": limpiar_fecha(row.get("fecha_fin_programado")),
+                        "dependencias_externas": dependencias_externas,
+                        "presupuesto_programado": presupuesto_programado,
+                        "proyecto_inversion": proyecto_inversion,
+                        "clasificacion_id": clasificacion_id,
+                        "direccion_id": direccion_id,
+                        "entidad_ejecutora": row.get("entidad_ejecutora"),
+                        "coordinador": row.get("coordinador"),
+                        "correo": row.get("correo"),
+                        "celular": row.get("celular")
+                    }).fetchone()
+
+                    version_id = version.id
 
 
-                # ================= DATA PROGRAMADA =================
-
-                conn.execute(text("""
-                    INSERT INTO data_programada (
-                        proyecto_id,
-                        fecha_corte,
-                        avance_fisico_programado
-                    )
-                    VALUES (
-                        :proyecto_id,
-                        :fecha_corte,
-                        :avance_programado
-                    )
-                    ON CONFLICT (proyecto_id, fecha_corte)
-                    DO UPDATE SET
-                    avance_fisico_programado = EXCLUDED.avance_fisico_programado
-                """), {
-                    "proyecto_id": proyecto_id,
-                    "fecha_corte": fecha_corte,
-                    "avance_programado": avance_programado
-                })
-
-
-                # ================= VERSION =================
-
-                version = conn.execute(text("""
-
-                INSERT INTO proyecto_version (
-                    proyecto_id,
-                    fecha_corte,
-                    estado,
-                    fecha_inicio_programado,
-                    fecha_inicio_ejecutado,
-                    fecha_fin_programado,
-                    dependencias_externas,
-                    presupuesto_programado,
-                    proyecto_inversion,
-                    clasificacion_id,
-                    direccion_id,
-                    entidad_ejecutora,
-                    coordinador,
-                    correo,
-                    celular
-                )
-
-                VALUES (
-                    :proyecto_id,
-                    :fecha_corte,
-                    :estado,
-                    :fecha_inicio_programado,
-                    :fecha_inicio_ejecutado,
-                    :fecha_fin_programado,
-                    :dependencias_externas,
-                    :presupuesto_programado,
-                    :proyecto_inversion,
-                    :clasificacion_id,
-                    :direccion_id,
-                    :entidad_ejecutora,
-                    :coordinador,
-                    :correo,
-                    :celular
-                )
-
-                ON CONFLICT (proyecto_id, fecha_corte)
-                DO UPDATE SET
-                    estado = EXCLUDED.estado,
-                    direccion_id = EXCLUDED.direccion_id,
-                    entidad_ejecutora = EXCLUDED.entidad_ejecutora,
-                    coordinador = EXCLUDED.coordinador,
-                    correo = EXCLUDED.correo,
-                    celular = EXCLUDED.celular
-
-                RETURNING id
-
-                """), {
-                    "proyecto_id": proyecto_id,
-                    "fecha_corte": fecha_corte,
-                    "estado": estado,
-                    "fecha_inicio_programado": limpiar_fecha(row.get("fecha_inicio_programado")),
-                    "fecha_inicio_ejecutado": limpiar_fecha(row.get("fecha_inicio_ejecutado")),
-                    "fecha_fin_programado": limpiar_fecha(row.get("fecha_fin_programado")),
-                    "dependencias_externas": dependencias_externas,
-                    "presupuesto_programado": presupuesto_programado,
-                    "proyecto_inversion": proyecto_inversion,
-                    "clasificacion_id": clasificacion_id,
-                    "direccion_id": direccion_id,
-                    "entidad_ejecutora": row.get("entidad_ejecutora"),
-                    "coordinador": row.get("coordinador"),
-                    "correo": row.get("correo"),
-                    "celular": row.get("celular")
-                }).fetchone()
-
-                version_id = version.id
-
-
-                conn.commit()
+                    conn.commit()
 
             except Exception as e:
 
@@ -1092,6 +1092,7 @@ def upload_arc(file: UploadFile = File(...)):
 
     columnas_obligatorias = [
         "nombre",
+        "direccion_id",
         "fecha_corte",
         "codigo_arc"
     ]
@@ -1108,101 +1109,160 @@ def upload_arc(file: UploadFile = File(...)):
 
         for _, row in df.iterrows():
 
-            proyecto = conn.execute(text("""
-                SELECT id
-                FROM proyectos
-                WHERE nombre = :nombre
-            """), {"nombre": row["nombre"]}).fetchone()
+            try:
 
-            if not proyecto:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Proyecto '{row['nombre']}' no existe"
+                # ================= NOMBRE =================
+
+                nombre_original = " ".join(str(row.get("nombre")).strip().split())
+                nombre_normalizado = normalizar_texto(nombre_original)
+
+                direccion_id = int(row.get("direccion_id")) if row.get("direccion_id") else None
+
+                if not direccion_id:
+                    print(f"Fila ignorada (sin direccion_id): {nombre_original}")
+                    continue
+
+
+                # ================= VALIDAR DIRECCION =================
+
+                direccion_row = conn.execute(text("""
+                    SELECT id
+                    FROM direcciones
+                    WHERE id = :direccion_id
+                """), {
+                    "direccion_id": direccion_id
+                }).fetchone()
+
+                if not direccion_row:
+
+                    print(f"Dirección no existe: {direccion_id}")
+                    continue
+
+                direccion_id = direccion_row.id
+
+
+                # ================= BUSCAR PROYECTO =================
+
+                proyecto = conn.execute(text("""
+                    SELECT id
+                    FROM proyectos
+                    WHERE LOWER(TRIM(nombre)) = :nombre
+                    AND direccion_id = :direccion_id
+                """), {
+                    "nombre": nombre_normalizado,
+                    "direccion_id": direccion_id
+                }).fetchone()
+
+                if not proyecto:
+
+                    print(f"Proyecto no encontrado: {nombre_original}")
+                    continue
+
+                proyecto_id = proyecto.id
+
+
+                # ================= FECHA =================
+
+                fecha_corte = pd.to_datetime(row["fecha_corte"]).date()
+
+
+                # ================= CAMPOS ARC =================
+
+                descripcion = (
+                    str(row["descripcion_arc"]).strip()
+                    if "descripcion_arc" in df.columns and pd.notna(row["descripcion_arc"])
+                    else None
                 )
 
-            proyecto_id = proyecto.id
+                inicio_programado = (
+                    pd.to_datetime(row["inicio_programado_arc"]).date()
+                    if "inicio_programado_arc" in df.columns and pd.notna(row["inicio_programado_arc"])
+                    else None
+                )
 
-            fecha_corte = pd.to_datetime(row["fecha_corte"]).date()
+                fin_programado = (
+                    pd.to_datetime(row["fin_programado_arc"]).date()
+                    if "fin_programado_arc" in df.columns and pd.notna(row["fin_programado_arc"])
+                    else None
+                )
 
-            descripcion = (
-                str(row["descripcion_arc"]).strip()
-                if "descripcion_arc" in df.columns and pd.notna(row["descripcion_arc"])
-                else None
-            )
+                inicio_ejecutado = (
+                    pd.to_datetime(row["inicio_ejecutado_arc"]).date()
+                    if "inicio_ejecutado_arc" in df.columns and pd.notna(row["inicio_ejecutado_arc"])
+                    else None
+                )
 
-            inicio_programado = (
-                pd.to_datetime(row["inicio_programado_arc"]).date()
-                if "inicio_programado_arc" in df.columns and pd.notna(row["inicio_programado_arc"])
-                else None
-            )
+                fin_ejecutado = (
+                    pd.to_datetime(row["fin_ejecutado_arc"]).date()
+                    if "fin_ejecutado_arc" in df.columns and pd.notna(row["fin_ejecutado_arc"])
+                    else None
+                )
 
-            fin_programado = (
-                pd.to_datetime(row["fin_programado_arc"]).date()
-                if "fin_programado_arc" in df.columns and pd.notna(row["fin_programado_arc"])
-                else None
-            )
+                avance_percent = (
+                    float(row["avance_arc"] or 0)
+                    if "avance_arc" in df.columns
+                    else 0
+                )
 
-            inicio_ejecutado = (
-                pd.to_datetime(row["inicio_ejecutado_arc"]).date()
-                if "inicio_ejecutado_arc" in df.columns and pd.notna(row["inicio_ejecutado_arc"])
-                else None
-            )
 
-            fin_ejecutado = (
-                pd.to_datetime(row["fin_ejecutado_arc"]).date()
-                if "fin_ejecutado_arc" in df.columns and pd.notna(row["fin_ejecutado_arc"])
-                else None
-            )
+                # ================= INSERT ARC =================
 
-            avance_percent = (
-                float(row["avance_arc"] or 0)
-                if "avance_arc" in df.columns
-                else 0
-            )
+                conn.execute(text("""
+                INSERT INTO proyecto_arc (
+                    proyecto_id,
+                    fecha_corte,
+                    codigo_arc,
+                    descripcion,
+                    inicio_programado,
+                    fin_programado,
+                    inicio_ejecutado,
+                    fin_ejecutado,
+                    avance_percent
+                )
+                VALUES (
+                    :proyecto_id,
+                    :fecha_corte,
+                    :codigo_arc,
+                    :descripcion,
+                    :inicio_programado,
+                    :fin_programado,
+                    :inicio_ejecutado,
+                    :fin_ejecutado,
+                    :avance_percent
+                )
+                ON CONFLICT (proyecto_id, fecha_corte, codigo_arc)
+                DO UPDATE SET
+                    descripcion = EXCLUDED.descripcion,
+                    inicio_programado = EXCLUDED.inicio_programado,
+                    fin_programado = EXCLUDED.fin_programado,
+                    inicio_ejecutado = EXCLUDED.inicio_ejecutado,
+                    fin_ejecutado = EXCLUDED.fin_ejecutado,
+                    avance_percent = EXCLUDED.avance_percent
+                """), {
+                    "proyecto_id": proyecto_id,
+                    "fecha_corte": fecha_corte,
+                    "codigo_arc": str(row["codigo_arc"]).strip(),
+                    "descripcion": descripcion,
+                    "inicio_programado": inicio_programado,
+                    "fin_programado": fin_programado,
+                    "inicio_ejecutado": inicio_ejecutado,
+                    "fin_ejecutado": fin_ejecutado,
+                    "avance_percent": avance_percent
+                })
 
-            conn.execute(text("""
-            INSERT INTO proyecto_arc (
-                proyecto_id,
-                fecha_corte,
-                codigo_arc,
-                descripcion,
-                inicio_programado,
-                fin_programado,
-                inicio_ejecutado,
-                fin_ejecutado,
-                avance_percent
-            )
-            VALUES (
-                :proyecto_id,
-                :fecha_corte,
-                :codigo_arc,
-                :descripcion,
-                :inicio_programado,
-                :fin_programado,
-                :inicio_ejecutado,
-                :fin_ejecutado,
-                :avance_percent
-            )
-            ON CONFLICT (proyecto_id, fecha_corte, codigo_arc)
-            DO UPDATE SET
-                descripcion = EXCLUDED.descripcion,
-                inicio_programado = EXCLUDED.inicio_programado,
-                fin_programado = EXCLUDED.fin_programado,
-                inicio_ejecutado = EXCLUDED.inicio_ejecutado,
-                fin_ejecutado = EXCLUDED.fin_ejecutado,
-                avance_percent = EXCLUDED.avance_percent
-            """), {
-                "proyecto_id": proyecto_id,
-                "fecha_corte": fecha_corte,
-                "codigo_arc": str(row["codigo_arc"]).strip(),
-                "descripcion": descripcion,
-                "inicio_programado": inicio_programado,
-                "fin_programado": fin_programado,
-                "inicio_ejecutado": inicio_ejecutado,
-                "fin_ejecutado": fin_ejecutado,
-                "avance_percent": avance_percent
-            })
-           
+                conn.commit()
+
+            except Exception as e:
+
+                import traceback
+                traceback.print_exc()
+
+                print(f"Error ARC proyecto {row.get('nombre')} -> {e}")
+
+                conn.rollback()
+
+                continue
+
     return {
         "mensaje": "ARC cargados correctamente",
         "filas_procesadas": len(df)
