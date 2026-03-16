@@ -757,15 +757,21 @@ def upload_excel(file: UploadFile = File(...)):
 
                 # ================= CLASIFICACIÓN =================
 
-                clasificacion_id = conn.execute(text("""
-                SELECT id
-                FROM clasificaciones
-                WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(:nombre))
-                """), {"nombre": row.get("clasificacion")}).scalar()
+                clasificacion_id = None
 
-                if not clasificacion_id:
-                    print(f"Clasificación no encontrada: {row.get('clasificacion')}")
-                    continue
+                if row.get("clasificacion"):
+
+                    clasificacion_id = conn.execute(text("""
+                        SELECT id
+                        FROM clasificaciones
+                        WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(:nombre))
+                    """), {
+                        "nombre": row.get("clasificacion")
+                    }).scalar()
+
+                    if not clasificacion_id:
+                        print(f"Clasificación no encontrada: {row.get('clasificacion')}")
+                        clasificacion_id = None
 
 
                 # ================= DIRECCIÓN =================
@@ -774,13 +780,20 @@ def upload_excel(file: UploadFile = File(...)):
                     SELECT id
                     FROM direcciones
                     WHERE id = :direccion_id
-                """), {"direccion_id": direccion_id}).fetchone()
+                """), {
+                    "direccion_id": direccion_id
+                }).fetchone()
 
                 if not direccion_row:
-                    print(f"Dirección no existe: {direccion_id}")
-                    continue
 
-                direccion_id = direccion_row.id
+                    print(f"Dirección no existe: {direccion_id}")
+
+                    # no detener carga
+                    direccion_id = None
+
+                else:
+
+                    direccion_id = direccion_row.id
 
 
                 # ================= PROYECTO =================
@@ -804,7 +817,6 @@ def upload_excel(file: UploadFile = File(...)):
                     }).fetchone()
 
                     proyecto_id = nuevo.id
-
 
                 # ================= DATA EJECUCIÓN =================
 
