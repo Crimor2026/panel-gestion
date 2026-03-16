@@ -809,51 +809,124 @@ def upload_excel(file: UploadFile = File(...)):
                     direccion_id = direccion_row.id
 
 
-                # ================= PROYECTO =================
+                    # ================= PROYECTO =================
 
-                proyecto = conn.execute(text("""
-                    SELECT id
-                    FROM proyectos
-                    WHERE LOWER(TRIM(unaccent(nombre))) = :nombre
-                    AND direccion_id = :direccion_id
-                """), {
-                    "nombre": nombre_normalizado,
-                    "direccion_id": direccion_id
-                }).fetchone()
-
-                if proyecto:
-
-                    proyecto_id = proyecto.id
-
-                    conn.execute(text("""
-                        UPDATE proyectos
-                        SET
-                            cui = :cui,
-                            codigo_dsp = :codigo_dsp,
-                            ubicacion = :ubicacion,
-                            tipologia = :tipologia,
-                            entidad_formuladora = :entidad_formuladora
-                        WHERE id = :id
+                    proyecto = conn.execute(text("""
+                        SELECT id
+                        FROM proyectos
+                        WHERE LOWER(TRIM(unaccent(nombre))) = :nombre
+                        AND direccion_id = :direccion_id
                     """), {
-                        "id": proyecto_id,
-                        "cui": cui,
-                        "codigo_dsp": codigo_dsp,
-                        "ubicacion": ubicacion,
-                        "tipologia": tipologia,
-                        "entidad_formuladora": entidad_formuladora
-                    })
-                    
-                else:
-                    nuevo = conn.execute(text("""
-                        INSERT INTO proyectos (nombre, direccion_id)
-                        VALUES (:nombre, :direccion_id)
-                        RETURNING id
-                    """), {
-                        "nombre": nombre_original,
+                        "nombre": nombre_normalizado,
                         "direccion_id": direccion_id
                     }).fetchone()
 
-                    proyecto_id = nuevo.id
+                    if proyecto:
+
+                        proyecto_id = proyecto.id
+
+                        conn.execute(text("""
+                            UPDATE proyectos
+                            SET
+                                cui = :cui,
+                                codigo_dsp = :codigo_dsp,
+                                ubicacion = :ubicacion,
+                                tipologia = :tipologia,
+                                entidad_formuladora = :entidad_formuladora
+                            WHERE id = :id
+                        """), {
+                            "id": proyecto_id,
+                            "cui": cui,
+                            "codigo_dsp": codigo_dsp,
+                            "ubicacion": ubicacion,
+                            "tipologia": tipologia,
+                            "entidad_formuladora": entidad_formuladora
+                        })
+
+                    else:
+
+                        nuevo = conn.execute(text("""
+                            INSERT INTO proyectos (nombre, direccion_id)
+                            VALUES (:nombre, :direccion_id)
+                            RETURNING id
+                        """), {
+                            "nombre": nombre_original,
+                            "direccion_id": direccion_id
+                        }).fetchone()
+
+                        proyecto_id = nuevo.id
+
+
+                    # ================= VERSION (SIEMPRE) =================
+
+                    version = conn.execute(text("""
+
+                    INSERT INTO proyecto_version (
+                        proyecto_id,
+                        fecha_corte,
+                        estado,
+                        fecha_inicio_programado,
+                        fecha_inicio_ejecutado,
+                        fecha_fin_programado,
+                        dependencias_externas,
+                        presupuesto_programado,
+                        proyecto_inversion,
+                        clasificacion_id,
+                        direccion_id,
+                        entidad_ejecutora,
+                        coordinador,
+                        correo,
+                        celular
+                    )
+
+                    VALUES (
+                        :proyecto_id,
+                        :fecha_corte,
+                        :estado,
+                        :fecha_inicio_programado,
+                        :fecha_inicio_ejecutado,
+                        :fecha_fin_programado,
+                        :dependencias_externas,
+                        :presupuesto_programado,
+                        :proyecto_inversion,
+                        :clasificacion_id,
+                        :direccion_id,
+                        :entidad_ejecutora,
+                        :coordinador,
+                        :correo,
+                        :celular
+                    )
+
+                    ON CONFLICT (proyecto_id, fecha_corte)
+                    DO UPDATE SET
+                        estado = EXCLUDED.estado,
+                        direccion_id = EXCLUDED.direccion_id,
+                        entidad_ejecutora = EXCLUDED.entidad_ejecutora,
+                        coordinador = EXCLUDED.coordinador,
+                        correo = EXCLUDED.correo,
+                        celular = EXCLUDED.celular
+
+                    RETURNING id
+
+                    """), {
+                        "proyecto_id": proyecto_id,
+                        "fecha_corte": fecha_corte,
+                        "estado": estado,
+                        "fecha_inicio_programado": limpiar_fecha(row.get("fecha_inicio_programado")),
+                        "fecha_inicio_ejecutado": limpiar_fecha(row.get("fecha_inicio_ejecutado")),
+                        "fecha_fin_programado": limpiar_fecha(row.get("fecha_fin_programado")),
+                        "dependencias_externas": dependencias_externas,
+                        "presupuesto_programado": presupuesto_programado,
+                        "proyecto_inversion": proyecto_inversion,
+                        "clasificacion_id": clasificacion_id,
+                        "direccion_id": direccion_id,
+                        "entidad_ejecutora": entidad_ejecutora,
+                        "coordinador": coordinador,
+                        "correo": correo,
+                        "celular": celular
+                    }).fetchone()
+
+                    version_id = version.id
 
                     # ================= DATA EJECUCIÓN =================
 
