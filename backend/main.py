@@ -711,11 +711,13 @@ def upload_excel(file: UploadFile = File(...)):
 
                 # ================= CAMPOS BÁSICOS =================
 
-                nombre = str(row.get("nombre")).strip() if row.get("nombre") else None
+                nombre_original = " ".join(str(row.get("nombre")).strip().split()) if row.get("nombre") else None
+                nombre_normalizado = normalizar_texto(nombre_original)
+
                 direccion_id = int(row.get("direccion_id")) if row.get("direccion_id") else None
 
                 if not direccion_id:
-                    print(f"Fila ignorada (sin direccion_id): {nombre}")
+                    print(f"Fila ignorada (sin direccion_id): {nombre_original}")
                     continue
 
                 fecha_corte = pd.to_datetime(row.get("fecha_corte")).date()
@@ -729,7 +731,6 @@ def upload_excel(file: UploadFile = File(...)):
 
                 dependencias_externas = str(row.get("dependencias_externas")).strip() if row.get("dependencias_externas") else None
                 dependencias_internas = str(row.get("dependencias_internas")).strip() if row.get("dependencias_internas") else None
-
                 
                 # ================= IDENTIFICACIÓN =================
 
@@ -796,27 +797,31 @@ def upload_excel(file: UploadFile = File(...)):
                     direccion_id = direccion_row.id
 
 
-                # ================= PROYECTO =================
+            # ================= PROYECTO =================
 
-                proyecto = conn.execute(text("""
-                    SELECT id
-                    FROM proyectos
-                    WHERE nombre = :nombre
-                """), {"nombre": nombre}).fetchone()
+            proyecto = conn.execute(text("""
+                SELECT id
+                FROM proyectos
+                WHERE LOWER(TRIM(nombre)) = :nombre
+                AND direccion_id = :direccion_id
+            """), {
+                "nombre": nombre_normalizado,
+                "direccion_id": direccion_id
+            }).fetchone()
 
-                if proyecto:
-                    proyecto_id = proyecto.id
-                else:
-                    nuevo = conn.execute(text("""
-                        INSERT INTO proyectos (nombre, direccion_id)
-                        VALUES (:nombre, :direccion_id)
-                        RETURNING id
-                    """), {
-                        "nombre": nombre,
-                        "direccion_id": direccion_id
-                    }).fetchone()
+            if proyecto:
+                proyecto_id = proyecto.id
+            else:
+                nuevo = conn.execute(text("""
+                    INSERT INTO proyectos (nombre, direccion_id)
+                    VALUES (:nombre, :direccion_id)
+                    RETURNING id
+                """), {
+                    "nombre": nombre_original,
+                    "direccion_id": direccion_id
+                }).fetchone()
 
-                    proyecto_id = nuevo.id
+                proyecto_id = nuevo.id
 
                 # ================= DATA EJECUCIÓN =================
 
