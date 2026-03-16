@@ -489,9 +489,11 @@ def obtener_historico(proyecto_id: int, fecha: str):
             avance_percent
         FROM proyecto_arc
         WHERE proyecto_id = :id
+        AND fecha_corte = :fecha
         ORDER BY codigo_arc
         """), {
-            "id": proyecto_id
+            "id": proyecto_id,
+            "fecha": fecha_corte
         }).fetchall()
 
     # ================= FORMATEO =================
