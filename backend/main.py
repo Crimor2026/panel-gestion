@@ -1146,7 +1146,7 @@ def upload_arc(file: UploadFile = File(...)):
                 proyecto = conn.execute(text("""
                     SELECT id
                     FROM proyectos
-                    WHERE LOWER(TRIM(nombre)) = :nombre
+                    WHERE LOWER(TRIM(unaccent(nombre))) = :nombre
                     AND direccion_id = :direccion_id
                 """), {
                     "nombre": nombre_normalizado,
