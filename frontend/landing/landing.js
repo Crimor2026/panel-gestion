@@ -14,27 +14,93 @@ function cerrarPanel() {
 
 
 // ======================================
-// LOGIN
+// TRANSICIÓN BOTONES LANDING
 // ======================================
 
-document.addEventListener("DOMContentLoaded", () => {
+function irDashboard(){
+    document.body.classList.add("pageFadeOut");
+    setTimeout(()=>{
+        window.location.href="/dashboard";
+    },350);
+}
+
+function irReportes(){
+    document.body.classList.add("pageFadeOut");
+    setTimeout(()=>{
+        window.location.href="https://atugobpe.sharepoint.com/sites/DOCUMENTOSEXTERNOSDSP/Documentos%20compartidos/Forms/AllItems.aspx";
+    },350);
+}
+
+
+// ======================================
+// ANIMACIÓN LANDING
+// ======================================
+
+function animarLanding(){
+    const botones = document.querySelector(".fadeLanding");
+
+    if(!botones) return;
+
+    botones.style.opacity = "0";
+    botones.style.transform = "translateY(40px)";
+
+    setTimeout(()=>{
+        botones.style.transition = "all 0.8s ease";
+        botones.style.opacity = "1";
+        botones.style.transform = "translateY(0px)";
+    },50);
+}
+
+document.addEventListener("DOMContentLoaded", animarLanding);
+window.addEventListener("pageshow", animarLanding);
+
+
+// ======================================
+// BACK BUTTON FIX
+// ======================================
+
+window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
+
+
+// ======================================
+// FORMATEAR FECHA
+// ======================================
+
+function formatearFecha(fecha) {
+    if (!fecha) return "Primera vez";
+
+    const f = new Date(fecha);
+
+    return f.toLocaleDateString("es-PE") + " " +
+           f.toLocaleTimeString("es-PE");
+}
+
+
+// ======================================
+// DOM LISTO (AQUÍ VA TODO LO IMPORTANTE)
+// ======================================
+
+window.onload = () => {
 
     const form = document.getElementById("loginForm");
-    const mensaje = document.getElementById("mensaje");
+    const mensajeError = document.getElementById("mensaje");
 
     if (!form) return;
 
+    // LOGIN
     form.addEventListener("submit", async (e) => {
-
         e.preventDefault();
 
         const email = document.getElementById("email").value.trim();
         const password = document.getElementById("password").value.trim();
 
-        mensaje.textContent = "";
+        mensajeError.textContent = "";
 
         try {
-
             const response = await fetch("/login", {
                 method: "POST",
                 headers: {
@@ -52,87 +118,48 @@ document.addEventListener("DOMContentLoaded", () => {
             sessionStorage.setItem("token", data.access_token);
             sessionStorage.setItem("rol", data.rol);
 
-            document.body.classList.add("pageFadeOut");
+            const popup = document.getElementById("popupBienvenida");
+            const mensajePopup = document.getElementById("popupMensaje");
+
+            mensajePopup.innerHTML = `
+                Bienvenido <b>${data.nombre || email}</b><br>
+                <small>Última conexión: ${formatearFecha(data.ultima_conexion)}</small>
+            `;
+
+            popup.style.display = "block";
+
+            setTimeout(()=> popup.style.opacity = "1", 50);
 
             setTimeout(()=>{
-                window.location.href = "/dashboard";
-            },350);
+                popup.style.opacity = "0";
+                setTimeout(()=> popup.style.display = "none", 500);
+            },5000);
 
         } catch (error) {
-
-            mensaje.textContent = error.message;
-
+            mensajeError.textContent = error.message;
         }
-
     });
 
-});
+    // =========================
+    // 👁️ OJITO CONTRASEÑA
+    // =========================
+    const toggle = document.getElementById("togglePassword");
+    const passwordInput = document.getElementById("password");
 
+    if (toggle && passwordInput) {
 
-// ======================================
-// TRANSICIÓN BOTONES LANDING
-// ======================================
+        toggle.addEventListener("click", () => {
 
-function irDashboard(){
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                toggle.textContent = "🔒";
+            } else {
+                passwordInput.type = "password";
+                toggle.textContent = "👁️";
+            }
 
-    document.body.classList.add("pageFadeOut");
+        });
 
-    setTimeout(()=>{
-        window.location.href="/dashboard";
-    },350);
-
-}
-
-function irReportes(){
-
-    document.body.classList.add("pageFadeOut");
-
-    setTimeout(()=>{
-        window.location.href="https://atugobpe.sharepoint.com/sites/DOCUMENTOSEXTERNOSDSP/Documentos%20compartidos/Forms/AllItems.aspx?id=%2Fsites%2FDOCUMENTOSEXTERNOSDSP%2FDocumentos%20compartidos%2F006%5FCoordinaci%C3%B3n%2DProyectos%2F001%5FRegistro%2DReportes&viewid=b398b0bd%2Dc2c3%2D4d32%2Db67f%2D5d22ac4a0739&p=true";
-    },350);
-
-}
-
-
-// ======================================
-// ANIMACIÓN LANDING
-// ======================================
-
-function animarLanding(){
-
-    const botones = document.querySelector(".fadeLanding");
-
-    if(!botones) return;
-
-    botones.style.opacity = "0";
-    botones.style.transform = "translateY(40px)";
-
-    setTimeout(()=>{
-
-        botones.style.transition = "all 0.8s ease";
-        botones.style.opacity = "1";
-        botones.style.transform = "translateY(0px)";
-
-    },50);
-
-}
-
-
-// animación al cargar
-document.addEventListener("DOMContentLoaded", animarLanding);
-
-// animación al volver atrás
-window.addEventListener("pageshow", animarLanding);
-
-
-// ======================================
-// SOLUCIÓN DEFINITIVA BACK BUTTON
-// ======================================
-
-window.addEventListener("pageshow", function (event) {
-
-    if (event.persisted) {
-        window.location.reload();
     }
 
-});
+};

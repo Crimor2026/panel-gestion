@@ -4,333 +4,244 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Seguimiento de Proyectos - ATU</title>
+<title>Panel de Gestión - ATU</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 
 <style>
 
 /* =========================
-   BODY / FONDO PRINCIPAL
+BASE + DARK/LIGHT
 ========================= */
+:root{
+--bg1:#0f4c75;
+--bg2:#00a8a8;
+--bg3:#38bdf8;
+--texto:#0f172a;
+}
+
+@media (prefers-color-scheme: dark){
+:root{
+--bg1:#0b2c3d;
+--bg2:#0f766e;
+--bg3:#0ea5e9;
+--texto:#e5e7eb;
+}
+}
 
 body{
 margin:0;
-min-height:100vh;
-position:relative;
-overflow-x:hidden;
-overflow-y:auto;
-
-background-image:url("/static/landing/fondo.png");
-background-repeat:no-repeat;
-
-/* DESKTOP: centrado */
-background-position:center 65%;
-
-background-size:cover;
-background-color:#0f4c5c;
-
 font-family:sans-serif;
-
-display:flex;
-flex-direction:column;
-align-items:center;
-justify-content:center;
-
-/* movimiento suave del fondo */
-animation:fondoMovimiento 25s ease-in-out infinite;
+overflow:hidden;
+background:var(--bg1);
 }
-
 
 /* =========================
-   AJUSTE PARA MÓVIL
+FONDO SVG
 ========================= */
-
-@media (max-width:768px){
-
-body{
-
-/* mueve el foco hacia el logo ATU */
-background-position:70% center;
-
-/* evita que se recorte tanto */
-background-size:cover;
-
-/* evita pequeños saltos en móviles */
-animation:none;
-
-}
-
-}
-
-
-/* =========================
-   OVERLAY SUAVE
-========================= */
-
-body::before{
-content:"";
+.fondoSVG{
 position:fixed;
 top:0;
 left:0;
 width:100%;
 height:100%;
-
-background:linear-gradient(
-rgba(0,0,0,0.05),
-rgba(0,0,0,0.15)
-);
-
+z-index:-2;
+object-fit:cover;
 pointer-events:none;
-z-index:-1;
 }
 
-
 /* =========================
-   HALO DETRÁS DEL LOGO
+PARTÍCULAS
 ========================= */
-
-body::after{
-content:"";
+canvas{
 position:fixed;
-top:55%;
-left:60%;
-transform:translate(-50%,-50%);
-
-width:800px;
-height:500px;
-
-background:radial-gradient(
-circle,
-rgba(0,180,255,0.25) 0%,
-rgba(0,0,0,0) 70%
-);
-
-pointer-events:none;
-z-index:-1;
-}
-
-
-/* =========================
-   BOTONES LANDING
-========================= */
-
-.btnLanding{
-
-background:rgba(255,255,255,0.15);
-
-backdrop-filter:blur(10px);
-
-color:white;
-
-padding:14px 36px;
-
-border-radius:12px;
-
-border:1px solid rgba(255,255,255,0.4);
-
-margin:0 10px;
-
-font-size:16px;
-
-cursor:pointer;
-
-transition:all 0.3s ease;
-
-box-shadow:0px 5px 20px rgba(0,0,0,0.3);
-
-}
-
-/* =========================
-   HOVER BOTONES
-========================= */
-
-.btnLanding:hover{
-
-transform:translateY(-4px) scale(1.03);
-
-background:rgba(255,255,255,0.25);
-
-box-shadow:
-0px 10px 30px rgba(0,180,255,0.35),
-0px 0px 25px rgba(0,180,255,0.25);
-
-}
-
-
-/* =========================
-   ANIMACIÓN DE ENTRADA
-========================= */
-
-.fadeLanding{
-opacity:0;
-transform:translateY(40px);
-}
-
-@keyframes fadeLanding{
-
-0%{
-opacity:0;
-transform:translateY(40px);
-}
-
-100%{
-opacity:1;
-transform:translateY(0px);
-}
-
-}
-
-/* =========================
-   PANEL LATERAL LOGIN
-========================= */
-
-#panel{
-position:fixed;
-left:-360px;
 top:0;
-width:360px;
+left:0;
+z-index:-1;
+pointer-events:none;
+}
 
-height:100%;
-overflow-y:auto;
--webkit-overflow-scrolling:touch;
+/* =========================
+ANIMACIONES
+========================= */
+.anim{
+animation:float 8s ease-in-out infinite alternate;
+}
 
-/* efecto vidrio */
-background:rgba(255,255,255,0.4);
+@keyframes float{
+0%{transform:translateY(0);}
+100%{transform:translateY(-20px);}
+}
+
+/* =========================
+CONTENIDO
+========================= */
+.contenedor{
+position:absolute;
+top:40%;
+left:55%;
+transform:translate(-50%,-50%);
+display:flex;
+align-items:center;
+gap:30px;
+max-width:900px;
+}
+
+/* LOGO GRANDE */
+.logo{
+width:600px;
+
+filter: 
+drop-shadow(0px 10px 25px rgba(0,0,0,0.3))
+drop-shadow(0px 0px 15px rgba(0,180,255,0.3));
+}
+
+.titulo{
+font-size:32px;
+font-weight:bold;
+line-height:1.2;
+
+text-shadow:
+0px 2px 4px rgba(0,0,0,0.25),
+0px 8px 20px rgba(0,0,0,0.15);
+}
+
+.subtitulo{
+margin-top:10px;
+font-size:21px;
+letter-spacing:1px;
+opacity:0.9;
+}
+
+/* =========================
+BOTONES
+========================= */
+.botones{
+position:absolute;
+bottom:60px;
+width:100%;
+display:flex;
+justify-content:center;
+gap:25px;
+}
+
+.btn{
+padding:14px 40px;
+border-radius:14px;
+
+background:rgba(15,23,42,0.6);
 backdrop-filter:blur(12px);
 
-transition:0.35s ease;
+color:white;
+font-weight:500;
 
-box-shadow:4px 0px 20px rgba(0,0,0,0.3);
+border:1px solid rgba(255,255,255,0.25);
 
-padding:40px;
+box-shadow:
+0px 10px 25px rgba(0,0,0,0.4),
+0px 0px 20px rgba(0,200,255,0.25);
+
+transition:0.3s;
+cursor:pointer;
 }
 
-#panel.activo{
-left:0;
+.btn:hover{
+transform:translateY(-5px) scale(1.05);
+background:linear-gradient(135deg,#00c6ff,#00ffd5);
+box-shadow:0px 20px 60px rgba(0,200,255,0.6);
 }
-
 
 /* =========================
-   BLUR DEL FONDO
+LOGIN FLOTANTE
 ========================= */
+.login{
+position:absolute;
+top:50%;
+left:30px;
+transform:translateY(-50%);
+width:260px;
 
-#blur{
-position:fixed;
-top:0;
-left:0;
+background:rgba(255,255,255,0.15);
+backdrop-filter:blur(15px);
 
+padding:20px;
+border-radius:16px;
+
+box-shadow:0px 10px 30px rgba(0,0,0,0.4);
+}
+
+.input{
 width:100%;
-height:100%;
-
-backdrop-filter:blur(6px);
-background:rgba(0,0,0,0.3);
-
-display:none;
-}
-
-#blur.activo{
-display:block;
-}
-
-
-/* =========================
-   ANIMACIÓN FONDO
-========================= */
-
-@keyframes fondoMovimiento{
-
-0%{
-background-position:60% 65%;
-}
-
-50%{
-background-position:65% 60%;
-}
-
-100%{
-background-position:60% 65%;
-}
-
+padding:10px;
+margin-bottom:10px;
+border-radius:8px;
+border:none;
 }
 
 /* =========================
-   TRANSICIÓN ENTRE PÁGINAS
+RESPONSIVE MOVIL
 ========================= */
-
-.pageFadeOut{
-animation:pageFadeOut 0.4s ease forwards;
-}
-
-@keyframes pageFadeOut{
-
-0%{
-opacity:1;
-transform:scale(1);
-}
-
-100%{
-opacity:0;
-transform:scale(0.98);
-}
-
-}
-
-/* =========================
-   RESPONSIVE MOVIL
-========================= */
-
 @media (max-width:768px){
 
 body{
-
-/* enfoca el logo ATU */
-background-position:70% center;
-
-background-size:cover;
-
-/* evita saltos del fondo en móvil */
-animation:none;
-
+overflow:auto;
 }
 
-/* panel login */
-#panel{
+/* CONTENIDO */
+.contenedor{
+flex-direction:column;
+top:30%;
+left:50%;
+transform:translate(-50%,-30%);
+text-align:center;
+padding:10px;
+gap:10px;
+}
+
+/* LOGO */
+.logo{
+width:180px;
+margin-bottom:5px;
+}
+
+/* TEXTO */
+.titulo{
+font-size:20px;
+line-height:1.2;
+}
+
+.subtitulo{
+font-size:13px;
+margin-top:5px;
+opacity:0.9;
+}
+
+/* LOGIN */
+.login{
+position:relative;
+top:auto;
+left:50%;
+transform:translateX(-50%);
+margin-top:20px;
 width:85%;
-left:-100%;
 }
 
-#panel.activo{
-left:0;
-}
-
-}
-
-/* =========================
-   MÓVIL EN HORIZONTAL
-========================= */
-
-@media (max-width:768px) and (orientation:landscape){
-
-body{
-display:block;
-height:auto;
-min-height:100vh;
-overflow-y:auto;
-padding:20px;
-}
-
-/* botones */
-.botonesLanding{
+/* BOTONES */
+.botones{
 position:relative;
 bottom:auto;
-margin-top:40px;
+margin-top:20px;
+flex-direction:column;
+gap:10px;
+padding:0 20px;
 }
 
-/* panel */
-#panel{
-height:100vh;
-overflow-y:auto;
+.btn{
+width:100%;
+display:inline-block;
+text-align:center;
+font-weight:500;
+letter-spacing:0.5px;
 }
 
 }
@@ -341,84 +252,202 @@ overflow-y:auto;
 
 <body>
 
-<!-- BOTON MENU -->
+<div id="popupBienvenida"
+style="
+position: fixed;
+top: 30px;
+left: 50%;
+transform: translateX(-50%);
+background: #e0f2fe;
+color: #0f172a;
+padding: 20px 30px;
+border-radius: 12px;
+box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+font-size: 14px;
+text-align: center;
+display: none;
+opacity: 0;
+transition: opacity 0.5s ease;
+z-index: 9999;
+min-width: 300px;
+">
+    <div style="font-weight:bold; margin-bottom:8px;">
+        DIRECCIÓN DE SUPERVISIÓN DE PROYECTOS
+    </div>
+    <div id="popupMensaje"></div>
+</div>
 
-<button onclick="abrirPanel()"
-style="position:absolute; left:30px; top:50%; transform:translateY(-50%); font-size:32px; color:white; cursor:pointer; background:none; border:none;">
-☰
-</button>
+<!-- =========================
+FONDO SVG
+========================= -->
+<svg class="fondoSVG" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
 
+  <!-- ONDA PRINCIPAL -->
+  <path class="anim"
+    d="M0,900 L0,350 C300,450 700,200 1440,350 L1440,900 Z"
+    fill="url(#grad1)" />
 
-<!-- BOTONES PRINCIPALES -->
+  <!-- SEGUNDA CAPA AZUL -->
+  <path class="anim"
+    d="M0,900 L0,200 C250,300 500,150 900,250 L0,900 Z"
+    fill="url(#grad2)" />
 
-<div class="botonesLanding absolute bottom-24 w-full flex justify-center gap-4 flex-wrap fadeLanding">
+  <!-- BLANCO -->
+  <path
+   d="M420,0 
+      C850,0 1200,150 1600,350 
+      L1600,900 
+      L0,900 
+      C200,750 250,400 420,0 Z"
+   fill="url(#grad3)"
+   stroke="rgba(100,116,139,0.25)"
+   stroke-width="2"
+   style="filter: drop-shadow(0px 30px 60px rgba(0,0,0,0.25));"
+   />
 
-<button onclick="irDashboard()" class="btnLanding">
-Dashboard
-</button>
+  <defs>
+    <linearGradient id="grad1">
+      <stop offset="0%" stop-color="#0f4c75"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
 
-<button onclick="irReportes()" class="btnLanding">
-Reportes
-</button>
+    <linearGradient id="grad2">
+      <stop offset="0%" stop-color="#0f4c75"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+
+    <linearGradient id="grad3">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.65)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.35)"/>
+   </linearGradient>
+  </defs>
+
+</svg>
+
+<!-- =========================
+PARTÍCULAS
+========================= -->
+<canvas id="particles"></canvas>
+
+<!-- =========================
+CONTENIDO
+========================= -->
+<div class="contenedor">
+
+    <img src="/static/landing/logo.png" class="logo">
+
+    <div class="texto">
+        <div class="titulo">
+            AUTORIDAD DE TRANSPORTE URBANO PARA LIMA Y CALLAO
+        </div>
+
+        <div class="subtitulo">
+            DIRECCIÓN DE SUPERVISIÓN DE PROYECTOS
+        </div>
+    </div>
 
 </div>
 
+<!-- =========================
+LOGIN FLOTANTE
+========================= -->
+<form id="loginForm" class="login">
 
-<!-- BLUR -->
+    <input id="email" class="input" placeholder="Correo">
 
-<div id="blur" onclick="cerrarPanel()"></div>
+    <div style="position:relative; margin-bottom:10px;">
 
+      <input id="password"
+      type="password"
+      placeholder="Contraseña"
+      class="input"
+      autocomplete="new-password"
+      style="padding-right:50px;">
 
-<!-- PANEL LOGIN -->
+      <button type="button"
+      id="togglePassword"
+      style="
+      position:absolute;
+      right:5px;
+      top:50%;
+      transform:translateY(-50%);
+      background:none;
+      border:none;
+      cursor:pointer;
+      z-index:9999;
+      font-size:16px;
+      ">
+         👁️
+      </button>
 
-<div id="panel">
+   </div>
 
-<div style="text-align:center; margin-bottom:30px;">
+    <button type="submit" class="btn w-full">Ingresar</button>
 
-<img src="/static/landing/logo.png"
-style="width:160px; margin:auto; display:block; margin-bottom:10px;">
-
-<p style="font-size:14px; font-weight:500; color:#1f2937;">
-Autoridad de Transporte Urbano<br>
-para Lima y Callao
-</p>
-
-<h2 style="margin-top:20px; font-size:20px; font-weight:bold;">
-Panel de Gestión
-</h2>
-
-</div>
-
-<form id="loginForm">
-
-<input id="email"
-type="email"
-placeholder="Correo electrónico"
-required
-class="w-full border border-gray-300 p-3 mb-4 rounded">
-
-<input id="password"
-type="password"
-placeholder="Contraseña"
-required
-class="w-full border border-gray-300 p-3 mb-4 rounded">
-
-<button type="submit"
-class="w-full bg-slate-700 text-white p-3 rounded hover:bg-slate-800">
-
-Ingresar
-
-</button>
-
-<div id="mensaje" class="text-red-600 mt-4 text-sm"></div>
+    <div id="mensaje" style="color:red; margin-top:10px;"></div>
 
 </form>
 
+<!-- =========================
+BOTONES
+========================= -->
+<div class="botones">
+   <button onclick="irDashboard()" class="btn">Dashboard</button>
+   <button onclick="irReportes()" class="btn">Reportes</button>
 </div>
+
+<!-- =========================
+SCRIPT PARTÍCULAS
+========================= -->
+<script>
+
+const canvas = document.getElementById("particles");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let particles = [];
+
+for(let i=0;i<60;i++){
+particles.push({
+x:Math.random()*canvas.width,
+y:Math.random()*canvas.height,
+vx:Math.random()*1-0.5,
+vy:Math.random()*1-0.5
+});
+}
+
+function draw(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+particles.forEach(p=>{
+p.x+=p.vx;
+p.y+=p.vy;
+
+ctx.beginPath();
+ctx.arc(p.x,p.y,2,0,Math.PI*2);
+ctx.fillStyle="rgba(255,255,255,0.6)";
+ctx.fill();
+});
+
+requestAnimationFrame(draw);
+}
+
+draw();
+
+
+function irDashboard(){
+    window.location.href = "/dashboard";
+}
+
+function irReportes(){
+    window.location.href = "https://atugobpe.sharepoint.com/sites/DOCUMENTOSEXTERNOSDSP/";
+}
+
+</script>
 
 <script src="/static/landing/landing.js"></script>
 
 </body>
-
 </html>
-

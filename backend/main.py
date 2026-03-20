@@ -81,8 +81,65 @@ app = FastAPI()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, "../frontend"))
 
-app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+# ✅ AQUÍ VA (este bloque)
+app.mount(
+    "/static",
+    StaticFiles(directory=FRONTEND_DIR),
+    name="static"
+)
 
+# =====================================================
+# CREAR ADMIN AUTOMÁTICO
+# =====================================================
+
+def crear_admin():
+
+    password_hash = pwd_context.hash("admin123")
+
+    with engine.connect() as conn:
+
+        existe = conn.execute(text("""
+            SELECT id FROM usuarios WHERE email = :email
+        """), {
+            "email": "cmorales@atu.gob.pe"
+        }).fetchone()
+
+        if not existe:
+
+            conn.execute(text("""
+                INSERT INTO usuarios (
+                    nombre,
+                    email,
+                    password_hash,
+                    rol,
+                    activo,
+                    fecha_creacion
+                )
+                VALUES (
+                    :nombre,
+                    :email,
+                    :password_hash,
+                    :rol,
+                    true,
+                    NOW()
+                )
+            """), {
+                "nombre": "Cristhian Morales",
+                "email": "cmorales@atu.gob.pe",
+                "password_hash": password_hash,
+                "rol": "admin"
+            })
+
+            conn.commit()
+
+
+@app.on_event("startup")
+def startup_event():
+    crear_admin()
+
+# =====================================================
+# RUTAS
+# =====================================================
 
 @app.get("/")
 def landing():
@@ -131,134 +188,148 @@ def normalizar_fecha(fecha_str):
 @app.get("/api/dashboard/global")
 def dashboard_global(fecha: Optional[str] = None):
 
-    fecha_corte = None
-    if fecha:
-        fecha_corte = datetime.strptime(fecha, "%Y-%m-%d").date()
+    try:
 
-    with engine.connect() as conn:
+        fecha_corte = None
+        if fecha:
+            fecha_corte = datetime.strptime(fecha, "%Y-%m-%d").date()
 
-        kpis = conn.execute(
-            text("""
+        with engine.connect() as conn:
+
+            # ================= KPIs =================
+            kpis = conn.execute(
+                text("""
+                    SELECT 
+                        COUNT(*) AS total,
+                        COUNT(*) FILTER (WHERE LOWER(pv.estado) LIKE '%ejec%') AS en_ejecucion,
+                        COUNT(*) FILTER (WHERE LOWER(pv.estado) LIKE '%paraliz%') AS paralizado,
+                        COUNT(*) FILTER (WHERE LOWER(pv.estado) LIKE '%sin%') AS sin_iniciar,
+                        COUNT(*) FILTER (WHERE LOWER(pv.estado) LIKE '%conclu%') AS concluido
+                    FROM proyectos p
+
+                    JOIN LATERAL (
+                        SELECT *
+                        FROM proyecto_version pv2
+                        WHERE pv2.proyecto_id = p.id
+                        AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
+                        ORDER BY pv2.fecha_corte DESC
+                        LIMIT 1
+                    ) pv ON true
+                """),
+                {"fecha": fecha_corte}
+            ).fetchone()
+
+            # ================= ESTADOS =================
+            estados = conn.execute(
+                text("""
+                    SELECT pv.estado, COUNT(*) as cantidad
+                    FROM proyectos p
+                    JOIN LATERAL (
+                        SELECT *
+                        FROM proyecto_version pv2
+                        WHERE pv2.proyecto_id = p.id
+                        AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
+                        ORDER BY pv2.fecha_corte DESC
+                        LIMIT 1
+                    ) pv ON true
+                    GROUP BY pv.estado
+                """),
+                {"fecha": fecha_corte}
+            ).fetchall()
+
+            # ================= DEPENDENCIAS =================
+            dependencias = conn.execute(
+                text("""
+                    SELECT 
+                        pv.dependencias_externas AS entidad,
+                        COUNT(*) as cantidad
+                    FROM proyectos p
+                    JOIN LATERAL (
+                        SELECT *
+                        FROM proyecto_version pv2
+                        WHERE pv2.proyecto_id = p.id
+                        AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
+                        ORDER BY pv2.fecha_corte DESC
+                        LIMIT 1
+                    ) pv ON true
+                    WHERE pv.dependencias_externas IS NOT NULL
+                    AND pv.dependencias_externas <> ''
+                    AND LOWER(pv.dependencias_externas) <> 'ninguna'
+                    GROUP BY pv.dependencias_externas
+                    ORDER BY cantidad DESC
+                """),
+                {"fecha": fecha_corte}
+            ).fetchall()
+
+            # ================= DIRECCIONES TOTAL =================
+            direcciones_total = conn.execute(text("""
                 SELECT 
-                    COUNT(*) AS total,
-                    COUNT(*) FILTER (WHERE LOWER(pv.estado) LIKE '%ejec%') AS en_ejecucion,
-                    COUNT(*) FILTER (WHERE LOWER(pv.estado) LIKE '%paraliz%') AS paralizado,
-                    COUNT(*) FILTER (WHERE LOWER(pv.estado) LIKE '%sin%') AS sin_iniciar,
-                    COUNT(*) FILTER (WHERE LOWER(pv.estado) LIKE '%conclu%') AS concluido
-                FROM proyectos p
-
-                JOIN LATERAL (
-                    SELECT *
-                    FROM proyecto_version pv2
-                    WHERE pv2.proyecto_id = p.id
-                    AND (:fecha IS NULL OR pv2.fecha_corte <= :fecha)
-                    ORDER BY pv2.fecha_corte DESC
-                    LIMIT 1
-                ) pv ON true
-            """),
-            {"fecha": fecha_corte}
-        ).fetchone()
-
-        estados = conn.execute(
-            text("""
-                SELECT pv.estado, COUNT(*) as cantidad
-                FROM proyectos p
-                JOIN LATERAL (
-                    SELECT *
-                    FROM proyecto_version pv2
-                    WHERE pv2.proyecto_id = p.id
-                    AND (:fecha IS NULL OR pv2.fecha_corte <= :fecha)
-                    ORDER BY pv2.fecha_corte DESC
-                    LIMIT 1
-                ) pv ON true
-                GROUP BY pv.estado
-            """),
-            {"fecha": fecha_corte}
-        ).fetchall()
-
-        dependencias = conn.execute(
-            text("""
-                SELECT 
-                    pv.dependencias_externas AS entidad,
+                    d.id,
+                    d.nombre AS direccion,
                     COUNT(*) as cantidad
                 FROM proyectos p
                 JOIN LATERAL (
                     SELECT *
                     FROM proyecto_version pv2
                     WHERE pv2.proyecto_id = p.id
-                    AND (:fecha IS NULL OR pv2.fecha_corte <= :fecha)
+                    AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
                     ORDER BY pv2.fecha_corte DESC
                     LIMIT 1
                 ) pv ON true
-                WHERE pv.dependencias_externas IS NOT NULL
-                AND pv.dependencias_externas <> ''
-                AND LOWER(pv.dependencias_externas) <> 'ninguna'
-                GROUP BY pv.dependencias_externas
+                JOIN direcciones d 
+                    ON d.id = pv.direccion_id
+                GROUP BY d.id, d.nombre
                 ORDER BY cantidad DESC
-            """),
-            {"fecha": fecha_corte}
-        ).fetchall()
-        
-        # ================= DIRECCIONES TOTAL =================
+            """), {
+                "fecha": fecha_corte
+            }).fetchall()
 
-        direcciones_total = conn.execute(text("""
+            # ================= DIRECCIONES FILTRADAS =================
+            direcciones_filtradas = conn.execute(text("""
+                SELECT 
+                    d.id,
+                    d.nombre AS direccion,
+                    COUNT(*) as cantidad
+                FROM proyecto_version pv
+                JOIN direcciones d 
+                    ON d.id = pv.direccion_id
+                WHERE (:fecha IS NULL OR pv.fecha_corte = :fecha)
+                GROUP BY d.id, d.nombre
+                ORDER BY cantidad DESC
+            """), {
+                "fecha": fecha_corte
+            }).fetchall()
 
-        SELECT 
-            d.id,
-            d.nombre AS direccion,
-            COUNT(*) as cantidad
+        return {
+            "kpis": dict(kpis._mapping) if kpis else {
+                "total": 0,
+                "en_ejecucion": 0,
+                "paralizado": 0,
+                "sin_iniciar": 0,
+                "concluido": 0
+            },
+            "estados": [dict(r._mapping) for r in estados],
+            "dependencias": [dict(r._mapping) for r in dependencias],
+            "direcciones_total": [dict(r._mapping) for r in direcciones_total],
+            "direcciones_filtradas": [dict(r._mapping) for r in direcciones_filtradas]
+        }
 
-        FROM proyectos p
+    except Exception as e:
+        print("ERROR dashboard_global:", str(e))
 
-        JOIN LATERAL (
-            SELECT *
-            FROM proyecto_version pv2
-            WHERE pv2.proyecto_id = p.id
-            AND (:fecha IS NULL OR pv2.fecha_corte <= :fecha)
-            ORDER BY pv2.fecha_corte DESC
-            LIMIT 1
-        ) pv ON true
-
-        JOIN direcciones d 
-        ON d.id = pv.direccion_id
-
-        GROUP BY d.id, d.nombre
-        ORDER BY cantidad DESC
-
-        """), {
-            "fecha": fecha_corte
-        }).fetchall()
-
-        # ================= DIRECCIONES FILTRADAS =================
-
-        direcciones_filtradas = conn.execute(text("""
-
-        SELECT 
-            d.id,
-            d.nombre AS direccion,
-            COUNT(*) as cantidad
-
-        FROM proyecto_version pv
-
-        JOIN direcciones d 
-            ON d.id = pv.direccion_id
-
-        WHERE (:fecha IS NULL OR pv.fecha_corte = :fecha)
-
-        GROUP BY d.id, d.nombre
-        ORDER BY cantidad DESC
-
-        """), {
-            "fecha": fecha_corte
-        }).fetchall()
-        
-    return {
-        "kpis": dict(kpis._mapping),
-        "estados": [dict(r._mapping) for r in estados],
-        "dependencias": [dict(r._mapping) for r in dependencias],
-        "direcciones_total": [dict(r._mapping) for r in direcciones_total],
-        "direcciones_filtradas": [dict(r._mapping) for r in direcciones_filtradas]
-    }
+        return {
+            "kpis": {
+                "total": 0,
+                "en_ejecucion": 0,
+                "paralizado": 0,
+                "sin_iniciar": 0,
+                "concluido": 0
+            },
+            "estados": [],
+            "dependencias": [],
+            "direcciones_total": [],
+            "direcciones_filtradas": []
+        }
 
 # =====================================================
 # DASHBOARD POR DIRECCIÓN
@@ -267,97 +338,93 @@ def dashboard_global(fecha: Optional[str] = None):
 @app.get("/api/dashboard/direccion/{direccion_id}")
 def dashboard_por_direccion(direccion_id: int, fecha: Optional[str] = None):
 
-    with engine.connect() as conn:
+    try:
 
-        # Convertir fecha si viene
         fecha_corte = None
         if fecha:
             fecha_corte = datetime.strptime(fecha, "%Y-%m-%d").date()
 
-        # ================= ESTADOS =================
-        estados = conn.execute(text("""
-            SELECT pv.estado, COUNT(*) as cantidad
-            FROM proyectos p
-            JOIN LATERAL (
-                SELECT *
-                FROM proyecto_version pv2
-                WHERE pv2.proyecto_id = p.id
-                AND (:fecha IS NULL OR pv2.fecha_corte <= :fecha)
-                ORDER BY pv2.fecha_corte DESC
-                LIMIT 1
-            ) pv ON true
-            WHERE pv.direccion_id = :direccion_id
-            GROUP BY pv.estado
-        """), {
-            "direccion_id": direccion_id,
-            "fecha": fecha_corte
-        }).fetchall()
+        with engine.connect() as conn:
 
-        # ================= DEPENDENCIAS INTERNAS =================
-        dependencias = conn.execute(text("""
-        SELECT 
-            d.codigo AS direccion_dependencia,
-            COUNT(*) as cantidad
-        FROM proyectos p
+            # ================= ESTADOS =================
+            estados = conn.execute(text("""
+                SELECT pv.estado, COUNT(*) as cantidad
+                FROM proyectos p
+                JOIN LATERAL (
+                    SELECT *
+                    FROM proyecto_version pv2
+                    WHERE pv2.proyecto_id = p.id
+                    AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
+                    ORDER BY pv2.fecha_corte DESC
+                    LIMIT 1
+                ) pv ON true
+                WHERE pv.direccion_id = :direccion_id
+                GROUP BY pv.estado
+            """), {
+                "direccion_id": direccion_id,
+                "fecha": fecha_corte
+            }).fetchall()
 
-        JOIN LATERAL (
-            SELECT *
-            FROM proyecto_version pv2
-            WHERE pv2.proyecto_id = p.id
-            AND (:fecha IS NULL OR pv2.fecha_corte <= :fecha)
-            ORDER BY pv2.fecha_corte DESC
-            LIMIT 1
-        ) pv ON true
+            # ================= DEPENDENCIAS =================
+            dependencias = conn.execute(text("""
+                SELECT 
+                    d.codigo AS direccion_dependencia,
+                    COUNT(*) as cantidad
+                FROM proyectos p
+                JOIN LATERAL (
+                    SELECT *
+                    FROM proyecto_version pv2
+                    WHERE pv2.proyecto_id = p.id
+                    AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
+                    ORDER BY pv2.fecha_corte DESC
+                    LIMIT 1
+                ) pv ON true
+                LEFT JOIN proyecto_dependencia_interna pdi
+                    ON pdi.proyecto_version_id = pv.id
+                LEFT JOIN direcciones d
+                    ON d.id = pdi.direccion_id
+                WHERE pv.direccion_id = :direccion_id
+                GROUP BY d.codigo
+                ORDER BY cantidad DESC
+            """), {
+                "direccion_id": direccion_id,
+                "fecha": fecha_corte
+            }).fetchall()
 
-        LEFT JOIN proyecto_dependencia_interna pdi
-            ON pdi.proyecto_version_id = pv.id
+            # ================= CLASIFICACIÓN =================
+            clasificacion = conn.execute(text("""
+                SELECT 
+                    c.nombre AS clasificacion,
+                    COUNT(*) as cantidad
+                FROM proyectos p
+                JOIN LATERAL (
+                    SELECT *
+                    FROM proyecto_version pv2
+                    WHERE pv2.proyecto_id = p.id
+                    AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
+                    ORDER BY pv2.fecha_corte DESC
+                    LIMIT 1
+                ) pv ON true
+                JOIN clasificaciones c
+                    ON c.id = pv.clasificacion_id
+                WHERE pv.direccion_id = :direccion_id
+                GROUP BY c.nombre
+                ORDER BY c.nombre
+            """), {
+                "direccion_id": direccion_id,
+                "fecha": fecha_corte
+            }).fetchall()
 
-        LEFT JOIN direcciones d
-            ON d.id = pdi.direccion_id
+        return {
+            "estados": [dict(r._mapping) for r in estados],
+            "dependencias": [dict(r._mapping) for r in dependencias],
+            "clasificacion": [dict(r._mapping) for r in clasificacion]
+        }
 
-        WHERE pv.direccion_id = :direccion_id
-
-        GROUP BY d.codigo
-        ORDER BY cantidad DESC
-        """), {
-            "direccion_id": direccion_id,
-            "fecha": fecha_corte
-        }).fetchall()
-
-        # ================= CLASIFICACIÓN =================
-        clasificacion = conn.execute(text("""
-        SELECT 
-            c.nombre AS clasificacion,
-            COUNT(*) as cantidad
-        FROM proyectos p
-
-        JOIN LATERAL (
-            SELECT *
-            FROM proyecto_version pv2
-            WHERE pv2.proyecto_id = p.id
-            AND (:fecha IS NULL OR pv2.fecha_corte <= :fecha)
-            ORDER BY pv2.fecha_corte DESC
-            LIMIT 1
-        ) pv ON true
-
-        JOIN clasificaciones c
-            ON c.id = pv.clasificacion_id
-
-        WHERE pv.direccion_id = :direccion_id
-
-        GROUP BY c.nombre
-        ORDER BY c.nombre
-        """), {
-            "direccion_id": direccion_id,
-            "fecha": fecha_corte
-        }).fetchall()
-
-    return {
-        "estados": [dict(r._mapping) for r in estados],
-        "dependencias": [dict(r._mapping) for r in dependencias],
-        "clasificacion": [dict(r._mapping) for r in clasificacion]
-    }
-
+    except Exception as e:
+        print("ERROR dashboard_direccion:", str(e))
+        return {"error": str(e)}
+    
 # =====================================================
 # LISTAR PROYECTOS (FILTRADO POR DIRECCIÓN + FECHA + CLASIFICACIÓN)
 # =====================================================
@@ -600,23 +667,24 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+
 # =====================================================
 # LOGIN
 # =====================================================
 
-from passlib.hash import bcrypt
-
 @app.post("/login")
 def login(data: LoginRequest):
+
+    email = data.email.lower().strip()
 
     with engine.connect() as connection:
         result = connection.execute(
             text("""
-            SELECT id, email, password_hash, rol
+            SELECT id, email, password_hash, rol, nombre, ultima_conexion
             FROM usuarios
-            WHERE email = :email
+            WHERE email = :email AND activo = true
             """),
-            {"email": data.email}
+            {"email": email}
         ).mappings().fetchone()
 
     if result is None:
@@ -624,14 +692,24 @@ def login(data: LoginRequest):
 
     password_hash = result["password_hash"]
 
-    if not bcrypt.verify(data.password, password_hash):
+    if not pwd_context.verify(data.password, password_hash):
         raise HTTPException(status_code=400, detail="Contraseña incorrecta")
+
+    ultima_conexion = result["ultima_conexion"]
+
+    with engine.connect() as conn:
+        conn.execute(text("""
+            UPDATE usuarios
+            SET ultima_conexion = NOW()
+            WHERE id = :id
+        """), {"id": result["id"]})
+        conn.commit()
 
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
     token = jwt.encode(
         {
-            "sub": data.email,
+            "sub": email,
             "rol": result["rol"],
             "exp": expire
         },
@@ -642,8 +720,11 @@ def login(data: LoginRequest):
     return {
         "access_token": token,
         "token_type": "bearer",
-        "rol": result["rol"]
+        "rol": result["rol"],
+        "nombre": result["nombre"],
+        "ultima_conexion": str(ultima_conexion) if ultima_conexion else None
     }
+
 
 # =====================================================
 # OBTENER USUARIO ACTUAL
@@ -656,11 +737,15 @@ def obtener_usuario_actual(
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
+        email = payload.get("sub").lower().strip()
 
         with engine.connect() as connection:
             user = connection.execute(
-                text("SELECT * FROM usuarios WHERE email = :email"),
+                text("""
+                    SELECT *
+                    FROM usuarios
+                    WHERE email = :email AND activo = true
+                """),
                 {"email": email}
             ).fetchone()
 
@@ -669,13 +754,88 @@ def obtener_usuario_actual(
 
         return user
 
-    except:
+    except Exception:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
 # =====================================================
-# SUBIR EXCEL (ADMIN)
+# JERARQUÍA DE ROLES
 # =====================================================
 
+JERARQUIA = {
+    "admin": 3,
+    "coordinador": 2,
+    "especialista": 1,
+    "visor": 0
+}
+
+def requiere_rol(nivel_requerido):
+    def wrapper(user = Depends(obtener_usuario_actual)):
+        if JERARQUIA.get(user.rol, 0) < JERARQUIA[nivel_requerido]:
+            raise HTTPException(status_code=403, detail="No autorizado")
+        return user
+    return wrapper
+
+# =====================================================
+# SOLO ADMIN
+# =====================================================
+
+def solo_admin(user = Depends(requiere_rol("admin"))):
+    return user
+
+# =====================================================
+# CREAR USUARIO (ADMIN)
+# =====================================================
+
+@app.post("/admin/crear-usuario")
+def crear_usuario(data: dict, user=Depends(solo_admin)):
+
+    nombre = data.get("nombre")
+    email = data.get("email").lower().strip()
+    password = data.get("password")
+    rol = data.get("rol", "usuario")
+
+    if not nombre or not email or not password:
+        raise HTTPException(status_code=400, detail="Faltan datos")
+
+    password_hash = pwd_context.hash(password)
+
+    with engine.connect() as conn:
+
+        existe = conn.execute(text("""
+            SELECT id FROM usuarios WHERE email = :email
+        """), {"email": email}).fetchone()
+
+        if existe:
+            raise HTTPException(status_code=400, detail="El usuario ya existe")
+
+        conn.execute(text("""
+            INSERT INTO usuarios (
+                nombre,
+                email,
+                password_hash,
+                rol,
+                activo,
+                fecha_creacion
+            )
+            VALUES (
+                :nombre,
+                :email,
+                :password_hash,
+                :rol,
+                true,
+                NOW()
+            )
+        """), {
+            "nombre": nombre,
+            "email": email,
+            "password_hash": password_hash,
+            "rol": rol
+        })
+
+        conn.commit()
+
+    return {"mensaje": "Usuario creado correctamente"}
+    
 # =====================================================
 # SUBIR EXCEL (ADMIN)
 # =====================================================
@@ -1380,15 +1540,53 @@ def upload_arc(file: UploadFile = File(...)):
 @app.get("/api/fechas")
 def obtener_fechas():
 
+    try:
+        with engine.connect() as conn:
+
+            fechas = conn.execute(text("""
+                SELECT DISTINCT fecha_corte
+                FROM public.data_ejecucion
+                WHERE fecha_corte IS NOT NULL
+                ORDER BY fecha_corte
+            """)).fetchall()
+
+        return [
+            f.fecha_corte.strftime("%Y-%m-%d")
+            for f in fechas
+        ]
+
+    except Exception as e:
+        print("ERROR /api/fechas:", str(e))
+        return {
+            "error": str(e)
+        }
+
+# =====================================================
+# CAMBIAR CONTRASEÑA
+# =====================================================
+
+@app.post("/api/cambiar-password")
+def cambiar_password(
+    data: dict,
+    user = Depends(obtener_usuario_actual)
+):
+    password_actual = data.get("password_actual")
+    password_nueva = data.get("password_nueva")
+
+    if not pwd_context.verify(password_actual, user.password_hash):
+        raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
+
+    nueva_hash = pwd_context.hash(password_nueva)
+
     with engine.connect() as conn:
+        conn.execute(text("""
+            UPDATE usuarios
+            SET password_hash = :hash
+            WHERE id = :id
+        """), {
+            "hash": nueva_hash,
+            "id": user.id
+        })
+        conn.commit()
 
-        fechas = conn.execute(text("""
-            SELECT DISTINCT fecha_corte
-            FROM data_ejecucion
-            ORDER BY fecha_corte
-        """)).fetchall()
-
-    return [
-        f.fecha_corte.strftime("%Y-%m-%d")
-        for f in fechas
-    ]
+    return {"mensaje": "Contraseña actualizada"}

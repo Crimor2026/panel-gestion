@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const btnSubirProyectos = document.getElementById("btnSubirProyectos");
     const btnSubirARC = document.getElementById("btnSubirARC");
+    const btnLogout = document.getElementById("btnLogout");
 
     const excelProyectos = document.getElementById("excelProyectos");
     const excelARC = document.getElementById("excelARC");
@@ -26,6 +27,33 @@ document.addEventListener("DOMContentLoaded", async () => {
     const token = sessionStorage.getItem("token");
     const rol = sessionStorage.getItem("rol");
 
+    // =====================================================
+    // TOGGLE ESTATUS CONSOLIDADO
+    // =====================================================
+
+    const toggle = document.getElementById("toggleEstatus");
+    const contenido = document.getElementById("contenidoEstatus");
+    const icono = document.getElementById("iconoToggle");
+
+    let abierto = true;
+
+    toggle?.addEventListener("click", () => {
+
+        abierto = !abierto;
+
+        contenido.style.display = abierto ? "block" : "none";
+        icono.style.transform = abierto ? "rotate(90deg)" : "rotate(0deg)";
+
+        // 🔥 FIX CHARTS (CLAVE)
+        if (abierto) {
+            setTimeout(() => {
+                Object.values(charts).forEach(chart => {
+                    if (chart) chart.resize();
+                });
+            }, 200);
+        }
+
+    });
 
     // =====================================================
     // EVENTOS FILTROS
@@ -108,8 +136,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // mostrar siempre botones de carga
-    btnSubirProyectos?.classList.remove("hidden");
-    btnSubirARC?.classList.remove("hidden");
+    if (rol === "admin") {
+        btnSubirProyectos?.classList.remove("hidden");
+        btnSubirARC?.classList.remove("hidden");
+    }
+
+    // =====================================================
+    // LOGOUT
+    // =====================================================
+
+    btnLogout?.addEventListener("click", () => {
+        sessionStorage.clear();
+        window.location.href = "/";
+    });
 
     // =====================================================
     // SUBIR PROYECTOS
@@ -193,9 +232,30 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         try {
 
-            const fecha = fechaInput.value || "";
-            const res = await fetch(`/api/dashboard/global?fecha=${fecha}`);
+            let url = "/api/dashboard/global";
+
+            const fecha = fechaInput.value;
+
+            if (fecha && fecha !== "") {
+                url += `?fecha=${fecha}`;
+            }
+
+            const res = await fetch(url);
             const data = await res.json();
+
+            // ================= ÚLTIMA ACTUALIZACIÓN =================
+            const fechaEl = document.getElementById("fechaActualizacion");
+
+            if (fechaEl) {
+
+                if (data.fecha_actualizacion) {
+                    fechaEl.textContent = "Última actualización: " + data.fecha_actualizacion;
+                } else {
+                    const fechaTexto = fechaInput.value || "Sin fecha";
+                    fechaEl.textContent = "Última actualización: " + fechaTexto;
+                }
+
+            }
 
             // ================= KPI =================
 
@@ -222,6 +282,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 cantidadesEstados
             );
 
+            ocultarSiVacio("graficoEstadosGlobal");
+
             // ================= DONUT GLOBAL =================
 
             const labelsDependencias = data.dependencias.map(d => d.entidad);
@@ -232,6 +294,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 labelsDependencias,
                 valoresDependencias
             );
+
+            ocultarSiVacio("graficoDependenciasGlobal");
 
             actualizarLeyendaDependencias(
                 labelsDependencias,
@@ -252,6 +316,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 direccionesOrdenadas.map(d => d.direccion),
                 direccionesOrdenadas.map(d => d.cantidad)
             );
+
+            ocultarSiVacio("graficoDireccionesGlobal"); 
 
             // guardar dirección actual seleccionada
             const direccionActual = direccionSelect.value;
@@ -278,16 +344,23 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
 }
 
-    // =====================================================
-    // DASHBOARD POR DIRECCIÓN (INDEPENDIENTE)
-    // =====================================================
+// =====================================================
+// DASHBOARD POR DIRECCIÓN (INDEPENDIENTE)
+// =====================================================
 
-    async function cargarDashboardDireccion(direccionId) {
+async function cargarDashboardDireccion(direccionId) {
 
     try {
 
-        const fecha = fechaInput.value || "";
-        const res = await fetch(`/api/dashboard/direccion/${direccionId}?fecha=${fecha}`);
+        let url = `/api/dashboard/direccion/${direccionId}`;
+
+        const fecha = fechaInput.value;
+
+        if (fecha && fecha !== "") {
+            url += `?fecha=${fecha}`;
+        }
+
+        const res = await fetch(url);
         const data = await res.json();
 
         const mapaEstados = {};
@@ -314,9 +387,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             canvas.style.display = "block";
 
-            if (mensaje) {
-                mensaje.classList.add("hidden");
-            }
+            mensaje?.classList.add("hidden");
 
             crearPieDependenciasInternas(
                 "graficoDependenciasFiltro",
@@ -329,9 +400,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             destruirChart("graficoDependenciasFiltro");
             canvas.style.display = "none";
 
-            if (mensaje) {
-                mensaje.classList.remove("hidden");
-            }
+            mensaje?.classList.remove("hidden");
 
         }
 
@@ -351,7 +420,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         }
 
-        // 🔥 IMPORTANTE
         await cargarProyectosPorDireccion(direccionId);
 
     } catch (error) {
@@ -373,7 +441,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             const fecha = fechaInput.value || "";
             const clasificacion = clasificacionFiltro.value;
 
-            let url = `/api/proyectos?direccion_id=${direccionId}&fecha=${fecha}`;
+            let url = `/api/proyectos?direccion_id=${direccionId}`;
+
+            if (fecha && fecha !== "") {
+                url += `&fecha=${fecha}`;
+            }
 
             if (clasificacion && clasificacion !== "todas") {
                 url += `&clasificacion_id=${clasificacion}`;
@@ -625,6 +697,21 @@ async function cargarFechasDisponibles() {
     function destruirChart(id) {
     if (charts[id]) charts[id].destroy();
 }
+
+    function ocultarSiVacio(idCanvas) {
+
+        const canvas = document.getElementById(idCanvas);
+        if (!canvas) return;
+
+        const card = canvas.closest(".card");
+        const chart = charts[idCanvas];
+
+        if (!chart || !chart.data || chart.data.datasets[0].data.every(v => v === 0)) {
+            if (card) card.style.display = "none";
+        } else {
+            if (card) card.style.display = "block";
+        }
+    }
 
     // =====================================================
     // GANTT ARC (DHTMLX)
@@ -1191,5 +1278,30 @@ plugins: [ChartDataLabels]
             behavior: "smooth"
         });
     });
+
+    });
+
+    // ================= TOGGLE ESTATUS CONSOLIDADO =================
+    const toggle = document.getElementById("toggleConsolidado");
+    const contenido = document.getElementById("contenidoConsolidado");
+    const icono = document.getElementById("iconoToggle");
+
+    let abierto = true;
+
+    toggle?.addEventListener("click", () => {
+
+        abierto = !abierto;
+
+        contenido.style.display = abierto ? "block" : "none";
+        icono.style.transform = abierto ? "rotate(90deg)" : "rotate(0deg)";
+
+        // 🔥 IMPORTANTE: re-render charts
+        if (abierto) {
+            setTimeout(() => {
+                Object.values(charts).forEach(chart => {
+                    if (chart) chart.resize();
+                });
+            }, 200);
+        }
 
     });
