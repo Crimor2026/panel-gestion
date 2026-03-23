@@ -77,14 +77,16 @@ animation:float 8s ease-in-out infinite alternate;
 CONTENIDO
 ========================= */
 .contenedor{
-position:absolute;
-top:40%;
-left:55%;
-transform:translate(-50%,-50%);
+position:relative;
+margin-top:80px;
 display:flex;
+flex-direction:column;
 align-items:center;
-gap:30px;
+text-align:center;
+gap:10px;
 max-width:900px;
+margin-left:auto;
+margin-right:auto;
 }
 
 /* LOGO GRANDE */
@@ -155,11 +157,9 @@ box-shadow:0px 20px 60px rgba(0,200,255,0.6);
 LOGIN FLOTANTE
 ========================= */
 .login{
-position:absolute;
-top:50%;
-left:30px;
-transform:translateY(-50%);
-width:260px;
+position:relative;
+margin:30px auto;
+width:280px;
 
 background:rgba(255,255,255,0.15);
 backdrop-filter:blur(15px);
@@ -168,6 +168,8 @@ padding:20px;
 border-radius:16px;
 
 box-shadow:0px 10px 30px rgba(0,0,0,0.4);
+
+z-index:2;
 }
 
 .input{
@@ -189,13 +191,14 @@ overflow:auto;
 
 /* CONTENIDO */
 .contenedor{
+position:relative;
+margin-top:80px;
+display:flex;
 flex-direction:column;
-top:30%;
-left:50%;
-transform:translate(-50%,-30%);
+align-items:center;
 text-align:center;
-padding:10px;
 gap:10px;
+z-index:1;
 }
 
 /* LOGO */
@@ -334,7 +337,7 @@ CONTENIDO
 ========================= -->
 <div class="contenedor">
 
-    <img src="/static/landing/logo.png" class="logo">
+    <img src="/static/landing/Logotipo_ATU.svg" class="logo">
 
     <div class="texto">
         <div class="titulo">
