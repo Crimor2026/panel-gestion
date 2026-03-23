@@ -9,3 +9,6 @@ bcrypt==4.0.1
 pandas
 openpyxl
 numpy
+jinja2
+psycopg2-binary
+groq

@@ -11,6 +11,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     let charts = {};
     let calendario = null;
 
+    let dataGlobalIA = null;
+
     const direccionSelect = document.getElementById("direccionSelect");
     const clasificacionFiltro = document.getElementById("clasificacionFiltro");
     const proyectoSelect = document.getElementById("proyectoSelect");
@@ -31,8 +33,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     // TOGGLE ESTATUS CONSOLIDADO
     // =====================================================
 
-    const toggle = document.getElementById("toggleEstatus");
-    const contenido = document.getElementById("contenidoEstatus");
+    const toggle = document.getElementById("toggleConsolidado");
+    const contenido = document.getElementById("contenidoConsolidado");
     const icono = document.getElementById("iconoToggle");
 
     let abierto = true;
@@ -41,10 +43,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         abierto = !abierto;
 
-        contenido.style.display = abierto ? "block" : "none";
-        icono.style.transform = abierto ? "rotate(90deg)" : "rotate(0deg)";
+        if (contenido) {
+            contenido.style.display = abierto ? "block" : "none";
+        }
 
-        // 🔥 FIX CHARTS (CLAVE)
+        if (icono) {
+            icono.style.transform = abierto ? "rotate(90deg)" : "rotate(0deg)";
+        }
+
         if (abierto) {
             setTimeout(() => {
                 Object.values(charts).forEach(chart => {
@@ -243,6 +249,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             const res = await fetch(url);
             const data = await res.json();
 
+            dataGlobalIA = data;
+
             // ================= ÚLTIMA ACTUALIZACIÓN =================
             const fechaEl = document.getElementById("fechaActualizacion");
 
@@ -276,13 +284,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                 estado => mapaEstados[estado] || 0
             );
 
-            crearBarChartGlobal(
+            crearGraficoTorres(
                 "graficoEstadosGlobal",
                 ORDEN_ESTADOS,
                 cantidadesEstados
             );
 
-            ocultarSiVacio("graficoEstadosGlobal");
+            // ocultarSiVacio("graficoEstadosGlobal");
 
             // ================= DONUT GLOBAL =================
 
@@ -363,49 +371,63 @@ async function cargarDashboardDireccion(direccionId) {
         const res = await fetch(url);
         const data = await res.json();
 
+        // ================= ESTADOS =================
         const mapaEstados = {};
-        data.estados.forEach(e => {
-            mapaEstados[e.estado] = e.cantidad;
-        });
 
+        if (data.estados && Array.isArray(data.estados)) {
+            data.estados.forEach(e => {
+                mapaEstados[e.estado] = e.cantidad;
+            });
+        }
+
+        // 🔥 PRIMERO construyes esto
         const cantidadesEstados = ORDEN_ESTADOS.map(
             estado => mapaEstados[estado] || 0
         );
 
-        crearBarChartFiltro(
+        // 🔥 LUEGO calculas total
+        const total = cantidadesEstados.reduce((a,b)=>a+b,0);
+
+        // 🔥 VALIDACIÓN
+        if (total === 0) {
+            document.getElementById("graficoEstadosFiltro").innerHTML = `
+                <div class="text-gray-500 text-center">
+                    No hay datos para esta dirección
+                </div>
+            `;
+            return;
+        }
+
+        // 🔥 RECIÉN dibujas
+        crearGraficoEstadosEjecutivo(
             "graficoEstadosFiltro",
             ORDEN_ESTADOS,
             cantidadesEstados
         );
 
-        // ================= DEPENDENCIAS INTERNAS =================
-
+        // ================= DEPENDENCIAS =================
         const canvas = document.getElementById("graficoDependenciasFiltro");
         const mensaje = document.getElementById("mensajeDependencias");
 
         if (data.dependencias && data.dependencias.length > 0) {
 
             canvas.style.display = "block";
-
             mensaje?.classList.add("hidden");
 
             crearPieDependenciasInternas(
                 "graficoDependenciasFiltro",
-                data.dependencias.map(d => d.direccion_dependencia),
+                data.dependencias.map(d => d.nombre),
                 data.dependencias.map(d => d.cantidad)
             );
 
         } else {
 
-            destruirChart("graficoDependenciasFiltro");
             canvas.style.display = "none";
-
             mensaje?.classList.remove("hidden");
 
         }
 
         // ================= CLASIFICACIÓN =================
-
         if (data.clasificacion && data.clasificacion.length > 0) {
 
             crearBarChartFiltro(
@@ -420,81 +442,61 @@ async function cargarDashboardDireccion(direccionId) {
 
         }
 
+        // 🔥 LLAMADA CORRECTA
         await cargarProyectosPorDireccion(direccionId);
 
     } catch (error) {
-
-        console.error("Error dashboard dirección", error);
-
+        console.error("Error en dashboard dirección:", error);
     }
-
 }
 
-    // =====================================================
-    // PROYECTOS
-    // =====================================================
+        // ================= PROYECTOS =================
 
-    async function cargarProyectosPorDireccion(direccionId) {
+async function cargarProyectosPorDireccion(direccionId) {
 
-        try {
+    try {
 
-            const fecha = fechaInput.value || "";
-            const clasificacion = clasificacionFiltro.value;
+        const fecha = fechaInput.value || "";
+        const clasificacion = clasificacionFiltro.value;
 
-            let url = `/api/proyectos?direccion_id=${direccionId}`;
+        let url = `/api/proyectos?direccion_id=${direccionId}`;
 
-            if (fecha && fecha !== "") {
-                url += `&fecha=${fecha}`;
-            }
-
-            if (clasificacion && clasificacion !== "todas") {
-                url += `&clasificacion_id=${clasificacion}`;
-            }
-
-            const res = await fetch(url);
-
-            if (!res.ok) {
-                console.error("Error cargando proyectos");
-                return;
-            }
-
-            const proyectos = await res.json();
-
-            // llenar selector
-            proyectoSelect.innerHTML = proyectos
-                .map(p => `<option value="${p.id}">${p.nombre}</option>`)
-                .join("");
-
-            // 🔴 si no hay proyectos, solo asegurar calendario
-            if (!proyectos.length) {
-
-                if (!calendario) {
-                    calendario = flatpickr("#fechaCorte", {
-                        locale: flatpickr.l10ns.es,
-                        dateFormat: "Y-m-d"
-                    });
-                }
-
-                return;
-            }
-
-            // seleccionar primer proyecto
-            const primerProyecto = proyectos[0].id;
-            proyectoSelect.value = primerProyecto;
-          
-            // cargar detalle del proyecto
-            const fechaActual = fechaInput.value;
-
-            if (fechaActual) {
-                await cargarDetalleProyecto(primerProyecto, fechaActual);
-            }
-
-        } catch (error) {
-
-            console.error("Error proyectos:", error);
-
+        if (fecha && fecha !== "") {
+            url += `&fecha=${fecha}`;
         }
+
+        if (clasificacion && clasificacion !== "todas") {
+            url += `&clasificacion_id=${clasificacion}`;
+        }
+
+        const res = await fetch(url);
+
+        if (!res.ok) {
+            console.error("Error cargando proyectos");
+            return;
+        }
+
+        const proyectos = await res.json();
+
+        proyectoSelect.innerHTML = proyectos
+            .map(p => `<option value="${p.id}">${p.nombre}</option>`)
+            .join("");
+
+        if (!proyectos.length) return;
+
+        const primerProyecto = proyectos[0].id;
+        proyectoSelect.value = primerProyecto;
+
+        const fechaActual = fechaInput.value;
+
+        if (fechaActual) {
+            await cargarDetalleProyecto(primerProyecto, fechaActual);
+        }
+
+    } catch (error) {
+        console.error("Error proyectos:", error);
     }
+}
 
     // =====================================================
     // ACTUALIZAR TODO CUANDO CAMBIA FECHA
@@ -512,8 +514,16 @@ async function cargarDashboardDireccion(direccionId) {
 
 async function cargarFechasDisponibles() {
 
-    const res = await fetch(`/api/fechas`);
-    const fechas = await res.json();
+    let fechas = [];
+
+    try {
+        const res = await fetch(`/api/fechas`);
+        if (res.ok) {
+            fechas = await res.json();
+        }
+    } catch (e) {
+        console.error("Error cargando fechas", e);
+    }
 
     if (calendario) calendario.destroy();
 
@@ -897,14 +907,22 @@ function crearBarChartGlobal(id, labels, data) {
         },
 
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
+        responsive: true,
+        maintainAspectRatio: false,
 
-            layout: {
-                padding: {
-                    top: 30
-                }
-            },
+        animation: {
+            duration: 1200,
+            easing: "easeOutQuart"
+        },
+
+        animations: {
+            y: {
+                from: 0,
+                duration: 1200,
+                easing: "easeOutQuart"
+            }
+        },
+
 
             plugins: {
                 legend: { display: false },
@@ -930,6 +948,102 @@ function crearBarChartGlobal(id, labels, data) {
     });
     
     }
+
+// =====================================================
+// NUEVO GRAFICO TORRES
+// =====================================================
+
+function crearGraficoTorres(id, labels, data){
+
+    const contenedor = document.getElementById(id);
+    if (!contenedor) return;
+
+    contenedor.innerHTML = `
+        <div id="graficoTorres" class="grafico-torres">
+            ${labels.map((label, i) => {
+
+                const valor = data[i];
+
+                let clase = "sin";
+                if(label.toLowerCase().includes("ejec")) clase = "ejec";
+                if(label.toLowerCase().includes("paral")) clase = "paral";
+                if(label.toLowerCase().includes("conclu")) clase = "conc";
+
+                const niveles = Math.ceil(valor / 5); // 🔥 escala visual
+
+                return `
+                    <div class="torre">
+                        <div class="bloques">
+                            ${Array.from({length: niveles || 1}).map((_, i) => `
+                                <div class="bloque ${clase}" style="animation-delay:${i * 0.08}s"></div>
+                            `).join("")}
+                        </div>
+                        <span>${valor}</span>
+                        <small>${label}</small>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+    `;
+}
+
+// =====================================================
+// 🔥 NUEVO GRAFICO PROGRESO
+// =====================================================
+function crearGraficoEstadosEjecutivo(id, labels, data){
+
+    const contenedor = document.getElementById(id);
+    if (!contenedor) return;
+
+    contenedor.innerHTML = "";
+
+    const total = data.reduce((a,b) => a + b, 0) || 1;
+
+    contenedor.innerHTML = `
+        <div class="space-y-4">
+            ${labels.map((label, i) => {
+
+                const valor = data[i];
+                const porcentaje = Math.round((valor / total) * 100);
+
+                let color = "#9ca3af";
+                if(label.toLowerCase().includes("ejec")) color = "#22c55e";
+                if(label.toLowerCase().includes("paral")) color = "#ef4444";
+                if(label.toLowerCase().includes("conclu")) color = "#3b82f6";
+
+                return `
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>${label}</span>
+                            <span>${valor} (${porcentaje}%)</span>
+                        </div>
+
+                        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                            <div 
+                                data-width="${porcentaje}"
+                                style="width:0%; background:${color}"
+                                class="barra-fill h-3 rounded-full transition-all duration-1000 ease-out">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join("")}
+        </div>
+    `;
+
+    // 🔥 ANIMACIÓN (DENTRO DE LA FUNCIÓN)
+    requestAnimationFrame(() => {
+        const barras = contenedor.querySelectorAll(".barra-fill");
+
+        barras.forEach((bar, i) => {
+            const width = bar.getAttribute("data-width");
+
+            setTimeout(() => {
+                bar.style.width = width + "%";
+            }, i * 120); // 🔥 efecto cascada pro
+        });
+    });
+}
 
 // =====================================================
 // GRÁFICO BARRAS VERTICALES - FILTRO (DEGRADADO ELEGANTE)
@@ -971,14 +1085,21 @@ function crearBarChartFiltro(id, labels, data) {
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
+        responsive: true,
+        maintainAspectRatio: false,
 
-            layout: {
-                padding: {
-                    top: 25
-                }
-            },
+        animation: {
+            duration: 1200,
+            easing: "easeOutQuart"
+        },
+
+        animations: {
+            y: {
+                from: 0,
+                duration: 1200,
+                easing: "easeOutQuart"
+            }
+        },
 
             plugins: {
                 legend: { display: false },
@@ -1063,17 +1184,31 @@ function crearHorizontalBarChart(id, labels, data) {
             indexAxis: "y",
             responsive: true,
             maintainAspectRatio: false,
+
+            // 🔥 CLAVE: animación horizontal
+            animation: {
+                duration: 1200,
+                easing: "easeOutQuart"
+            },
+
+            animations: {
+                x: {   // 🔥 IMPORTANTE: X, no Y
+                    from: 0
+                }
+            },
+
             plugins: {
                 legend: { display: false }
             }
         },
         plugins: [ChartDataLabels]
     });
+
+    charts[id].update();
 }
 
-
 // =====================================================
-// GRÁFICO DONUT
+// GRÁFICO DONUT (CON ANIMACIÓN)
 // =====================================================
 
 function crearDoughnutChart(id, labels, data, coloresCustom = null) {
@@ -1099,9 +1234,19 @@ function crearDoughnutChart(id, labels, data, coloresCustom = null) {
                 borderWidth: 1
             }]
         },
+
         options: {
             responsive: true,
             maintainAspectRatio: false,
+
+            // 🔥 ANIMACIÓN CLAVE
+            animation: {
+                animateRotate: true,
+                animateScale: true,
+                duration: 1200,
+                easing: "easeOutQuart"
+            },
+
             plugins: {
                 legend: { display: false },
                 datalabels: {
@@ -1114,12 +1259,16 @@ function crearDoughnutChart(id, labels, data, coloresCustom = null) {
                 }
             }
         },
+
         plugins: [ChartDataLabels]
     });
+
+    // 🔥 FORZAR ANIMACIÓN (CLAVE)
+    charts[id].update();
 }
 
 // =====================================================
-// PIE - DEPENDENCIAS INTERNAS (PASTEL NEUTRO)
+// PIE - DEPENDENCIAS INTERNAS (CON ANIMACIÓN)
 // =====================================================
 
 function crearPieDependenciasInternas(id, labels, data) {
@@ -1148,9 +1297,19 @@ function crearPieDependenciasInternas(id, labels, data) {
                 borderWidth: 2
             }]
         },
+
         options: {
             responsive: true,
             maintainAspectRatio: false,
+
+            // 🔥 ANIMACIÓN
+            animation: {
+                animateRotate: true,
+                animateScale: true,
+                duration: 1200,
+                easing: "easeOutQuart"
+            },
+
             plugins: {
                 legend: {
                     position: "bottom"
@@ -1165,12 +1324,16 @@ function crearPieDependenciasInternas(id, labels, data) {
                 }
             }
         },
+
         plugins: [ChartDataLabels]
     });
+
+    // 🔥 CLAVE
+    charts[id].update();
 }
 
 // =====================================================
-// GRÁFICO DE LÍNEA
+// GRÁFICO DE LÍNEA (CON ANIMACIÓN)
 // =====================================================
 
 function crearLineaChart(id, labels, datasetsConfig) {
@@ -1194,67 +1357,90 @@ function crearLineaChart(id, labels, datasetsConfig) {
             }))
         },
 
-options: {
-    responsive: true,
-    maintainAspectRatio: false,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
 
-    plugins: {
-        legend: { 
-            position: "bottom" 
-        },
-
-        datalabels: {
-            align: "top",
-            anchor: "end",
-            formatter: function(value) {
-                return value + "%";
+            // 🔥 ANIMACIÓN (línea dibujándose)
+            animation: {
+                duration: 1200,
+                easing: "easeOutQuart"
             },
-            font: {
-                weight: "bold",
-                size: 12
-            }
-        }
-    },
 
-    scales: {
-
-        x: {
-            type: "category",
-            offset: true,          // ⭐ ESTA ES LA CLAVE
-            ticks: {
-                autoSkip: false
+            animations: {
+                y: {
+                    from: 0,
+                    duration: 1200,
+                    easing: "easeOutQuart"
+                }
             },
-            grid: {
-                offset: true       // ⭐ TAMBIÉN ESTA
-            }
-        },
 
-        y: {
-            beginAtZero: true,
-            max: 100,
-            ticks:{
-                callback:function(value){
-                    return value + "%";
+            plugins: {
+                legend: { 
+                    position: "bottom" 
+                },
+
+                datalabels: {
+                    align: "top",
+                    anchor: "end",
+                    formatter: function(value) {
+                        return value + "%";
+                    },
+                    font: {
+                        weight: "bold",
+                        size: 12
+                    }
+                }
+            },
+
+            scales: {
+                x: {
+                    type: "category",
+                    offset: true,
+                    ticks: { autoSkip: false },
+                    grid: { offset: true }
+                },
+
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks:{
+                        callback:function(value){
+                            return value + "%";
+                        }
+                    }
                 }
             }
-        }
-    }
-},
+        },
 
-plugins: [ChartDataLabels]
+        plugins: [ChartDataLabels]
+    });
 
-});
+    // 🔥 CLAVE
+    charts[id].update();
 }
 
     // =====================================================
     // INICIALIZAR
     // =====================================================
 
-    // cargar calendario con fechas del sistema
-    await cargarFechasDisponibles();
+    try {
+        await cargarFechasDisponibles();
+    } catch (e) {
+        console.error("Error fechas:", e);
+    }
 
-    // cargar dashboard
     cargarDashboardGlobal();
+
+    // 🔥 ANIMACIÓN AUTOMÁTICA DE CARDS CON GRÁFICOS
+    setTimeout(() => {
+        document.querySelectorAll("canvas").forEach(canvas => {
+            const card = canvas.closest(".card");
+            if (card) {
+                card.classList.add("animar");
+            }
+        });
+    }, 500);
 
 
     // =====================================================
@@ -1279,29 +1465,92 @@ plugins: [ChartDataLabels]
         });
     });
 
-    });
+// =====================================================
+// 🤖 IA POPUP CHAT
+// =====================================================
 
-    // ================= TOGGLE ESTATUS CONSOLIDADO =================
-    const toggle = document.getElementById("toggleConsolidado");
-    const contenido = document.getElementById("contenidoConsolidado");
-    const icono = document.getElementById("iconoToggle");
+const btnIA = document.getElementById("btnIAFloat");
+const popupIA = document.getElementById("popupIA");
+const cerrarIA = document.getElementById("cerrarIA");
+const inputIA = document.getElementById("inputIA");
+const chatIA = document.getElementById("chatIA");
+const enviarIA = document.getElementById("enviarIA");
 
-    let abierto = true;
+// 🔹 ABRIR / CERRAR
+btnIA?.addEventListener("click", () => {
+    popupIA.classList.toggle("hidden");
+});
 
-    toggle?.addEventListener("click", () => {
+cerrarIA?.addEventListener("click", () => {
+    popupIA.classList.add("hidden");
+});
 
-        abierto = !abierto;
+// 🔹 ENVIAR MENSAJE
+enviarIA?.addEventListener("click", responderIA);
 
-        contenido.style.display = abierto ? "block" : "none";
-        icono.style.transform = abierto ? "rotate(90deg)" : "rotate(0deg)";
+async function responderIA(){
 
-        // 🔥 IMPORTANTE: re-render charts
-        if (abierto) {
-            setTimeout(() => {
-                Object.values(charts).forEach(chart => {
-                    if (chart) chart.resize();
-                });
-            }, 200);
+    const pregunta = inputIA.value.trim();
+    if (!pregunta) return;
+
+    chatIA.innerHTML += `<div><strong>Tú:</strong> ${pregunta}</div>`;
+
+    let respuesta = generarRespuestaIA(pregunta);
+
+    // 🔥 SI NO SABE → USA IA
+    if (respuesta.includes("Prueba:") || respuesta.includes("No entendí")) {
+
+        try {
+            const res = await fetch("/api/ia", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    pregunta,
+                    data: dataGlobalIA
+                })
+            });
+
+            const data = await res.json();
+            respuesta = data.respuesta;
+
+        } catch {
+            respuesta = "Error consultando IA externa.";
         }
+    }
 
-    });
+    chatIA.innerHTML += `<div class="text-indigo-600"><strong>Aura:</strong> ${respuesta}</div>`;
+
+    chatIA.scrollTop = chatIA.scrollHeight;
+
+    inputIA.value = "";
+}
+    function generarRespuestaIA(pregunta){
+
+    if (!dataGlobalIA) {
+        return "Cargando datos...";
+    }
+
+    const p = pregunta.toLowerCase();
+
+    if (p.includes("total")) {
+        return `Hay ${dataGlobalIA?.kpis?.total || 0} proyectos.`;
+    }
+
+    if (p.includes("ejec")) {
+
+        const estados = dataGlobalIA?.estados || [];
+
+        const ejec = estados.find(e => 
+            e.estado?.toLowerCase().includes("ejec")
+        )?.cantidad || 0;
+
+        return `Hay ${ejec} proyectos en ejecución.`;
+    }
+
+    return "Prueba:";
+}
+
+// 👇 ESTE ES EL CIERRE CORRECTO DEL DOM
+});

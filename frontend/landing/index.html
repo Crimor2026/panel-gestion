@@ -119,12 +119,11 @@ opacity:0.9;
 BOTONES
 ========================= */
 .botones{
-position:absolute;
-bottom:60px;
-width:100%;
-display:flex;
-justify-content:center;
-gap:25px;
+    position:relative;
+    margin-top:20px;
+    display:flex;
+    justify-content:center;
+    gap:25px;
 }
 
 .btn{
@@ -221,32 +220,30 @@ opacity:0.9;
 
 /* LOGIN */
 .login{
-position:relative;
-top:auto;
-left:50%;
-transform:translateX(-50%);
-margin-top:20px;
-width:85%;
+    position:relative;
+    margin-top:20px;
+    width:85%;
+    max-width:320px;
+    margin-left:auto;
+    margin-right:auto;
 }
 
 /* BOTONES */
 .botones{
-position:relative;
-bottom:auto;
-margin-top:20px;
-flex-direction:column;
-gap:10px;
-padding:0 20px;
+    position:relative;
+    bottom:auto;
+    margin-top:20px;
+    flex-direction:column;
+    gap:10px;
+    padding:0 20px;
 }
 
 .btn{
-width:100%;
-display:inline-block;
-text-align:center;
-font-weight:500;
-letter-spacing:0.5px;
-}
-
+    width:100%;
+    display:inline-block;
+    text-align:center;
+    font-weight:500;
+    letter-spacing:0.5px;
 }
 
 </style>
@@ -349,54 +346,32 @@ CONTENIDO
         </div>
     </div>
 
-</div>
+    <!-- LOGIN -->
+    <form id="loginForm" class="login">
+        <input id="email" class="input" placeholder="Correo">
 
-<!-- =========================
-LOGIN FLOTANTE
-========================= -->
-<form id="loginForm" class="login">
+        <div style="position:relative; margin-bottom:10px;">
+            <input id="password" type="password" placeholder="Contraseña"
+            class="input" autocomplete="new-password"
+            style="padding-right:50px;">
 
-    <input id="email" class="input" placeholder="Correo">
+            <button type="button" id="togglePassword"
+            style="position:absolute; right:5px; top:50%;
+            transform:translateY(-50%); background:none; border:none;">
+                👁️
+            </button>
+        </div>
 
-    <div style="position:relative; margin-bottom:10px;">
+        <button type="submit" class="btn w-full">Ingresar</button>
+        <div id="mensaje" style="color:red; margin-top:10px;"></div>
+    </form>
 
-      <input id="password"
-      type="password"
-      placeholder="Contraseña"
-      class="input"
-      autocomplete="new-password"
-      style="padding-right:50px;">
+    <!-- BOTONES -->
+    <div class="botones">
+        <button onclick="irDashboard()" class="btn">Dashboard</button>
+        <button onclick="irReportes()" class="btn">Reportes</button>
+    </div>
 
-      <button type="button"
-      id="togglePassword"
-      style="
-      position:absolute;
-      right:5px;
-      top:50%;
-      transform:translateY(-50%);
-      background:none;
-      border:none;
-      cursor:pointer;
-      z-index:9999;
-      font-size:16px;
-      ">
-         👁️
-      </button>
-
-   </div>
-
-    <button type="submit" class="btn w-full">Ingresar</button>
-
-    <div id="mensaje" style="color:red; margin-top:10px;"></div>
-
-</form>
-
-<!-- =========================
-BOTONES
-========================= -->
-<div class="botones">
-   <button onclick="irDashboard()" class="btn">Dashboard</button>
-   <button onclick="irReportes()" class="btn">Reportes</button>
 </div>
 
 <!-- =========================

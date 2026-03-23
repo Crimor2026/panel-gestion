@@ -1590,3 +1590,76 @@ def cambiar_password(
         conn.commit()
 
     return {"mensaje": "Contraseña actualizada"}
+
+# =====================================================
+# CAMBIAR CONTRASEÑA
+# =====================================================
+
+from fastapi import APIRouter
+from pydantic import BaseModel
+import requests
+import os
+
+router = APIRouter(
+    prefix="/api/ia",
+    tags=["IA - Aura"]
+)
+
+class Pregunta(BaseModel):
+    pregunta: str
+    data: dict | None = None
+
+
+@router.post(
+    "",
+    summary="Consulta IA Aura",
+    description="Recibe una pregunta del usuario y responde usando Groq (Llama3)"
+)
+async def consultar_ia(req: Pregunta):
+
+    api_key = os.getenv("GROQ_API_KEY")
+
+    if not api_key:
+        return {"respuesta": "Error: API key no configurada"}
+
+    prompt = f"""
+    Eres Aura, asistente de proyectos de transporte urbano (ATU).
+
+    Usa estos datos si ayudan:
+    {req.data}
+
+    Responde claro, breve y profesional:
+    {req.pregunta}
+    """
+
+    response = requests.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "llama-3.1-8b-instant",
+            "messages": [
+                {"role": "system", "content": "Eres Aura, asistente profesional."},
+                {"role": "user", "content": prompt}
+            ]
+        }
+    )
+
+    if response.status_code != 200:
+        return {
+            "respuesta": f"Error IA ({response.status_code}): {response.text}"
+        }
+
+    data = response.json()
+
+    return {
+        "respuesta": data["choices"][0]["message"]["content"]
+    }
+
+# =====================================================
+# ACTIVAR RUTAS IA
+# =====================================================
+
+app.include_router(router)
