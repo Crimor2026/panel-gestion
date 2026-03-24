@@ -20,6 +20,10 @@ from sqlalchemy import text
 
 from backend.database import engine
 
+# 🔥👇 AGREGA ESTO AQUÍ 👇🔥
+from dotenv import load_dotenv
+load_dotenv()
+
 def normalizar_texto(texto):
 
     if texto is None:
@@ -237,29 +241,34 @@ def dashboard_global(fecha: Optional[str] = None):
                 {"fecha": fecha_corte}
             ).fetchall()
 
-            # ================= DEPENDENCIAS =================
-            dependencias = conn.execute(
-                text("""
-                    SELECT 
-                        pv.dependencias_externas AS entidad,
-                        COUNT(*) as cantidad
-                    FROM proyectos p
-                    JOIN LATERAL (
-                        SELECT *
-                        FROM proyecto_version pv2
-                        WHERE pv2.proyecto_id = p.id
-                        AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
-                        ORDER BY pv2.fecha_corte DESC
-                        LIMIT 1
-                    ) pv ON true
-                    WHERE pv.dependencias_externas IS NOT NULL
-                    AND pv.dependencias_externas <> ''
-                    AND LOWER(pv.dependencias_externas) <> 'ninguna'
-                    GROUP BY pv.dependencias_externas
-                    ORDER BY cantidad DESC
-                """),
-                {"fecha": fecha_corte}
-            ).fetchall()
+            # ================= DEPENDENCIAS EXTERNAS =================
+            dependencias = conn.execute(text("""
+                SELECT 
+                    CASE 
+                        WHEN pv.dependencias_externas IS NULL 
+                            OR TRIM(pv.dependencias_externas) = '' 
+                            OR LOWER(TRIM(pv.dependencias_externas)) IN ('ninguna', 'sin dependencia', 'undefined', 'null')
+                        THEN 'SIN DEPENDENCIA'
+                        ELSE UPPER(TRIM(pv.dependencias_externas))
+                    END AS dependencia,
+                    COUNT(*) as cantidad
+                FROM proyectos p
+                JOIN LATERAL (
+                    SELECT *
+                    FROM proyecto_version pv2
+                    WHERE pv2.proyecto_id = p.id
+                    AND (
+                        pv2.fecha_corte <= :fecha
+                        OR :fecha IS NULL
+                    )
+                    ORDER BY pv2.fecha_corte DESC
+                    LIMIT 1
+                ) pv ON true
+                GROUP BY dependencia
+                ORDER BY cantidad DESC
+            """), {
+                "fecha": fecha_corte
+            }).fetchall()
 
             # ================= DIRECCIONES TOTAL =================
             direcciones_total = conn.execute(text("""
@@ -365,17 +374,23 @@ def dashboard_por_direccion(direccion_id: int, fecha: Optional[str] = None):
                 "fecha": fecha_corte
             }).fetchall()
 
-            # ================= DEPENDENCIAS =================
+            # ================= DEPENDENCIAS INTERNAS =================
             dependencias = conn.execute(text("""
                 SELECT 
-                    d.codigo AS direccion_dependencia,
+                    CASE 
+                        WHEN d.codigo IS NULL THEN 'SIN DEPENDENCIA'
+                        ELSE UPPER(TRIM(d.codigo))
+                    END AS dependencia,
                     COUNT(*) as cantidad
                 FROM proyectos p
                 JOIN LATERAL (
                     SELECT *
                     FROM proyecto_version pv2
                     WHERE pv2.proyecto_id = p.id
-                    AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
+                    AND (
+                        pv2.fecha_corte <= :fecha
+                        OR :fecha IS NULL
+                    )
                     ORDER BY pv2.fecha_corte DESC
                     LIMIT 1
                 ) pv ON true
@@ -383,12 +398,12 @@ def dashboard_por_direccion(direccion_id: int, fecha: Optional[str] = None):
                     ON pdi.proyecto_version_id = pv.id
                 LEFT JOIN direcciones d
                     ON d.id = pdi.direccion_id
-                WHERE pv.direccion_id = :direccion_id
-                GROUP BY d.codigo
+                WHERE pv.direccion_id = :direccion_id   -- 🔥 CLAVE
+                GROUP BY dependencia
                 ORDER BY cantidad DESC
             """), {
-                "direccion_id": direccion_id,
-                "fecha": fecha_corte
+                "fecha": fecha_corte,
+                "direccion_id": direccion_id
             }).fetchall()
 
             # ================= CLASIFICACIÓN =================

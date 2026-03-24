@@ -2,7 +2,7 @@
 // DOM READY
 // =====================================================
 
-document.addEventListener("DOMContentLoaded", async () => {
+(async () => {
 
     // =====================================================
     // VARIABLES
@@ -294,8 +294,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             // ================= DONUT GLOBAL =================
 
-            const labelsDependencias = data.dependencias.map(d => d.entidad);
-            const valoresDependencias = data.dependencias.map(d => d.cantidad);
+            const labelsDependencias = data.dependencias.map(d => 
+                d.dependencia || "Sin dependencia"
+            );
+
+            const valoresDependencias = data.dependencias.map(d => 
+                d.cantidad || 0
+            );
+
+            // 🔥 Si todo viene vacío, fuerza "SIN DEPENDENCIA"
+            if (!labelsDependencias.length) {
+                labelsDependencias.push("Sin dependencia");
+                valoresDependencias.push(data.kpis?.total || 0);
+            }
 
             crearDoughnutChart(
                 "graficoDependenciasGlobal",
@@ -334,6 +345,17 @@ document.addEventListener("DOMContentLoaded", async () => {
             direccionSelect.innerHTML = data.direcciones_filtradas
                 .map(d => `<option value="${d.id}">${d.direccion}</option>`)
                 .join("");
+
+            // destruir si ya existe
+            if (window.tsDireccion) {
+                window.tsDireccion.destroy();
+            }
+
+            // crear buscador moderno
+            window.tsDireccion = new TomSelect("#direccionSelect", {
+                placeholder: "Buscar dirección...",
+                allowEmptyOption: true
+            });
 
             // restaurar selección si ya existía
             if (direccionActual) {
@@ -405,7 +427,7 @@ async function cargarDashboardDireccion(direccionId) {
             cantidadesEstados
         );
 
-        // ================= DEPENDENCIAS =================
+        // ================= DEPENDENCIAS INTERNAS =================
         const canvas = document.getElementById("graficoDependenciasFiltro");
         const mensaje = document.getElementById("mensajeDependencias");
 
@@ -414,10 +436,18 @@ async function cargarDashboardDireccion(direccionId) {
             canvas.style.display = "block";
             mensaje?.classList.add("hidden");
 
+            const labels = data.dependencias.map(d => 
+                d.dependencia || "SIN DEPENDENCIA"
+            );
+
+            const valores = data.dependencias.map(d => 
+                d.cantidad || 0
+            );
+
             crearPieDependenciasInternas(
                 "graficoDependenciasFiltro",
-                data.dependencias.map(d => d.nombre),
-                data.dependencias.map(d => d.cantidad)
+                labels,
+                valores
             );
 
         } else {
@@ -452,51 +482,66 @@ async function cargarDashboardDireccion(direccionId) {
 
         // ================= PROYECTOS =================
 
-async function cargarProyectosPorDireccion(direccionId) {
+        async function cargarProyectosPorDireccion(direccionId) {
 
-    try {
+            try {
 
-        const fecha = fechaInput.value || "";
-        const clasificacion = clasificacionFiltro.value;
+                const fecha = fechaInput.value || "";
+                const clasificacion = clasificacionFiltro.value;
 
-        let url = `/api/proyectos?direccion_id=${direccionId}`;
+                let url = `/api/proyectos?direccion_id=${direccionId}`;
 
-        if (fecha && fecha !== "") {
-            url += `&fecha=${fecha}`;
+                if (fecha && fecha !== "") {
+                    url += `&fecha=${fecha}`;
+                }
+
+                if (clasificacion && clasificacion !== "todas") {
+                    url += `&clasificacion_id=${clasificacion}`;
+                }
+
+                const res = await fetch(url);
+
+                if (!res.ok) {
+                    console.error("Error cargando proyectos");
+                    return;
+                }
+
+                const proyectos = await res.json();
+
+                // 🔹 llenar select (SIN CAMBIOS)
+                proyectoSelect.innerHTML = proyectos
+                    .map(p => `<option value="${p.id}">${p.nombre}</option>`)
+                    .join("");
+
+                // 🔥 🔥 🔥 CLAVE: reiniciar TomSelect
+                if (window.tsProyecto) {
+                    window.tsProyecto.destroy();
+                }
+
+                window.tsProyecto = new TomSelect("#proyectoSelect", {
+                    placeholder: "Buscar proyecto...",
+                    allowEmptyOption: true,
+                    searchField: ["text"], // 🔥 busca por nombre visible
+                });
+
+                if (!proyectos.length) return;
+
+                const primerProyecto = proyectos[0].id;
+                proyectoSelect.value = primerProyecto;
+
+                // 🔥 importante: actualizar TomSelect visualmente
+                window.tsProyecto.setValue(primerProyecto);
+
+                const fechaActual = fechaInput.value;
+
+                if (fechaActual) {
+                    await cargarDetalleProyecto(primerProyecto, fechaActual);
+                }
+
+            } catch (error) {
+                console.error("Error proyectos:", error);
+            }
         }
-
-        if (clasificacion && clasificacion !== "todas") {
-            url += `&clasificacion_id=${clasificacion}`;
-        }
-
-        const res = await fetch(url);
-
-        if (!res.ok) {
-            console.error("Error cargando proyectos");
-            return;
-        }
-
-        const proyectos = await res.json();
-
-        proyectoSelect.innerHTML = proyectos
-            .map(p => `<option value="${p.id}">${p.nombre}</option>`)
-            .join("");
-
-        if (!proyectos.length) return;
-
-        const primerProyecto = proyectos[0].id;
-        proyectoSelect.value = primerProyecto;
-
-        const fechaActual = fechaInput.value;
-
-        if (fechaActual) {
-            await cargarDetalleProyecto(primerProyecto, fechaActual);
-        }
-
-    } catch (error) {
-        console.error("Error proyectos:", error);
-    }
-}
 
     // =====================================================
     // ACTUALIZAR TODO CUANDO CAMBIA FECHA
@@ -625,25 +670,25 @@ async function cargarFechasDisponibles() {
 
     // ================= FICHA IDENTIFICACIÓN =================
 
-    document.getElementById("fichaCui").textContent = data.cui || "-";
-    document.getElementById("fichaDsp").textContent = data.codigo_dsp || "-";
-    document.getElementById("fichaUbicacion").textContent = data.ubicacion || "-";
-    document.getElementById("fichaTipologia").textContent = data.tipologia || "-";
-    document.getElementById("fichaEntidadEjecutora").textContent = data.entidad_ejecutora || "-";
-    document.getElementById("fichaEntidadFormuladora").textContent = data.entidad_formuladora || "-";
+    toggleCampo("fichaCui", data.cui);
+    toggleCampo("fichaDsp", data.codigo_dsp);
+    toggleCampo("fichaUbicacion", data.ubicacion);
+    toggleCampo("fichaTipologia", data.tipologia);
+    toggleCampo("fichaEntidadEjecutora", data.entidad_ejecutora);
+    toggleCampo("fichaEntidadFormuladora", data.entidad_formuladora);
 
     // ================= CONTROL DE PLAZOS =================
 
-    document.getElementById("plazoInicioProgramado").textContent = data.inicio_programado || "-";
-    document.getElementById("plazoInicioEjecutado").textContent = data.inicio_ejecutado || "-";
-    document.getElementById("plazoFinProgramado").textContent = data.fin_programado || "-";
-    document.getElementById("plazoArc").textContent = data.arc_actual || "-";
+    toggleCampo("plazoInicioProgramado", data.inicio_programado);
+    toggleCampo("plazoInicioEjecutado", data.inicio_ejecutado);
+    toggleCampo("plazoFinProgramado", data.fin_programado);
+    toggleCampo("plazoArc", data.arc_actual);
 
     // ================= CONTACTO =================
 
-    document.getElementById("contactoCoordinador").textContent = data.coordinador || "-";
-    document.getElementById("contactoCorreo").textContent = data.correo || "-";
-    document.getElementById("contactoCelular").textContent = data.celular || "-";
+    toggleCampo("contactoCoordinador", data.coordinador);
+    toggleCampo("contactoCorreo", data.correo);
+    toggleCampo("contactoCelular", data.celular);
 
     // ================= CLASIFICACIÓN =================
 
@@ -724,27 +769,145 @@ async function cargarFechasDisponibles() {
     }
 
     // =====================================================
-    // GANTT ARC (DHTMLX)
+    // UTILIDAD PARA OCULTAR CAMPOS VACÍOS
+    // =====================================================
+
+    function toggleCampo(id, valor) {
+
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        const fila = el.parentElement;
+
+        if (!valor || valor === "-" || valor === "") {
+            fila.style.display = "none";
+        } else {
+            fila.style.display = "block";
+            el.textContent = valor;
+        }
+    }
+
+    // =====================================================
+    // GANTT ARC (DHTMLX) - BLOQUE FINAL LIMPIO
     // =====================================================
 
     function crearGanttArc(arcs){
 
-        gantt.clearAll();
+        if (!arcs || arcs.length === 0) return;
+
+        // 🔥 activar plugin
+        gantt.plugins({
+            marker: true
+        });
+
+        // 🔥 limpiar sin romper
+        if (gantt.getTaskCount && gantt.getTaskCount() > 0) {
+            gantt.clearAll();
+        }
 
         gantt.config.date_format = "%Y-%m-%d";
 
-        // columnas
+        // =====================================================
+        // 🔥 PLUGINS (ANTES DE TODO)
+        // =====================================================
+
+        gantt.plugins({
+            marker: true,
+            grid_resize: true
+        });
+
+        // =====================================================
+        // 🔥 LAYOUT (CLAVE PARA PODER ARRASTRAR)
+        // =====================================================
+
+        gantt.config.layout = {
+            css: "gantt_container",
+            cols: [
+                {
+                    width: 650,
+                    min_width: 350,
+                    rows: [
+                        { view: "grid", scrollX: "scrollHor", scrollY: "scrollVer" }
+                    ]
+                },
+                { resizer: true, width: 1 }, // 🔥 ESTO PERMITE ARRASTRAR
+                {
+                    rows: [
+                        { view: "timeline", scrollX: "scrollHor", scrollY: "scrollVer" }
+                    ]
+                },
+                { view: "scrollbar", id: "scrollVer" }
+            ]
+        };
+
+        // =====================================================
+        // COLUMNAS (FINAL CORRECTO)
+        // =====================================================
+
         gantt.config.columns = [
-            {name:"codigo", label:"ARC", width:70, align:"center"},
-            {name:"descripcion", label:"Descripción", width:220},
-            {name:"inicio_prog", label:"Inicio Prog", width:90, align:"center"},
-            {name:"fin_prog", label:"Fin Prog", width:90, align:"center"},
-            {name:"inicio_ejec", label:"Inicio Ejec", width:90, align:"center"},
-            {name:"fin_ejec", label:"Fin Ejec", width:90, align:"center"},
-            {name:"avance", label:"%", width:60, align:"center"}
+            {
+                name:"codigo",
+                label:"ARC",
+                width:120,          // 🔥 más ancho
+                resize:true,        // 🔥 CLAVE
+                align:"center",
+                template: t => `<span title="${t.codigo || ''}">${t.codigo || '-'}</span>`
+            },
+            {
+                name:"descripcion",
+                label:"Descripción",
+                width:400,          // 🔥 más ancho
+                resize:true,        // 🔥 CLAVE
+                template: t => `<span title="${t.descripcion || ''}">${t.descripcion || '-'}</span>`
+            },
+            {
+                name:"inicio_prog",
+                label:"Inicio Prog",
+                width:110,
+                resize:true,
+                align:"center"
+            },
+            {
+                name:"fin_prog",
+                label:"Fin Prog",
+                width:110,
+                resize:true,
+                align:"center"
+            },
+            {
+                name:"inicio_ejec",
+                label:"Inicio Ejec",
+                width:110,
+                resize:true,
+                align:"center"
+            },
+            {
+                name:"fin_ejec",
+                label:"Fin Ejec",
+                width:110,
+                resize:true,
+                align:"center"
+            },
+            {
+                name:"avance",
+                label:"%",
+                width:70,
+                resize:true,
+                align:"center"
+            }
         ];
 
-        // escala de tiempo
+        // =====================================================
+        // GRID
+        // =====================================================
+
+        gantt.config.grid_resize = true;
+        gantt.config.grid_width = 650;
+
+        // =====================================================
+        // ESCALA
+        // =====================================================
+
         gantt.config.scale_height = 50;
 
         gantt.config.scales = [
@@ -752,135 +915,165 @@ async function cargarFechasDisponibles() {
             {unit:"month", step:1, format:"%M"}
         ];
 
-        // 🔹 AJUSTES IMPORTANTES (sin scroll)
-        gantt.config.autosize = "y";   // altura automática
-        gantt.config.fit_tasks = true; // ajustar timeline al ancho
+        gantt.config.autosize = "y";
+        gantt.config.fit_tasks = true;
 
         // =====================================================
-        // DATOS
+        // DATA (LIMPIA + SIN DUPLICADOS)
         // =====================================================
 
-        // eliminar ARC duplicados
         const mapa = new Set();
 
-        const arcsUnicos = arcs.filter(a => {
+        const tareas = arcs
+            .filter(a => {
+                const clave = (a.codigo || "") + "_" + (a.descripcion || "");
+                if (mapa.has(clave)) return false;
+                mapa.add(clave);
+                return true;
+            })
+            .map((a, i) => ({
+                id: i + 1,
 
-            const clave = a.codigo + "_" + a.descripcion;
+                text: a.descripcion || "Sin nombre",
 
-            if(mapa.has(clave)){
-                return false;
-            }
+                codigo: a.codigo || "-",
+                descripcion: a.descripcion || "-",
 
-            mapa.add(clave);
-            return true;
+                inicio_prog: a.inicio_prog || a.inicio_programado || "-",
+                fin_prog: a.fin_prog || a.fin_programado || "-",
 
-        });
+                inicio_ejec: a.inicio_ejec || a.inicio_ejecutado || "-",
+                fin_ejec: a.fin_ejec || a.fin_ejecutado || "-",
 
-        const tareas = arcsUnicos.map((a,i)=>({
+                avance: (a.avance || 0) + "%",
 
-            id:i+1,
+                start_date: a.inicio_prog || a.inicio_programado,
+                end_date: a.fin_prog || a.fin_programado,
 
-            codigo:a.codigo,
-            descripcion:a.descripcion,
-
-            inicio_prog:a.inicio_programado ?? "-",
-            fin_prog:a.fin_programado ?? "-",
-
-            inicio_ejec:a.inicio_ejecutado ?? "-",
-            fin_ejec:a.fin_ejecutado ?? "-",
-
-            avance:a.avance + "%",
-
-            start_date:a.inicio_programado,
-            end_date:a.fin_programado,
-
-            progress:a.avance/100
-
-        }));
-
+                progress: (a.avance || 0) / 100
+            }));
 
         // =====================================================
-        // COLORES DE BARRAS
+        // 🔥 PLUGINS (PRIMERO DE TODO)
+        // =====================================================
+
+        gantt.plugins({
+            marker: true,
+            grid_resize: true
+        });
+
+        // =====================================================
+        // 🔥 CONFIGURACIONES IMPORTANTES
+        // =====================================================
+
+        // quitar popup al doble clic
+        gantt.config.details_on_dblclick = false;
+
+        // =====================================================
+        // ESTILO DE BARRAS
         // =====================================================
 
         gantt.templates.task_class = function(start,end,task){
-
-            if(task.progress > 0){
-                return "barra-ejecutado";   // verde
-            }
-
-            return "barra-programado";     // celeste
+            return task.progress > 0 ? "barra-ejecutado" : "barra-programado";
         };
-
-
-        // =====================================================
-        // TEXTO EN BARRA
-        // =====================================================
 
         gantt.templates.task_text = function(start,end,task){
-
-            if(task.progress > 0){
-                return Math.round(task.progress*100) + "%";
-            }
-
-            return "";
+            return task.progress > 0 ? Math.round(task.progress*100) + "%" : "";
         };
 
-
         // =====================================================
-        // INICIAR GANTT
+        // INIT (FINAL CORRECTO)
         // =====================================================
 
-        gantt.init("ganttArc");
-
-        gantt.parse({
-            data:tareas
+        // 🔥 activar plugins (ANTES de init)
+        gantt.plugins({
+            marker: true
         });
 
+        // 🔥 permitir redimensionar columnas
+        gantt.config.grid_resize = true;
+        gantt.config.grid_width = 600;
+        gantt.config.min_column_width = 50;
+
+        // 🔥 iniciar gantt
+        gantt.init("ganttArc");
+
+        // 🔥 cargar datos
+        gantt.parse({
+            data: tareas
+        });
+
+        // =====================================================
+        // 🔴 LINEAS DE REFERENCIA
+        // =====================================================
+
+        // HOY
+        const hoy = new Date();
+
+        gantt.addMarker({
+            start_date: hoy,
+            css: "hoy-linea",
+            text: "Hoy",
+            title: "Fecha actual"
+        });
+
+        // FECHA DE CORTE
+        const fechaCorteInput = document.getElementById("fechaCorte")?.value;
+
+        if (fechaCorteInput) {
+            const fechaCorte = new Date(fechaCorteInput);
+
+            gantt.addMarker({
+                start_date: fechaCorte,
+                css: "corte-linea",
+                text: "Corte",
+                title: "Fecha de corte"
+            });
+        }
     }
 
-// =====================================================
-// LEYENDA PERSONALIZADA DONUT - DEPENDENCIAS (ORDENADA)
-// =====================================================
+    // =====================================================
+    // LEYENDA PERSONALIZADA DONUT - DEPENDENCIAS (ORDENADA)
+    // =====================================================
 
-function actualizarLeyendaDependencias(labels, valores, colores) {
+    function actualizarLeyendaDependencias(labels, valores, colores) {
 
-    const contenedor = document.getElementById("leyendaDependencias");
+        const contenedor = document.getElementById("leyendaDependencias");
 
-    if (!contenedor) return;
+        if (!contenedor) return;
 
-    contenedor.innerHTML = `
-        <div style="
-            display:grid;
-            grid-template-columns: repeat(2, auto);
-            gap:10px 30px;
-            justify-content:center;
-            margin-top:12px;
-        ">
-        ${labels.map((label, i) => `
+        contenedor.innerHTML = `
             <div style="
-                display:flex;
-                align-items:center;
-                gap:6px;
-                font-size:13px;
-                color:#374151;
+                display:grid;
+                grid-template-columns: repeat(2, auto);
+                gap:10px 30px;
+                justify-content:center;
+                margin-top:12px;
             ">
-                <span style="
-                    width:12px;
-                    height:12px;
-                    background:${colores[i]};
-                    display:inline-block;
-                    border-radius:3px;
-                "></span>
+            ${labels.map((label, i) => `
+                <div style="
+                    display:flex;
+                    align-items:center;
+                    gap:6px;
+                    font-size:13px;
+                    color:#374151;
+                ">
+                    <span style="
+                        width:12px;
+                        height:12px;
+                        background:${colores[i]};
+                        display:inline-block;
+                        border-radius:3px;
+                    "></span>
 
-                <span>
-                    <strong>${valores[i]}</strong> ${label}
-                </span>
+                    <span>
+                        <strong>${valores[i]}</strong> ${label}
+                    </span>
+                </div>
+            `).join("")}
             </div>
-        `).join("")}
-        </div>
-    `;
-}
+        `;
+    }
 
 // =====================================================
 // GRÁFICO BARRAS VERTICALES - GLOBAL (CORREGIDO)
@@ -1159,9 +1352,8 @@ function generarColoresDirecciones(cantidad) {
     return paleta.slice(0, cantidad);
 }
 
-
 // =====================================================
-// GRÁFICO BARRAS HORIZONTALES
+// GRÁFICO BARRAS HORIZONTALES - PROYECTOS POR DIRECCION
 // =====================================================
 
 function crearHorizontalBarChart(id, labels, data) {
@@ -1185,20 +1377,63 @@ function crearHorizontalBarChart(id, labels, data) {
             responsive: true,
             maintainAspectRatio: false,
 
-            // 🔥 CLAVE: animación horizontal
+            layout: {
+                padding: {
+                    left: 20
+                }
+            },
+
             animation: {
                 duration: 1200,
                 easing: "easeOutQuart"
             },
 
             animations: {
-                x: {   // 🔥 IMPORTANTE: X, no Y
+                x: {
                     from: 0
                 }
             },
 
+            scales: {
+                y: {
+                    ticks: {
+                        autoSkip: false,
+                        padding: 10,
+                        callback: function(value) {
+                            const label = this.getLabelForValue(value);
+                            return label.length > 30
+                                ? label.substring(0, 30) + "..."
+                                : label;
+                        }
+                    }
+                },
+                x: {
+                    beginAtZero: true
+                }
+            },
+
             plugins: {
-                legend: { display: false }
+                legend: { display: false },
+
+                tooltip: {
+                    callbacks: {
+                        title: function(items) {
+                            return items[0].label;
+                        },
+                        label: function(item) {
+                            return `Proyectos: ${item.raw}`;
+                        }
+                    }
+                }, // ✅ ESTA COMA ES LA CLAVE
+
+                datalabels: {
+                    anchor: "end",
+                    align: "right",
+                    color: "#374151",
+                    font: {
+                        weight: "bold"
+                    }
+                }
             }
         },
         plugins: [ChartDataLabels]
@@ -1268,12 +1503,40 @@ function crearDoughnutChart(id, labels, data, coloresCustom = null) {
 }
 
 // =====================================================
-// PIE - DEPENDENCIAS INTERNAS (CON ANIMACIÓN)
+// PIE - DEPENDENCIAS INTERNAS (ROBUSTO FINAL)
 // =====================================================
 
-function crearPieDependenciasInternas(id, labels, data) {
+function crearPieDependenciasInternas(id, labels, data, nombreDireccion = "Sin dependencia") {
 
     destruirChart(id);
+
+    const canvas = document.getElementById(id);
+
+    // 🔥 VALIDACIÓN COMPLETA (labels + data)
+    const labelsInvalidos =
+        !labels ||
+        labels.length === 0 ||
+        labels.every(l => !l || l === "undefined");
+
+    const dataInvalidos =
+        !data ||
+        data.length === 0 ||
+        data.every(v => v === 0);
+
+    // 🔥 SI NO HAY DATOS → DEPENDE DE SÍ MISMA
+    if (labelsInvalidos || dataInvalidos) {
+
+        const total = dataGlobalIA?.kpis?.total || 1;
+
+        const nombreFinal =
+            nombreDireccion ||
+            document.getElementById("direccionSelect")
+                ?.selectedOptions?.[0]?.text ||
+            "Sin dependencia";
+
+        labels = [nombreFinal];
+        data = [total];
+    }
 
     const coloresPastelNeutros = [
         "#F6E7CB",
@@ -1286,7 +1549,7 @@ function crearPieDependenciasInternas(id, labels, data) {
         "#F3E8FF"
     ];
 
-    charts[id] = new Chart(document.getElementById(id), {
+    charts[id] = new Chart(canvas, {
         type: "pie",
         data: {
             labels,
@@ -1302,7 +1565,6 @@ function crearPieDependenciasInternas(id, labels, data) {
             responsive: true,
             maintainAspectRatio: false,
 
-            // 🔥 ANIMACIÓN
             animation: {
                 animateRotate: true,
                 animateScale: true,
@@ -1314,11 +1576,22 @@ function crearPieDependenciasInternas(id, labels, data) {
                 legend: {
                     position: "bottom"
                 },
+
+                // 🔥 TOOLTIP PROFESIONAL
+                tooltip: {
+                    callbacks: {
+                        label: function(item) {
+                            return `${item.label}: ${item.raw}`;
+                        }
+                    }
+                },
+
+                // 🔥 NUMEROS EN EL CENTRO
                 datalabels: {
                     color: "#6B5A70",
                     font: {
                         weight: "bold",
-                        size: 12
+                        size: 14
                     },
                     formatter: value => value
                 }
@@ -1328,7 +1601,6 @@ function crearPieDependenciasInternas(id, labels, data) {
         plugins: [ChartDataLabels]
     });
 
-    // 🔥 CLAVE
     charts[id].update();
 }
 
@@ -1463,7 +1735,7 @@ function crearLineaChart(id, labels, datasetsConfig) {
             left: 300,
             behavior: "smooth"
         });
-    });
+});
 
 // =====================================================
 // 🤖 IA POPUP CHAT
@@ -1485,8 +1757,26 @@ cerrarIA?.addEventListener("click", () => {
     popupIA.classList.add("hidden");
 });
 
+// =====================================================
+// 🔹 ENTER PARA ENVIAR (🔥 AQUÍ VA EL FIX)
+// =====================================================
+
+inputIA?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        responderIA();
+    }
+});
+
+// =====================================================
 // 🔹 ENVIAR MENSAJE
+// =====================================================
+
 enviarIA?.addEventListener("click", responderIA);
+
+// =====================================================
+// 🔹 FUNCIÓN PRINCIPAL
+// =====================================================
 
 async function responderIA(){
 
@@ -1515,7 +1805,8 @@ async function responderIA(){
             const data = await res.json();
             respuesta = data.respuesta;
 
-        } catch {
+        } catch (error) {
+            console.error("Error IA:", error);
             respuesta = "Error consultando IA externa.";
         }
     }
@@ -1526,11 +1817,12 @@ async function responderIA(){
 
     inputIA.value = "";
 }
-    function generarRespuestaIA(pregunta){
 
-    if (!dataGlobalIA) {
-        return "Cargando datos...";
-    }
+// =====================================================
+// 🧠 RESPUESTAS IA LOCAL
+// =====================================================
+
+function generarRespuestaIA(pregunta){
 
     const p = pregunta.toLowerCase();
 
@@ -1539,7 +1831,6 @@ async function responderIA(){
     }
 
     if (p.includes("ejec")) {
-
         const estados = dataGlobalIA?.estados || [];
 
         const ejec = estados.find(e => 
@@ -1552,5 +1843,5 @@ async function responderIA(){
     return "Prueba:";
 }
 
-// 👇 ESTE ES EL CIERRE CORRECTO DEL DOM
-});
+// 🔥 ESTA LÍNEA SE MANTIENE (porque tu estructura lo usa)
+})();
