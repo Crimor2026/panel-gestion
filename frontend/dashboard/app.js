@@ -10,7 +10,6 @@
 
     let charts = {};
     let calendario = null;
-
     let dataGlobalIA = null;
 
     const direccionSelect = document.getElementById("direccionSelect");
@@ -22,12 +21,58 @@
     const btnSubirProyectos = document.getElementById("btnSubirProyectos");
     const btnSubirARC = document.getElementById("btnSubirARC");
     const btnLogout = document.getElementById("btnLogout");
+    const btnExportarPDF = document.getElementById("btnExportarPDF");
 
     const excelProyectos = document.getElementById("excelProyectos");
     const excelARC = document.getElementById("excelARC");
 
     const token = sessionStorage.getItem("token");
-    const rol = sessionStorage.getItem("rol");
+    const rol = sessionStorage.getItem("rol"); // 🔥 USAR ROL
+
+    // =====================================================
+    // CONTROL DE PERMISOS (PRO)
+    // =====================================================
+
+    if (rol === "admin") {
+        btnSubirProyectos?.classList.remove("hidden");
+        btnSubirARC?.classList.remove("hidden");
+        btnExportarPDF?.classList.remove("hidden");
+    }
+
+    // =====================================================
+    // EXPORTAR PDF
+    // =====================================================
+
+    btnExportarPDF?.addEventListener("click", () => {
+
+        if (rol !== "admin") return; // 🔒 seguridad extra
+
+        const elemento = document.getElementById("contenidoDashboard");
+
+        if (!elemento) {
+            console.error("No existe contenidoDashboard");
+            return;
+        }
+
+        if (typeof html2pdf === "undefined") {
+            alert("Librería PDF no cargada");
+            return;
+        }
+
+        const opciones = {
+            margin: 0.3,
+            filename: "reporte_ATU.pdf",
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: {
+                unit: "mm",
+                format: "a4",
+                orientation: "portrait"
+            }
+        };
+
+        html2pdf().set(opciones).from(elemento).save();
+    });
 
     // =====================================================
     // TOGGLE ESTATUS CONSOLIDADO
@@ -61,36 +106,36 @@
 
     });
 
-        // =====================================================
-        // EVENTOS FILTROS
-        // =====================================================
+    // =====================================================
+    // EVENTOS FILTROS
+    // =====================================================
 
-        direccionSelect?.addEventListener("change", async () => {
+    direccionSelect?.addEventListener("change", async () => {
 
-            // 🔥 obtener valor REAL desde TomSelect
-            const direccionId = window.tsDireccion?.getValue() || direccionSelect.value;
+        const direccionId = window.tsDireccion?.getValue() || direccionSelect.value;
 
-            console.log("Dirección seleccionada:", direccionId); // DEBUG
+        console.log("Dirección seleccionada:", direccionId);
 
-            await cargarDashboardDireccion(direccionId);
+        await cargarDashboardDireccion(direccionId);
 
-        });
+    });
 
-        // =====================================================
-        // CAMBIO DE PROYECTO
-        // =====================================================
+    // =====================================================
+    // CAMBIO DE PROYECTO
+    // =====================================================
 
-        proyectoSelect?.addEventListener("change", async () => {
+    proyectoSelect?.addEventListener("change", async () => {
 
-            const proyectoId = proyectoSelect.value;
-            const fechaActual = fechaInput.value;
+        const proyectoId = proyectoSelect.value;
+        const fechaActual = fechaInput.value;
 
-            if (!proyectoId) return;
+        if (!proyectoId) return;
 
-            await cargarDetalleProyecto(proyectoId, fechaActual);
+        await cargarDetalleProyecto(proyectoId, fechaActual);
 
-        });
-    
+    });
+
+ 
         // =====================================================
     // FILTRO CLASIFICACION
     // =====================================================

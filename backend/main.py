@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 
 import pandas as pd
+import pytz
+
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -20,7 +22,6 @@ from sqlalchemy import text
 
 from backend.database import engine
 
-# 🔥👇 AGREGA ESTO AQUÍ 👇🔥
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -710,16 +711,29 @@ def login(data: LoginRequest):
     if not pwd_context.verify(data.password, password_hash):
         raise HTTPException(status_code=400, detail="Contraseña incorrecta")
 
+    # 🔥 función hora Perú
+    def obtener_fecha_lima():
+        import pytz
+        lima = pytz.timezone("America/Lima")
+        return datetime.now(lima)
+
     ultima_conexion = result["ultima_conexion"]
+
+    # 🔥 nueva hora en Perú
+    ahora = obtener_fecha_lima()
 
     with engine.connect() as conn:
         conn.execute(text("""
             UPDATE usuarios
-            SET ultima_conexion = NOW()
+            SET ultima_conexion = :fecha
             WHERE id = :id
-        """), {"id": result["id"]})
+        """), {
+            "id": result["id"],
+            "fecha": ahora
+        })
         conn.commit()
 
+    # 🔥 token SIEMPRE en UTC (IMPORTANTE)
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
     token = jwt.encode(
@@ -737,9 +751,12 @@ def login(data: LoginRequest):
         "token_type": "bearer",
         "rol": result["rol"],
         "nombre": result["nombre"],
-        "ultima_conexion": str(ultima_conexion) if ultima_conexion else None
+        "email": result["email"],  # 🔥 IMPORTANTE para frontend
+        "ultima_conexion": (
+            ultima_conexion.strftime("%d/%m/%Y %I:%M %p")
+            if ultima_conexion else None
+        )
     }
-
 
 # =====================================================
 # OBTENER USUARIO ACTUAL
@@ -1588,6 +1605,9 @@ def cambiar_password(
     password_actual = data.get("password_actual")
     password_nueva = data.get("password_nueva")
 
+    if not password_actual or not password_nueva:
+        raise HTTPException(status_code=400, detail="Faltan datos")
+
     if not pwd_context.verify(password_actual, user.password_hash):
         raise HTTPException(status_code=400, detail="Contraseña actual incorrecta")
 
@@ -1606,30 +1626,23 @@ def cambiar_password(
 
     return {"mensaje": "Contraseña actualizada"}
 
-# =====================================================
-# CAMBIAR CONTRASEÑA
-# =====================================================
 
-from fastapi import APIRouter
-from pydantic import BaseModel
-import requests
-import os
+# =====================================================
+# IA - AURA
+# =====================================================
 
 router = APIRouter(
     prefix="/api/ia",
     tags=["IA - Aura"]
 )
 
+
 class Pregunta(BaseModel):
     pregunta: str
     data: dict | None = None
 
 
-@router.post(
-    "",
-    summary="Consulta IA Aura",
-    description="Recibe una pregunta del usuario y responde usando Groq (Llama3)"
-)
+@router.post("")
 async def consultar_ia(req: Pregunta):
 
     api_key = os.getenv("GROQ_API_KEY")
@@ -1638,43 +1651,50 @@ async def consultar_ia(req: Pregunta):
         return {"respuesta": "Error: API key no configurada"}
 
     prompt = f"""
-    Eres Aura, asistente de proyectos de transporte urbano (ATU).
+Eres Aura, asistente de proyectos de transporte urbano (ATU).
 
-    Usa estos datos si ayudan:
-    {req.data}
+Usa estos datos si ayudan:
+{req.data}
 
-    Responde claro, breve y profesional:
-    {req.pregunta}
-    """
+Responde claro, breve y profesional:
+{req.pregunta}
+"""
 
-    response = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": "llama-3.1-8b-instant",
-            "messages": [
-                {"role": "system", "content": "Eres Aura, asistente profesional."},
-                {"role": "user", "content": prompt}
-            ]
-        }
-    )
+    try:
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "llama-3.1-8b-instant",
+                "messages": [
+                    {"role": "system", "content": "Eres Aura, asistente profesional."},
+                    {"role": "user", "content": prompt}
+                ]
+            }
+        )
 
-    if response.status_code != 200:
+        if response.status_code != 200:
+            return {
+                "respuesta": f"Error IA ({response.status_code})"
+            }
+
+        data = response.json()
+
         return {
-            "respuesta": f"Error IA ({response.status_code}): {response.text}"
+            "respuesta": data["choices"][0]["message"]["content"]
         }
 
-    data = response.json()
+    except Exception as e:
+        return {
+            "respuesta": f"Error IA: {str(e)}"
+        }
 
-    return {
-        "respuesta": data["choices"][0]["message"]["content"]
-    }
 
 # =====================================================
-# ACTIVAR RUTAS IA
+# ACTIVAR RUTER IA
 # =====================================================
 
 app.include_router(router)
