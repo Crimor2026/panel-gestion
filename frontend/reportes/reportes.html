@@ -1,25 +1,245 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Reportes de Proyectos</title>
+<meta charset="UTF-8">
+<title>Reportes ATU</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+
+/* ========================= BASE ========================= */
+body{
+margin:0;
+font-family:sans-serif;
+background:#0f4c75;
+overflow-x:hidden;
+}
+
+/* ========================= CONTENEDOR ========================= */
+.container{
+min-height:100vh;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+text-align:center;
+padding:20px;
+
+/* 🔥 IMPORTANTE */
+width:100%;
+max-width:100%;
+margin:0 auto;
+}
+
+/* ========================= FONDO SVG ========================= */
+.fondoSVG{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+z-index:-2;
+pointer-events:none;
+}
+
+.anim{
+animation:float 10s ease-in-out infinite alternate;
+}
+
+@keyframes float{
+0%{transform:translateY(0);}
+100%{transform:translateY(-30px);}
+}
+
+/* ========================= PARTÍCULAS ========================= */
+canvas{
+position:fixed;
+top:0;
+left:0;
+z-index:-1;
+pointer-events:none;
+}
+
+/* ========================= GRID (🔥 CENTRADO REAL) ========================= */
+.grid-reportes{
+display:grid;
+grid-template-columns: repeat(3, minmax(180px, 220px));
+gap:25px;
+
+/* 🔥 CENTRADO REAL */
+justify-content:center;
+align-content:center;
+
+width:100%;
+margin-top:40px;
+}
+
+/* responsive */
+@media(max-width:768px){
+.grid-reportes{
+grid-template-columns: repeat(2, minmax(140px, 180px));
+}
+}
+
+@media(max-width:480px){
+.grid-reportes{
+grid-template-columns: 1fr;
+max-width:260px;
+margin-left:auto;
+margin-right:auto;
+}
+}
+
+/* ========================= TARJETAS ========================= */
+.card{
+width:100%;
+height:130px;
+
+background:rgba(255,255,255,0.15);
+backdrop-filter:blur(18px);
+
+border-radius:18px;
+display:flex;
+align-items:center;
+justify-content:center;
+
+font-size:16px;
+font-weight:600;
+color:white;
+
+cursor:pointer;
+transition:all 0.3s ease;
+
+box-shadow:
+0px 10px 30px rgba(0,0,0,0.4),
+0px 0px 20px rgba(0,200,255,0.15);
+}
+
+.card:hover{
+transform:translateY(-8px) scale(1.05);
+background:linear-gradient(135deg,#00c6ff,#00ffd5);
+box-shadow:
+0px 20px 60px rgba(0,200,255,0.6),
+0px 0px 40px rgba(0,255,200,0.4);
+}
+
+/* ========================= TITULO ========================= */
+.titulo{
+color:white;
+font-size:28px;
+font-weight:bold;
+text-align:center;
+margin-bottom:10px;
+}
+
+</style>
 </head>
 
 <body>
 
-<div class="botonesLanding w-full flex justify-center gap-4 flex-wrap fadeLanding">
+<!-- ========================= FONDO ========================= -->
+<svg class="fondoSVG" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
 
-<button onclick="irDashboard()" class="btnLanding">
-Dashboard
-</button>
+  <path class="anim"
+    d="M0,900 L0,350 C300,450 700,200 1440,350 L1440,900 Z"
+    fill="url(#grad1)" />
 
-<a 
-href="https://atugobpe-my.sharepoint.com/:x:/r/personal/hvillon_atu_gob_pe/_layouts/15/Doc.aspx?sourcedoc=%7BDAFC0B4C-6A12-400D-9D2F-7EFA1E9F02E4%7D&file=Registro%20de%20intervenciones.xlsx&action=default&mobileredirect=true"
-target="_blank"
-class="btnLanding">
-Reportes
-</a>
+  <path class="anim"
+    d="M0,900 L0,200 C250,300 500,150 900,250 L0,900 Z"
+    fill="url(#grad2)" />
+
+  <defs>
+    <linearGradient id="grad1">
+      <stop offset="0%" stop-color="#0f4c75"/>
+      <stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+
+    <linearGradient id="grad2">
+      <stop offset="0%" stop-color="#0f4c75"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+  </defs>
+
+</svg>
+
+<!-- ========================= PARTÍCULAS ========================= -->
+<canvas id="particles"></canvas>
+
+<!-- ========================= CONTENIDO ========================= -->
+<div class="container">
+
+    <h1 class="titulo">PANEL DE REPORTES</h1>
+
+    <div class="grid-reportes">
+        <div class="card" onclick="ir('A')">Reporte A</div>
+        <div class="card" onclick="ir('B')">Reporte B</div>
+        <div class="card" onclick="ir('C')">Reporte C</div>
+        <div class="card" onclick="ir('D')">Reporte D</div>
+        <div class="card" onclick="ir('E')">Reporte E</div>
+        <div class="card" onclick="ir('F')">Reporte F</div>
+    </div>
+
+    <button onclick="volver()" class="mt-10 text-white underline">
+        ← Volver
+    </button>
 
 </div>
+
+<!-- ========================= JS ========================= -->
+<script>
+function ir(tipo){
+    window.location.href = `/static/reportes/reporte${tipo}.html`;
+}
+
+function volver(){
+    window.location.href = "/";
+}
+</script>
+
+<script>
+const canvas = document.getElementById("particles");
+const ctx = canvas.getContext("2d");
+
+function resize(){
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+let particles = [];
+
+for(let i=0;i<60;i++){
+particles.push({
+x:Math.random()*canvas.width,
+y:Math.random()*canvas.height,
+vx:Math.random()*0.5-0.25,
+vy:Math.random()*0.5-0.25
+});
+}
+
+function draw(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+particles.forEach(p=>{
+p.x+=p.vx;
+p.y+=p.vy;
+
+if(p.x<0||p.x>canvas.width) p.vx*=-1;
+if(p.y<0||p.y>canvas.height) p.vy*=-1;
+
+ctx.beginPath();
+ctx.arc(p.x,p.y,2,0,Math.PI*2);
+ctx.fillStyle="rgba(255,255,255,0.4)";
+ctx.fill();
+});
+
+requestAnimationFrame(draw);
+}
+
+draw();
+</script>
 
 </body>
 </html>

@@ -27,7 +27,7 @@ function irDashboard(){
 function irReportes(){
     document.body.classList.add("pageFadeOut");
     setTimeout(()=>{
-        window.location.href="https://atugobpe.sharepoint.com/sites/DOCUMENTOSEXTERNOSDSP/Documentos%20compartidos/Forms/AllItems.aspx";
+        window.location.href="/static/reportes/reportes.html";
     },350);
 }
 
