@@ -61,36 +61,35 @@
 
     });
 
-    // =====================================================
-    // EVENTOS FILTROS
-    // =====================================================
+        // =====================================================
+        // EVENTOS FILTROS
+        // =====================================================
 
-    direccionSelect?.addEventListener("change", async () => {
+        direccionSelect?.addEventListener("change", async () => {
 
-        const direccionId = direccionSelect.value;
+            // 🔥 obtener valor REAL desde TomSelect
+            const direccionId = window.tsDireccion?.getValue() || direccionSelect.value;
 
-        await cargarDashboardDireccion(direccionId);
+            console.log("Dirección seleccionada:", direccionId); // DEBUG
 
-    });
+            await cargarDashboardDireccion(direccionId);
 
-    // =====================================================
-    // CAMBIO DE PROYECTO
-    // =====================================================
+        });
 
-    proyectoSelect?.addEventListener("change", async () => {
+        // =====================================================
+        // CAMBIO DE PROYECTO
+        // =====================================================
 
-        const proyectoId = proyectoSelect.value;
-        const fechaActual = fechaInput.value;
-        const direccionActual = direccionSelect.value;
+        proyectoSelect?.addEventListener("change", async () => {
 
-        if (!proyectoId) return;
+            const proyectoId = proyectoSelect.value;
+            const fechaActual = fechaInput.value;
 
-        // actualizar detalle
-        if (fechaActual) {
+            if (!proyectoId) return;
+
             await cargarDetalleProyecto(proyectoId, fechaActual);
-        }
 
-    });
+        });
     
         // =====================================================
     // FILTRO CLASIFICACION
@@ -508,29 +507,35 @@ async function cargarDashboardDireccion(direccionId) {
 
                 const proyectos = await res.json();
 
-                // 🔹 llenar select (SIN CAMBIOS)
-                proyectoSelect.innerHTML = proyectos
-                    .map(p => `<option value="${p.id}">${p.nombre}</option>`)
-                    .join("");
-
-                // 🔥 🔥 🔥 CLAVE: reiniciar TomSelect
-                if (window.tsProyecto) {
-                    window.tsProyecto.destroy();
+                // 🔥 inicializar SOLO UNA VEZ
+                if (!window.tsProyecto) {
+                    window.tsProyecto = new TomSelect("#proyectoSelect", {
+                        placeholder: "Buscar proyecto...",
+                        allowEmptyOption: true,
+                        searchField: ["text"],
+                    });
                 }
 
-                window.tsProyecto = new TomSelect("#proyectoSelect", {
-                    placeholder: "Buscar proyecto...",
-                    allowEmptyOption: true,
-                    searchField: ["text"], // 🔥 busca por nombre visible
+                const ts = window.tsProyecto;
+
+                // 🔥 limpiar correctamente
+                ts.clear();
+                ts.clearOptions();
+
+                // 🔥 cargar nuevos proyectos
+                proyectos.forEach(p => {
+                    ts.addOption({
+                        value: p.id,
+                        text: p.nombre
+                    });
                 });
 
+                // 🔥 refrescar
+                ts.refreshOptions(false);
                 if (!proyectos.length) return;
 
                 const primerProyecto = proyectos[0].id;
-                proyectoSelect.value = primerProyecto;
-
-                // 🔥 importante: actualizar TomSelect visualmente
-                window.tsProyecto.setValue(primerProyecto);
+                ts.setValue(primerProyecto);
 
                 const fechaActual = fechaInput.value;
 
