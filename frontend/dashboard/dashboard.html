@@ -28,6 +28,9 @@ href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
 <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
 <style>
 .card {
     background:#f3f4f6;
@@ -375,32 +378,59 @@ canvas {
       </h1>
     </div>
 
-    <!-- Login + Calendario -->
-    <div class="flex flex-col md:items-end items-center gap-4">
+   <!-- Login + Calendario -->
+  <div class="flex flex-col md:items-end items-center gap-4">
 
+    <!-- 🔥 BOTONES EN FILA -->
+    <div class="flex items-center gap-3">
+      
       <button id="btnLogout"
       class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded text-sm shadow transition">
       Cerrar sesión
       </button>
 
-      <!-- Selector Fecha Corte (Flatpickr) -->
-      <div class="w-56">
-        <label class="text-xs font-semibold text-gray-600 block mb-1">
-          Fecha de Corte
-        </label>
+      <button id="btnExportarPDF"
+      class="hidden bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded text-sm shadow transition">
+      PDF
+      </button>
 
-        <input type="text"
-               id="fechaCorte"
-               placeholder="Seleccionar fecha"
-               class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white cursor-pointer">
-      </div>
+    </div>
 
+    <!-- 📅 Fecha -->
+    <div class="w-56">
+      <label class="text-xs font-semibold text-gray-600 block mb-1">
+        Fecha de Corte
+      </label>
+
+      <input type="text"
+            id="fechaCorte"
+            placeholder="Seleccionar fecha"
+            class="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white cursor-pointer">
     </div>
 
   </div>
 </header>
 
-<main class="w-full px-10 py-8 space-y-10">
+<main id="contenidoDashboard" class="w-full px-10 py-8 space-y-10">
+
+  <!-- ================= PDF LIMPIO ================= -->
+  <div id="pdfReporte" class="hidden bg-white p-8 text-black">
+
+    <h1 style="font-size:20px; font-weight:bold; margin-bottom:10px;">
+      REPORTE DE PROYECTOS - ATU
+    </h1>
+
+    <p style="margin-bottom:15px;">
+      Fecha: <span id="pdfFecha"></span>
+    </p>
+
+    <h2 style="font-weight:bold; margin-bottom:8px;">Resumen</h2>
+    <ul id="pdfResumen" style="margin-bottom:15px;"></ul>
+
+    <h2 style="font-weight:bold; margin-bottom:8px;">Detalle</h2>
+    <div id="pdfTabla"></div>
+
+  </div>
 
 <!-- ================= ESTATUS CONSOLIDADO ================= -->
 <div class="bg-white border-2 border-amber-300/50 rounded-xl shadow-lg overflow-hidden mb-6">
@@ -603,77 +633,46 @@ canvas {
         Clasificación
       </label>
 
-      <div class="relative z-50">
-        <select id="clasificacionFiltro"
-          class="w-full appearance-none px-4 py-3 pr-10
-                 rounded-xl border border-gray-200
-                 bg-white
-                 shadow-sm
-                 focus:outline-none focus:ring-2 focus:ring-indigo-400
-                 hover:border-indigo-300
-                 transition-all duration-200">
-
-          <option value="">Todas</option>
-          <option value="1">Actividad</option>
-          <option value="2">Inversión</option>
-          <option value="3">Estudio</option>
-
-        </select>
-
-        <div class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-          ▼
-        </div>
-      </div>
+      <select id="clasificacionFiltro"
+        class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white">
+        <option value="">Todas</option>
+        <option value="1">Actividad</option>
+        <option value="2">Inversión</option>
+        <option value="3">Estudio</option>
+      </select>
     </div>
 
     <!-- Proyecto -->
-    <div class="col-span-12 md:col-span-8 xl:col-span-6">
+    <div class="col-span-12 md:col-span-5 xl:col-span-6">
       <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">
         Proyecto
       </label>
 
-      <div class="relative z-50">
-        <select id="proyectoSelect"
-          class="w-full appearance-none px-4 py-3 pr-10
-                 rounded-xl border border-gray-200
-                 bg-white
-                 shadow-sm
-                 focus:outline-none focus:ring-2 focus:ring-indigo-400
-                 hover:border-indigo-300
-                 transition-all duration-200">
-        </select>
-
-        <div class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-          ▼
-        </div>
-      </div>
+      <select id="proyectoSelect"
+        class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white">
+      </select>
     </div>
 
-  </div>
+    <!-- ✅ BOTONES (AQUÍ VA) -->
+    <div class="col-span-12 md:col-span-3 flex gap-3">
 
-</div>
-
-    <!-- Botón subir -->
-    <div class="col-span-12 md:col-span-3 flex justify-end">
       <input type="file" id="excelProyectos" class="hidden" accept=".xlsx">
       <input type="file" id="excelARC" class="hidden" accept=".xlsx">
 
-      <div class="flex gap-3 w-full">
-
       <button id="btnSubirProyectos"
-      class="hidden bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-md shadow transition w-full">
-      Subir Proyectos
+        class="hidden bg-emerald-600 text-white px-4 py-3 rounded-md w-full">
+        Subir Proyectos
       </button>
 
       <button id="btnSubirARC"
-      class="hidden bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-md shadow transition w-full">
-      Subir ARC
+        class="hidden bg-blue-600 text-white px-4 py-3 rounded-md w-full">
+        Subir ARC
       </button>
 
-      </div>
     </div>
 
   </div>
+
 </div>
 
 <!-- ================= FICHAS INFORMATIVAS ================= -->
@@ -892,6 +891,10 @@ class="hidden fixed bottom-24 right-6 w-80 bg-white rounded-xl shadow-2xl border
 
 </div>
 
+<!-- LIBRERÍA PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<!-- TU JS -->
 <script src="/static/dashboard/app.js"></script>
 
 </body>

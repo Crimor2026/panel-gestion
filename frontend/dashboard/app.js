@@ -2,6 +2,7 @@
 // DOM READY
 // =====================================================
 
+let dataGlobalIA = null;
 (async () => {
 
     // =====================================================
@@ -10,7 +11,6 @@
 
     let charts = {};
     let calendario = null;
-    let dataGlobalIA = null;
 
     const direccionSelect = document.getElementById("direccionSelect");
     const clasificacionFiltro = document.getElementById("clasificacionFiltro");
@@ -38,41 +38,6 @@
         btnSubirARC?.classList.remove("hidden");
         btnExportarPDF?.classList.remove("hidden");
     }
-
-    // =====================================================
-    // EXPORTAR PDF
-    // =====================================================
-
-    btnExportarPDF?.addEventListener("click", () => {
-
-        if (rol !== "admin") return; // 🔒 seguridad extra
-
-        const elemento = document.getElementById("contenidoDashboard");
-
-        if (!elemento) {
-            console.error("No existe contenidoDashboard");
-            return;
-        }
-
-        if (typeof html2pdf === "undefined") {
-            alert("Librería PDF no cargada");
-            return;
-        }
-
-        const opciones = {
-            margin: 0.3,
-            filename: "reporte_ATU.pdf",
-            image: { type: "jpeg", quality: 0.98 },
-            html2canvas: { scale: 2 },
-            jsPDF: {
-                unit: "mm",
-                format: "a4",
-                orientation: "portrait"
-            }
-        };
-
-        html2pdf().set(opciones).from(elemento).save();
-    });
 
     // =====================================================
     // TOGGLE ESTATUS CONSOLIDADO
@@ -1893,5 +1858,101 @@ function generarRespuestaIA(pregunta){
     return "Prueba:";
 }
 
-// 🔥 ESTA LÍNEA SE MANTIENE (porque tu estructura lo usa)
+    // =====================================================
+    // 📄 EXPORTAR PDF PRO (SIN IMPORT)
+    // =====================================================
+
+    btnExportarPDF?.addEventListener("click", () => {
+
+        const { jsPDF } = window.jspdf;
+
+        const doc = new jsPDF();
+
+        const fecha = document.getElementById("fechaCorte")?.value || "Sin fecha";
+
+        const kpis = dataGlobalIA?.kpis || {};
+        const proyectos = dataGlobalIA?.proyectos || [];
+
+        // 🧾 TÍTULO
+        doc.setFontSize(16);
+        doc.text("REPORTE DE PROYECTOS - ATU", 14, 20);
+
+        doc.setFontSize(10);
+        doc.text(`Fecha: ${fecha}`, 14, 28);
+
+        // 📊 KPIs
+        doc.text(`Total: ${kpis.total || 0}`, 14, 40);
+        doc.text(`En ejecución: ${kpis.en_ejecucion || 0}`, 14, 46);
+        doc.text(`Sin iniciar: ${kpis.sin_iniciar || 0}`, 14, 52);
+        doc.text(`Paralizados: ${kpis.paralizado || 0}`, 14, 58);
+        doc.text(`Concluidos: ${kpis.concluido || 0}`, 14, 64);
+
+        // 📋 TABLA PRO
+        doc.autoTable({
+            startY: 75,
+            head: [["Proyecto", "Estado"]],
+            body: proyectos.map(p => [
+                p.nombre || "-",
+                p.estado || "-"
+            ]),
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [41, 128, 185] }
+        });
+
+        doc.save("reporte_ATU.pdf");
+
+    });
+
+
+    // =====================================================
+    // 🧠 GENERAR CONTENIDO PDF (FILTRADO REAL)
+    // =====================================================
+
+    function prepararPDF() {
+
+        const fecha = document.getElementById("fechaCorte")?.value || "Sin fecha";
+
+        const direccion = document.getElementById("direccionSelect")?.selectedOptions?.[0]?.text || "Todas";
+        const proyecto = document.getElementById("proyectoSelect")?.selectedOptions?.[0]?.text || "Todos";
+
+        const kpis = dataGlobalIA?.kpis || {};
+
+        // 📅
+        document.getElementById("pdfFecha").innerText = fecha;
+
+        // 📊 RESUMEN
+        document.getElementById("pdfResumen").innerHTML = `
+            <li><strong>Dirección:</strong> ${direccion}</li>
+            <li><strong>Proyecto:</strong> ${proyecto}</li>
+            <li>Total proyectos: ${kpis.total || 0}</li>
+            <li>En ejecución: ${kpis.en_ejecucion || 0}</li>
+            <li>Sin iniciar: ${kpis.sin_iniciar || 0}</li>
+            <li>Paralizados: ${kpis.paralizado || 0}</li>
+            <li>Concluidos: ${kpis.concluido || 0}</li>
+        `;
+
+        // 📋 TABLA (PROYECTOS FILTRADOS VISIBLES)
+        const opcionesProyecto = document.querySelectorAll("#proyectoSelect option");
+
+        const filas = Array.from(opcionesProyecto).map(opt => `
+            <tr>
+                <td style="padding:6px;">${opt.text}</td>
+                <td style="padding:6px;">-</td>
+            </tr>
+        `).join("");
+
+        document.getElementById("pdfTabla").innerHTML = `
+            <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead>
+                    <tr style="background:#f3f4f6;">
+                        <th style="padding:6px; text-align:left;">Proyecto</th>
+                        <th style="padding:6px; text-align:left;">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filas}
+                </tbody>
+            </table>
+        `;
+    }
 })();

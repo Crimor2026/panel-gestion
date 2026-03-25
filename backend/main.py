@@ -9,8 +9,9 @@ from typing import Any, Optional
 
 import pandas as pd
 import pytz
+import requests
 
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
@@ -76,6 +77,17 @@ def limpiar_fecha(valor):
         return pd.to_datetime(valor).date()
     except:
         return None
+
+# =====================================================
+# SEGURIDAD
+# =====================================================
+
+SECRET_KEY = os.getenv("SECRET_KEY", "CLAVE_LOCAL_TEMPORAL")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
 
 # =====================================================
 # APP
@@ -171,20 +183,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# =====================================================
-# SEGURIDAD
-# =====================================================
-
-SECRET_KEY = os.getenv("SECRET_KEY", "CLAVE_LOCAL_TEMPORAL")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-security = HTTPBearer()
-
-def normalizar_fecha(fecha_str):
-    return datetime.strptime(fecha_str, "%Y-%m-%d").date()
 
 # =====================================================
 # DASHBOARD GLOBAL
@@ -310,6 +308,28 @@ def dashboard_global(fecha: Optional[str] = None):
                 "fecha": fecha_corte
             }).fetchall()
 
+            # ================= PROYECTOS (🔥 CLAVE PARA PDF) =================
+            proyectos = conn.execute(
+                text("""
+                    SELECT 
+                        p.nombre,
+                        pv.estado
+                    FROM proyectos p
+
+                    JOIN LATERAL (
+                        SELECT *
+                        FROM proyecto_version pv2
+                        WHERE pv2.proyecto_id = p.id
+                        AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
+                        ORDER BY pv2.fecha_corte DESC
+                        LIMIT 1
+                    ) pv ON true
+
+                    ORDER BY p.nombre
+                """),
+                {"fecha": fecha_corte}
+            ).fetchall()
+
         return {
             "kpis": dict(kpis._mapping) if kpis else {
                 "total": 0,
@@ -321,7 +341,8 @@ def dashboard_global(fecha: Optional[str] = None):
             "estados": [dict(r._mapping) for r in estados],
             "dependencias": [dict(r._mapping) for r in dependencias],
             "direcciones_total": [dict(r._mapping) for r in direcciones_total],
-            "direcciones_filtradas": [dict(r._mapping) for r in direcciones_filtradas]
+            "direcciones_filtradas": [dict(r._mapping) for r in direcciones_filtradas],
+            "proyectos": [dict(r._mapping) for r in proyectos]  # 🔥 NUEVO
         }
 
     except Exception as e:
@@ -338,7 +359,8 @@ def dashboard_global(fecha: Optional[str] = None):
             "estados": [],
             "dependencias": [],
             "direcciones_total": [],
-            "direcciones_filtradas": []
+            "direcciones_filtradas": [],
+            "proyectos": []  # 🔥 IMPORTANTE TAMBIÉN AQUÍ
         }
 
 # =====================================================
@@ -751,10 +773,9 @@ def login(data: LoginRequest):
         "token_type": "bearer",
         "rol": result["rol"],
         "nombre": result["nombre"],
-        "email": result["email"],  # 🔥 IMPORTANTE para frontend
+        "email": result["email"],  # 🔥 importante para frontend
         "ultima_conexion": (
-            ultima_conexion.strftime("%d/%m/%Y %I:%M %p")
-            if ultima_conexion else None
+            ultima_conexion.isoformat() if ultima_conexion else None
         )
     }
 
