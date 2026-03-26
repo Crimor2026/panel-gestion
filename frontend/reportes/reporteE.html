@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Formato E</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="/static/reportes/reporteE.css">
+<link rel="stylesheet" href="/static/reportes/firma.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- ================= FILA 1 ================= -->
+    <div class="fila fila1">
+
+        <div class="izquierda">
+            FORMATO "E"
+        </div>
+
+        <div class="centro">
+            PROGRAMACIÓN DE EJECUCIÓN DEL PROYECTO
+        </div>
+
+        <div class="derecha">
+            FICHA QUINCENAL:
+            <input id="numeroFicha" value="001">-2026-
+            <span id="siglas">DSP</span>-
+            <span id="codigoProyecto"></span>
+        </div>
+
+    </div>
+
+    <!-- ================= FILA 2 ================= -->
+    <div class="fila fila2">
+
+        <div class="f2-izq"></div>
+
+        <div class="f2-centro">
+            <select id="selectProyecto"></select>
+            <div id="nombreProyecto"></div>
+        </div>
+
+        <div class="f2-der tabla-info">
+
+            <div>Fecha de actualización</div>
+            <div>
+                <input type="date" id="fechaCorte">
+            </div>
+
+            <div>Código de Identificación DSP:</div>
+            <div id="codigoDSP"></div>
+
+            <div>Dirección a cargo de la intervención</div>
+            <div>
+                <select id="selectDireccion"></select>
+            </div>
+
+            <div>Unidad Formuladora:</div>
+            <div id="unidad"></div>
+
+        </div>
+
+    </div>
+
+    <!-- ================= FILA 3 + 4 ================= -->
+    <div class="fila fila-datos">
+
+        <div class="datos-titulo">
+            DATOS GENERALES DEL PROYECTO
+        </div>
+
+        <div class="datos-contenido">
+
+            <!-- COLUMNA 1 -->
+            <div class="bloque">
+                <div class="fila-item">
+                    <span>Tipología del Proyecto</span>
+                    <span id="tipologia"></span>
+                </div>
+
+                <div class="fila-item">
+                    <span>Estado</span>
+                    <span id="estado"></span>
+                </div>
+
+                <div class="fila-item">
+                    <span>Modalidad de Transporte</span>
+                    <span id="modalidad"></span>
+                </div>
+            </div>
+
+            <!-- COLUMNA 2 -->
+            <div class="bloque">
+                <div class="fila-item">
+                    <span>Entidad Ejecutora</span>
+                    <span id="entidad"></span>
+                </div>
+
+                <div class="fila-item">
+                    <span>Presupuesto Aprobado</span>
+                    <span id="presupuestoA"></span>
+                </div>
+
+                <div class="fila-item">
+                    <span>Presupuesto Ejecutado</span>
+                    <span id="presupuestoE"></span>
+                </div>
+            </div>
+
+            <!-- COLUMNA 3 -->
+            <div class="bloque">
+                <div class="fila-item">
+                    <span>Fecha de Inicio programado</span>
+                    <span id="inicio"></span>
+                </div>
+
+                <div class="fila-item">
+                    <span>Fecha de Término programado</span>
+                    <span id="fin"></span>
+                </div>
+
+                <div class="fila-item">
+                    <span>Código Único de Inversión (CUI)</span>
+                    <span id="cui"></span>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================= FILA 5 ================= -->
+    <div class="fila fila5-timeline">
+
+        <div class="timeline-label">
+            LINEA DE TIEMPO
+        </div>
+
+        <div class="timeline-container">
+            <div id="timeline"></div>
+        </div>
+
+    </div>
+
+    <!-- ================= FILA 6 ================= -->
+    <div class="fila fila6">
+
+        <!-- TABLA -->
+        <div class="tabla-cronograma">
+
+            <div class="header-tabla">
+                <div>Código</div>
+                <div>Descripción</div>
+                <div>Dirección Responsable</div>
+                <div>Programado Inicio</div>
+                <div>Programado Fin</div>
+                <div>Ejecutado Inicio</div>
+                <div>Ejecutado Fin</div>
+                <div>% Avance</div>
+            </div>
+
+            <div id="tablaBody"></div>
+
+        </div>
+
+        <!-- GANTT -->
+        <div class="gantt-cronograma">
+            <div id="ganttHeader"></div>
+            <div id="ganttGrid"></div>
+        </div>
+
+    </div>
+
+    <!-- ================= FILA 7 ================= -->
+    <div class="fila fila7-leyenda">
+
+        <div class="leyenda-colores">
+
+            <div class="item">
+                <div class="color programado"></div>
+                <span>Programado</span>
+            </div>
+
+            <div class="item">
+                <div class="color ejecutado"></div>
+                <span>Ejecutado</span>
+            </div>
+
+        </div>
+
+        <div class="leyenda-texto">
+            <b>ARC (Action Result Cluster):</b> Conjunto articulado de acciones orientadas a la obtención de un resultado verificable.
+        </div>
+
+    </div>
+
+    <!-- ================= FILA 8 ================= -->
+    <div class="fila fila8-firmas">
+
+        <!-- FIRMA 1 -->
+        <div class="firma">
+            <input type="file" accept="image/*" onchange="previewFirma(event, 0)">
+            <img id="imgFirma0" class="imgFirma"/>
+            <div class="linea-firma"></div>
+            <input class="input-texto" placeholder="Cargo">
+            <input class="input-texto" placeholder="Nombre">
+        </div>
+
+        <!-- FIRMA 2 -->
+        <div class="firma">
+            <input type="file" accept="image/*" onchange="previewFirma(event, 1)">
+            <img id="imgFirma1" class="imgFirma"/>
+            <div class="linea-firma"></div>
+            <input class="input-texto" placeholder="Cargo">
+            <input class="input-texto" placeholder="Nombre">
+        </div>
+
+        <!-- FIRMA 3 -->
+        <div class="firma">
+            <input type="file" accept="image/*" onchange="previewFirma(event, 2)">
+            <img id="imgFirma2" class="imgFirma"/>
+            <div class="linea-firma"></div>
+            <input class="input-texto" placeholder="Cargo">
+            <input class="input-texto" placeholder="Nombre">
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ================= JS ================= -->
+<script src="/static/reportes/reporteE.js"></script>
+
+</body>
+</html>

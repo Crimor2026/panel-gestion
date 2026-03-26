@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Formato D</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="/static/reportes/reporteD.css">
+<link rel="stylesheet" href="/static/reportes/firma.css">
+
+</head>
+
+<body>
+    <div class="container">
+
+    <!-- ================= FILA 1 ================= -->
+    <div class="fila fila1">
+
+        <div class="f1-izq">
+            FORMATO "D"
+        </div>
+
+        <div class="f1-centro">
+            REPORTE DE AVANCE DE PROYECTO
+        </div>
+
+        <div class="f1-der">
+            FICHA QUINCENAL:
+            <span id="fichaCodigo">N° 001-2026-DSP</span>
+        </div>
+
+    </div>
+
+
+    <!-- ================= FILA 2 ================= -->
+    <div class="fila fila2">
+
+        <!-- LOGO -->
+        <div class="f2-logo">
+            <img src="/static/landing/Logotipo_ATU.svg" alt="ATU">
+        </div>
+
+        <!-- NOMBRE CORTO -->
+        <div class="f2-centro">
+            <span id="nombreCorto">
+                Seguimiento a los compromisos climáticos
+            </span>
+        </div>
+
+        <!-- DATOS -->
+        <div class="f2-der">
+
+            <div class="item">
+                <span>Fecha de actualización:</span>
+                <b id="fecha">11/03/2026</b>
+            </div>
+
+            <div class="item">
+                <span>Código de Identificación DSP:</span>
+                <b id="codigoDSP">ACT-DAAS-001</b>
+            </div>
+
+            <div class="item">
+                <span>Dirección a cargo de la intervención:</span>
+                <b id="direccion">DIR</b>
+            </div>
+
+            <div class="item">
+                <span>Unidad Formuladora:</span>
+                <b id="unidad">DI, DIR, DAAS</b>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= FILA 3 ================= -->
+    <div class="fila fila3">
+
+        <div class="titulo">
+            Nombre del Proyecto
+        </div>
+
+        <div class="contenido" id="nombreProyecto">
+            Seguimiento a la Gestión para el cumplimiento de los compromisos climáticos nacionales determinados (NDC) para acceso a desembolsos KFW.
+        </div>
+
+    </div>
+
+    <!-- ================= FILA 4 ================= -->
+    <div class="fila fila4">
+
+        <!-- COLUMNA 1 -->
+        <div class="col">
+
+            <div class="campo">
+                <label>Dirección</label>
+                <div class="box" id="direccion">DAAS</div>
+            </div>
+
+            <div class="campo">
+                <label>CUI</label>
+                <div class="box" id="cui">0</div>
+            </div>
+
+            <div class="campo">
+                <label>Fecha de Inicio Programada</label>
+                <div class="box" id="inicio">01/01/2026</div>
+            </div>
+
+            <div class="campo">
+                <label>Presupuesto Aprobado</label>
+                <div class="box" id="presupuestoA">S/ 0,00</div>
+            </div>
+
+            <div class="campo">
+                <label>Avance físico planificado (%)</label>
+                <div class="box" id="avancePlan"></div>
+            </div>
+
+        </div>
+
+        <!-- COLUMNA 2 -->
+        <div class="col">
+
+            <div class="campo">
+                <label>Sub Dirección</label>
+                <div class="box" id="subdireccion"></div>
+            </div>
+
+            <div class="campo">
+                <label>Estado del Proyecto</label>
+                <div class="box" id="estado"></div>
+            </div>
+
+            <div class="campo">
+                <label>Fecha de término programada</label>
+                <div class="box" id="fin">30/12/2026</div>
+            </div>
+
+            <div class="campo">
+                <label>Presupuesto actualizado</label>
+                <div class="box" id="presupuestoAct"></div>
+            </div>
+
+            <div class="campo">
+                <label>Avance físico real (%)</label>
+                <div class="box" id="avanceReal"></div>
+            </div>
+
+        </div>
+
+        <!-- COLUMNA 3 -->
+        <div class="col">
+
+            <div class="campo">
+                <label>Coordinador</label>
+                <div class="box" id="coordinador"></div>
+            </div>
+
+            <div class="campo">
+                <label>Modalidad de ejecución</label>
+                <div class="box" id="modalidad">0</div>
+            </div>
+
+            <div class="campo">
+                <label>Nueva Fecha de término</label>
+                <div class="box" id="nuevaFecha"></div>
+            </div>
+
+            <div class="campo">
+                <label>Avance financiero planificado</label>
+                <div class="box" id="avanceFinPlan"></div>
+            </div>
+
+            <div class="campo">
+                <label>Avance financiero real (%)</label>
+                <div class="box" id="avanceFinReal"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================= FILA 5 ================= -->
+    <div class="fila fila5-arc">
+
+        <div class="titulo-arc">
+            ARC del proyecto
+        </div>
+
+        <div class="tabla-arc">
+
+            <!-- HEADER -->
+            <div class="header-arc">
+                <div>Número</div>
+                <div>Descripción</div>
+                <div>Inicio</div>
+                <div>Fin</div>
+                <div>Nueva fecha fin</div>
+                <div>Riesgo de incumplimiento</div>
+            </div>
+
+            <!-- BODY -->
+            <div id="tablaARC"></div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================= FILA 6 ================= -->
+    <div class="fila fila6-seguimiento">
+
+        <div class="titulo-seguimiento">
+            Seguimiento del proyecto o actividad por ARC¹
+        </div>
+
+        <div class="subtitulo">
+            Actividades realizadas durante el mes
+        </div>
+
+        <!-- TABLA -->
+        <div class="tabla-seguimiento">
+
+            <!-- HEADER -->
+            <div class="header">
+                <div>N° de ARC</div>
+                <div>Actividad</div>
+            </div>
+
+            <!-- BODY DINÁMICO -->
+            <div id="tablaSeguimiento"></div>
+
+        </div>
+
+    </div>
+
+    <!-- ================= FILA 7 ================= -->
+    <div class="fila fila7-no-realizado">
+
+        <div class="titulo">
+            Actividades programadas no realizadas durante el mes anterior por ARC¹
+        </div>
+
+        <div class="tabla-simple">
+
+            <div class="header">
+                <div>ARC</div>
+                <div>Actividad</div>
+            </div>
+
+            <div id="tablaNoRealizado"></div>
+
+        </div>
+
+    </div>
+
+    <!-- ================= FILA 8 ================= -->
+    <div class="fila fila8-proximo">
+
+        <div class="titulo">
+            Actividades programadas para el siguiente mes por ARC¹
+        </div>
+
+        <div class="tabla-simple">
+
+            <div class="header">
+                <div>ARC</div>
+                <div>Actividad</div>
+            </div>
+
+            <div id="tablaProximo"></div>
+
+        </div>
+
+    </div>
+
+    <!-- ================= FILA 9 ================= -->
+    <div class="fila fila9-doble">
+
+        <!-- IZQUIERDA -->
+        <div class="bloque-texto">
+            <div class="titulo-bloque">Acuerdos alcanzados</div>
+            <textarea id="acuerdos"></textarea>
+        </div>
+
+        <!-- DERECHA -->
+        <div class="bloque-texto">
+            <div class="titulo-bloque">Otros temas importantes</div>
+            <textarea id="otrosTemas"></textarea>
+        </div>
+
+    </div>
+
+    <!-- ================= FILA 10 ================= -->
+    <div class="fila fila10-unico">
+
+        <div class="titulo-bloque">
+            Actividades que requieran atención inmediata
+        </div>
+
+        <textarea id="atencionInmediata"></textarea>
+
+    </div>
+
+    <!-- ================= FILA FIRMAS ================= -->
+    <div class="fila fila-firmas">
+
+        <!-- FIRMA 1 -->
+        <div class="firma-box">
+            <input type="file" onchange="previewFirma(event,1)">
+            <img id="imgFirma1">
+
+            <div class="linea"></div>
+
+            <input class="input-texto" placeholder="Cargo">
+            <input class="input-texto" placeholder="Nombre">
+        </div>
+
+        <!-- FIRMA 2 -->
+        <div class="firma-box">
+            <input type="file" onchange="previewFirma(event,2)">
+            <img id="imgFirma2">
+
+            <div class="linea"></div>
+
+            <input class="input-texto" placeholder="Cargo">
+            <input class="input-texto" placeholder="Nombre">
+        </div>
+
+        <!-- FIRMA 3 -->
+        <div class="firma-box">
+            <input type="file" onchange="previewFirma(event,3)">
+            <img id="imgFirma3">
+
+            <div class="linea"></div>
+
+            <input class="input-texto" placeholder="Cargo">
+            <input class="input-texto" placeholder="Nombre">
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ================= JS ================= -->
+<script src="/static/reportes/reporteD.js"></script>
+
+</body>
+</html>

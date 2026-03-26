@@ -93,17 +93,52 @@ security = HTTPBearer()
 # APP
 # =====================================================
 
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
 app = FastAPI()
+
+# =====================================================
+# RUTAS BASE
+# =====================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, "../frontend"))
 
-# ✅ AQUÍ VA (este bloque)
+# =====================================================
+# STATIC (CSS, JS, IMG)
+# =====================================================
+
 app.mount(
     "/static",
     StaticFiles(directory=FRONTEND_DIR),
     name="static"
 )
+
+# =====================================================
+# REPORTES (DINÁMICO)
+# =====================================================
+
+@app.get("/reportes/{tipo}")
+def ver_reporte(tipo: str):
+
+    ruta = os.path.join(FRONTEND_DIR, f"reportes/reporte{tipo}.html")
+
+    if not os.path.exists(ruta):
+        return {"error": f"No existe el reporte: {tipo}"}
+
+    return FileResponse(ruta)
+
+# =====================================================
+# LANDING REPORTES (opcional)
+# =====================================================
+
+@app.get("/reportes")
+def landing_reportes():
+    ruta = os.path.join(FRONTEND_DIR, "reportes/reportes.html")
+    return FileResponse(ruta)
 
 # =====================================================
 # CREAR ADMIN AUTOMÁTICO

@@ -6,173 +6,14 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<script src="https://cdn.tailwindcss.com"></script>
+<!-- CSS -->
+<link rel="stylesheet" href="/static/reportes/reportes.css">
 
-<style>
-
-html, body {
-height:100%;
-margin:0;
-}
-
-/* ========================= BASE ========================= */
-body{
-margin:0;
-font-family:sans-serif;
-background:#0f4c75;
-overflow-x:hidden;
-}
-
-/* ========================= CONTENEDOR ========================= */
-.container{
-min-height:100vh; /* 🔥 usar vh normal, no dvh */
-display:flex;
-flex-direction:column;
-align-items:center;
-justify-content:center;
-
-text-align:center;
-
-/* 🔥 ESTE ES EL FIX */
-padding:0 20px;
-
-width:100%;
-max-width:1200px;
-margin:0 auto;
-}
-
-/* ========================= FONDO SVG ========================= */
-.fondoSVG{
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-z-index:-2;
-pointer-events:none;
-}
-
-.anim{
-animation:float 10s ease-in-out infinite alternate;
-}
-
-@keyframes float{
-0%{transform:translateY(0);}
-100%{transform:translateY(-30px);}
-}
-
-/* ========================= PARTÍCULAS ========================= */
-canvas{
-position:fixed;
-top:0;
-left:0;
-z-index:-1;
-pointer-events:none;
-}
-
-/* ========================= GRID ========================= */
-.grid-reportes{
-display:grid;
-grid-template-columns: repeat(3, 1fr);
-gap:30px;
-
-width:100%;
-max-width:900px;
-
-margin:30px auto 0 auto; /* 🔥 menos espacio arriba */
-}
-
-/* tablet */
-@media(max-width:900px){
-.grid-reportes{
-grid-template-columns: repeat(2, 1fr);
-max-width:500px;
-}
-}
-
-@media(max-width:500px){
-.grid-reportes{
-grid-template-columns: 1fr;
-max-width:300px;
-margin-top:20px; /* 🔥 quita el hueco arriba */
-}
-}
-
-/* ========================= TARJETAS ========================= */
-.card{
-width:100%;
-height:160px; /* 🔥 más grande */
-
-padding:15px;
-
-background:rgba(255,255,255,0.15);
-backdrop-filter:blur(18px);
-
-border-radius:20px;
-
-display:flex;
-align-items:center;
-justify-content:center;
-text-align:center;
-
-font-size:15px;
-font-weight:600;
-color:white;
-
-cursor:pointer;
-transition:all 0.25s ease;
-
-box-shadow:
-0px 12px 35px rgba(0,0,0,0.4),
-0px 0px 25px rgba(0,200,255,0.2);
-}
-
-.card:hover{
-transform:translateY(-8px) scale(1.05);
-background:linear-gradient(135deg,#00c6ff,#00ffd5);
-box-shadow:
-0px 20px 60px rgba(0,200,255,0.6),
-0px 0px 40px rgba(0,255,200,0.4);
-}
-
-/* texto interno */
-.card div{
-display:flex;
-flex-direction:column;
-gap:6px;
-line-height:1.2;
-}
-
-/* ========================= TITULO ========================= */
-.titulo{
-color:white;
-font-size:28px;
-font-weight:bold;
-text-align:center;
-margin-bottom:20px; /* 🔥 antes era 10 */
-}
-
-/* móvil ajustes */
-@media(max-width:500px){
-
-.titulo{
-font-size:22px;
-}
-
-.card{
-height:150px;
-font-size:14px;
-padding:12px;
-}
-
-}
-
-</style>
 </head>
 
 <body>
 
-<!-- ========================= FONDO ========================= -->
+<!-- ================= FONDO ================= -->
 <svg class="fondoSVG" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
 
   <path class="anim"
@@ -197,10 +38,10 @@ padding:12px;
 
 </svg>
 
-<!-- ========================= PARTÍCULAS ========================= -->
+<!-- ================= PARTICULAS ================= -->
 <canvas id="particles"></canvas>
 
-<!-- ========================= CONTENIDO ========================= -->
+<!-- ================= CONTENIDO ================= -->
 <div class="container">
 
     <h1 class="titulo">PANEL DE REPORTES</h1>
@@ -249,32 +90,60 @@ padding:12px;
             </div>
         </div>
 
-    </div>
+        <!-- 🔒 SOLO SI ESTÁ LOGUEADO -->
+        <div id="cardLlenado" class="card hidden" onclick="irReporte('LLENADO')">
+            <div>
+                <span>Formulario</span>
+                <span>FORMATO DE LLENADO</span>
+            </div>
+        </div>
 
-    <button onclick="volver()" class="mt-10 text-white underline">
-        ← Volver
-    </button>
+    </div>
 
 </div>
 
-<!-- ========================= JS ========================= -->
+<!-- ================= JS ================= -->
+
 <script>
 function irReporte(tipo){
-    window.location.href = `/static/reportes/reporte${tipo}.html`;
+
+    const rol = sessionStorage.getItem("rol");
+
+    // 🔒 Validar login
+    if (!rol) {
+        alert("Debes iniciar sesión");
+        window.location.href = "/";
+        return;
+    }
+
+    window.location.href = `/reportes/${tipo}`;
 }
 
 function volver(){
     window.location.href = "/";
 }
+
+/* 🔐 MOSTRAR FORMULARIO SOLO SI LOGIN */
+document.addEventListener("DOMContentLoaded", () => {
+
+    const card = document.getElementById("cardLlenado");
+    const rol = sessionStorage.getItem("rol");
+
+    if (rol) {
+        card.classList.remove("hidden");
+    }
+
+});
 </script>
 
+<!-- 🔥 PARTÍCULAS INLINE (MEJOR RENDIMIENTO Y CONTROL) -->
 <script>
 const canvas = document.getElementById("particles");
 const ctx = canvas.getContext("2d");
 
 function resize(){
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 }
 resize();
 window.addEventListener("resize", resize);
@@ -282,35 +151,38 @@ window.addEventListener("resize", resize);
 let particles = [];
 
 for(let i=0;i<60;i++){
-particles.push({
-x:Math.random()*canvas.width,
-y:Math.random()*canvas.height,
-vx:Math.random()*0.5-0.25,
-vy:Math.random()*0.5-0.25
-});
+    particles.push({
+        x:Math.random()*canvas.width,
+        y:Math.random()*canvas.height,
+        vx:Math.random()*0.5-0.25,
+        vy:Math.random()*0.5-0.25
+    });
 }
 
 function draw(){
-ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-particles.forEach(p=>{
-p.x+=p.vx;
-p.y+=p.vy;
+    particles.forEach(p=>{
+        p.x+=p.vx;
+        p.y+=p.vy;
 
-if(p.x<0||p.x>canvas.width) p.vx*=-1;
-if(p.y<0||p.y>canvas.height) p.vy*=-1;
+        if(p.x<0||p.x>canvas.width) p.vx*=-1;
+        if(p.y<0||p.y>canvas.height) p.vy*=-1;
 
-ctx.beginPath();
-ctx.arc(p.x,p.y,2,0,Math.PI*2);
-ctx.fillStyle="rgba(255,255,255,0.4)";
-ctx.fill();
-});
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,2,0,Math.PI*2);
+        ctx.fillStyle="rgba(255,255,255,0.4)";
+        ctx.fill();
+    });
 
-requestAnimationFrame(draw);
+    requestAnimationFrame(draw);
 }
 
 draw();
 </script>
+
+<!-- lógica extra -->
+<script src="/static/reportes/reportes.js"></script>
 
 </body>
 </html>

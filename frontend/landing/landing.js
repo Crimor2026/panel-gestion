@@ -27,7 +27,7 @@ function irDashboard(){
 function irReportes(){
     document.body.classList.add("pageFadeOut");
     setTimeout(()=>{
-        window.location.href="/static/reportes/reportes.html";
+        window.location.href = "/reportes";
     },350);
 }
 

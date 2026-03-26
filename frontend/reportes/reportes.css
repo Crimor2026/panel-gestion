@@ -1,0 +1,168 @@
+/* ================= BASE ================= */
+html, body {
+height:100%;
+margin:0;
+}
+
+body{
+font-family:sans-serif;
+background:#0f4c75;
+overflow-x:hidden;
+}
+
+/* ================= CONTENEDOR ================= */
+.container{
+min-height:100vh;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+text-align:center;
+padding:0 20px;
+max-width:1200px;
+margin:0 auto;
+}
+
+/* ================= FONDO ================= */
+.fondoSVG{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+z-index:-2;
+pointer-events:none;
+}
+
+.anim{
+animation:float 10s ease-in-out infinite alternate;
+}
+
+@keyframes float{
+0%{transform:translateY(0);}
+100%{transform:translateY(-30px);}
+}
+
+/* ================= PARTICULAS ================= */
+canvas{
+position:fixed;
+top:0;
+left:0;
+z-index:-1;
+pointer-events:none;
+}
+
+/* ================= TITULO ================= */
+.titulo{
+color:white;
+font-size:28px;
+font-weight:bold;
+margin-bottom:20px;
+}
+
+/* ================= GRID ================= */
+.grid-reportes{
+display:grid;
+grid-template-columns: repeat(3, 1fr);
+gap:30px;
+width:100%;
+max-width:900px;
+margin-top:30px;
+justify-items:center;
+}
+
+/* ================= TARJETAS ================= */
+.card{
+width:260px;
+height:170px;
+padding:15px;
+
+background:rgba(255,255,255,0.15);
+backdrop-filter:blur(18px);
+
+border-radius:20px;
+
+display:flex;
+align-items:center;
+justify-content:center;
+text-align:center;
+
+font-size:15px;
+font-weight:600;
+color:white;
+
+cursor:pointer;
+transition:all 0.3s ease;
+
+box-shadow:
+0px 12px 35px rgba(0,0,0,0.4),
+0px 0px 25px rgba(0,200,255,0.25);
+}
+
+/* TEXTO */
+.card div{
+display:flex;
+flex-direction:column;
+gap:6px;
+}
+
+/* HOVER (EFECTO GLOW) */
+.card:hover{
+transform:translateY(-8px) scale(1.05);
+
+background:linear-gradient(135deg,#00c6ff,#00ffd5);
+
+box-shadow:
+0px 20px 60px rgba(0,200,255,0.6),
+0px 0px 40px rgba(0,255,200,0.4);
+}
+
+/* ================= BOTON VOLVER ================= */
+.volver{
+margin-top:40px;
+background:none;
+border:none;
+color:white;
+text-decoration:underline;
+cursor:pointer;
+font-size:14px;
+}
+
+/* ================= OCULTO ================= */
+.hidden{
+display:none;
+}
+
+/* ================= RESPONSIVE ================= */
+@media(max-width:900px){
+
+.grid-reportes{
+grid-template-columns: repeat(2, 1fr);
+max-width:500px;
+}
+
+}
+
+@media(max-width:500px){
+
+.grid-reportes{
+grid-template-columns: 1fr;
+max-width:300px;
+}
+
+.titulo{
+font-size:22px;
+}
+
+.card{
+height:150px;
+font-size:14px;
+}
+
+}
+
+/* ================= CENTRAR TARJETA 7 ================= */
+.grid-reportes > .card:last-child:nth-child(3n+1){
+grid-column: 2 / 3;
+}
+
