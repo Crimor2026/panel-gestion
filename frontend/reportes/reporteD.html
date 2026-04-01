@@ -1,13 +1,32 @@
-<!DOCTYPE html>
-<html lang="es">
 <head>
 <meta charset="UTF-8">
 <title>Formato D</title>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- ================= CSS ================= -->
 <link rel="stylesheet" href="/static/reportes/reporteD.css">
-<link rel="stylesheet" href="/static/reportes/firma.css">
+
+<!-- Flatpickr -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+
+<!-- Select2 -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+
+
+<!-- ================= JS (ORDEN IMPORTANTE) ================= -->
+
+<!-- jQuery (PRIMERO SIEMPRE) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Select2 (DEPENDE DE jQuery) -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<!-- Flatpickr -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<!-- Idioma español -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
 </head>
 
@@ -26,12 +45,26 @@
         </div>
 
         <div class="f1-der">
-            FICHA QUINCENAL:
-            <span id="fichaCodigo">N° 001-2026-DSP</span>
+
+            <!-- 🔹 BLOQUE BOTONES -->
+            <div class="f1-botones">
+                <button class="btn-guardar" onclick="guardarReporte()">
+                    Guardar
+                </button>
+                <button class="btn-pdf">PDF</button>
+            </div>
+
+            <!-- 🔹 BLOQUE FICHA -->
+            <div class="f1-ficha">
+                <span>FICHA QUINCENAL: N°</span>
+                <input id="numeroFicha" type="text" value="001">
+                <span>-2026-DSP-</span>
+                <span id="codigoProyecto"></span>
+            </div>
+
         </div>
 
     </div>
-
 
     <!-- ================= FILA 2 ================= -->
     <div class="fila fila2">
@@ -39,55 +72,63 @@
         <!-- LOGO -->
         <div class="f2-logo">
             <img src="/static/landing/Logotipo_ATU.svg" alt="ATU">
+
+            <div class="texto-entidad">
+                <div class="titulo-entidad">
+                    AUTORIDAD DE TRANSPORTE URBANO PARA LIMA Y CALLAO
+                </div>
+                <div class="subtitulo-entidad">
+                    DIRECCIÓN DE SUPERVISIÓN DE PROYECTOS
+                </div>
+            </div>
         </div>
 
-        <!-- NOMBRE CORTO -->
+        <!-- CENTRO -->
         <div class="f2-centro">
-            <span id="nombreCorto">
-                Seguimiento a los compromisos climáticos
-            </span>
+
+              <select id="selectProyecto"></select>
         </div>
 
-        <!-- DATOS -->
+        <!-- DERECHA -->
         <div class="f2-der">
 
+            <!-- 🔹 FECHA -->
             <div class="item">
                 <span>Fecha de actualización:</span>
-                <b id="fecha">11/03/2026</b>
+                <input 
+                    type="text" 
+                    id="fechaCorte" 
+                    class="fechaInput"
+                    placeholder="Seleccione fecha"
+                >
             </div>
 
+            <!-- 🔹 CÓDIGO -->
             <div class="item">
                 <span>Código de Identificación DSP:</span>
-                <b id="codigoDSP">ACT-DAAS-001</b>
+                <b id="codigoDSP">-</b>
             </div>
 
+            <!-- 🔹 DIRECCIÓN (🔥 CLAVE) -->
             <div class="item">
                 <span>Dirección a cargo de la intervención:</span>
-                <b id="direccion">DIR</b>
+
+                <select id="selectDireccion" class="select">
+                    <option value="">Seleccione dirección</option>
+                </select>
+
             </div>
 
+            <!-- 🔹 UNIDAD -->
             <div class="item">
                 <span>Unidad Formuladora:</span>
-                <b id="unidad">DI, DIR, DAAS</b>
+                <b id="unidad">-</b>
             </div>
 
         </div>
 
     </div>
 
-
-    <!-- ================= FILA 3 ================= -->
-    <div class="fila fila3">
-
-        <div class="titulo">
-            Nombre del Proyecto
-        </div>
-
-        <div class="contenido" id="nombreProyecto">
-            Seguimiento a la Gestión para el cumplimiento de los compromisos climáticos nacionales determinados (NDC) para acceso a desembolsos KFW.
-        </div>
-
-    </div>
 
     <!-- ================= FILA 4 ================= -->
     <div class="fila fila4">
@@ -97,27 +138,27 @@
 
             <div class="campo">
                 <label>Dirección</label>
-                <div class="box" id="direccion">DAAS</div>
+                <input class="box editable" id="direccion">
             </div>
 
             <div class="campo">
                 <label>CUI</label>
-                <div class="box" id="cui">0</div>
+                <input class="box editable" id="cui">
             </div>
 
             <div class="campo">
                 <label>Fecha de Inicio Programada</label>
-                <div class="box" id="inicio">01/01/2026</div>
+                <input type="date" class="box editable" id="inicio">
             </div>
 
             <div class="campo">
                 <label>Presupuesto Aprobado</label>
-                <div class="box" id="presupuestoA">S/ 0,00</div>
+                <input class="box editable" id="presupuestoA">
             </div>
 
             <div class="campo">
                 <label>Avance físico planificado (%)</label>
-                <div class="box" id="avancePlan"></div>
+                <input class="box editable" id="avancePlan">
             </div>
 
         </div>
@@ -127,27 +168,33 @@
 
             <div class="campo">
                 <label>Sub Dirección</label>
-                <div class="box" id="subdireccion"></div>
+                <input class="box editable" id="subdireccion">
             </div>
 
             <div class="campo">
                 <label>Estado del Proyecto</label>
-                <div class="box" id="estado"></div>
+                <select class="box editable" id="estado">
+                    <option value="">Seleccione</option>
+                    <option>Sin iniciar</option>
+                    <option>En ejecución</option>
+                    <option>Paralizado</option>
+                    <option>Concluido</option>
+                </select>
             </div>
 
             <div class="campo">
                 <label>Fecha de término programada</label>
-                <div class="box" id="fin">30/12/2026</div>
+                <input type="date" class="box editable" id="fin">
             </div>
 
             <div class="campo">
                 <label>Presupuesto actualizado</label>
-                <div class="box" id="presupuestoAct"></div>
+                <input class="box editable" id="presupuestoAct">
             </div>
 
             <div class="campo">
                 <label>Avance físico real (%)</label>
-                <div class="box" id="avanceReal"></div>
+                <input class="box editable" id="avanceReal">
             </div>
 
         </div>
@@ -157,27 +204,27 @@
 
             <div class="campo">
                 <label>Coordinador</label>
-                <div class="box" id="coordinador"></div>
+                <input class="box editable" id="coordinador">
             </div>
 
             <div class="campo">
                 <label>Modalidad de ejecución</label>
-                <div class="box" id="modalidad">0</div>
+                <input class="box editable" id="modalidad">
             </div>
 
             <div class="campo">
                 <label>Nueva Fecha de término</label>
-                <div class="box" id="nuevaFecha"></div>
+                <input type="date" class="box editable" id="nuevaFecha">
             </div>
 
             <div class="campo">
-                <label>Avance financiero planificado</label>
-                <div class="box" id="avanceFinPlan"></div>
+                <label>Avance financiero planificado (%)</label>
+                <input class="box editable" id="avanceFinPlan">
             </div>
 
             <div class="campo">
                 <label>Avance financiero real (%)</label>
-                <div class="box" id="avanceFinReal"></div>
+                <input class="box editable" id="avanceFinReal">
             </div>
 
         </div>
@@ -185,166 +232,165 @@
     </div>
 
     <!-- ================= FILA 5 ================= -->
+    <!-- ================= FILA ARC ================= -->
     <div class="fila fila5-arc">
 
         <div class="titulo-arc">
-            ARC del proyecto
+            ARC¹ del proyecto
         </div>
 
-        <div class="tabla-arc">
+        <table class="tabla-arc">
+            <thead>
+                <tr>
+                    <th class="col-codigo">Código ARC</th>
+                    <th>Descripción</th>
+                    <th>Inicio</th>
+                    <th>Fin</th>
+                    <th class="highlight">Nueva fecha fin</th>
+                    <th>Riesgo de incumplimiento</th>
+                </tr>
+            </thead>
 
-            <!-- HEADER -->
-            <div class="header-arc">
-                <div>Número</div>
-                <div>Descripción</div>
-                <div>Inicio</div>
-                <div>Fin</div>
-                <div>Nueva fecha fin</div>
-                <div>Riesgo de incumplimiento</div>
-            </div>
-
-            <!-- BODY -->
-            <div id="tablaARC"></div>
-
-        </div>
+            <tbody id="tablaARC"></tbody>
+        </table>
 
     </div>
 
-
     <!-- ================= FILA 6 ================= -->
-    <div class="fila fila6-seguimiento">
+    <div class="fila fila6-actividades">
 
-        <div class="titulo-seguimiento">
-            Seguimiento del proyecto o actividad por ARC¹
+        <div class="titulo-arc">
+            SEGUIMIENTO DEL PROYECTO O ACTIVIDAD POR ARC¹
         </div>
 
-        <div class="subtitulo">
+        <div class="subtitulo-arc">
             Actividades realizadas durante el mes
         </div>
 
-        <!-- TABLA -->
-        <div class="tabla-seguimiento">
+        <table class="tabla-actividades">
+            <thead>
+                <tr>
+                    <th class="col-codigo">Código ARC</th>
+                    <th>Actividad</th>
+                </tr>
+            </thead>
 
-            <!-- HEADER -->
-            <div class="header">
-                <div>N° de ARC</div>
-                <div>Actividad</div>
-            </div>
-
-            <!-- BODY DINÁMICO -->
-            <div id="tablaSeguimiento"></div>
-
-        </div>
+            <tbody id="tablaActividades"></tbody>
+        </table>
 
     </div>
 
     <!-- ================= FILA 7 ================= -->
-    <div class="fila fila7-no-realizado">
+    <div class="fila fila7">
 
-        <div class="titulo">
-            Actividades programadas no realizadas durante el mes anterior por ARC¹
+        <div class="titulo-arc">
+            ACTIVIDADES PROGRAMADAS DURANTE EL MES ANTERIOR POR ARC¹
         </div>
 
-        <div class="tabla-simple">
-
-            <div class="header">
-                <div>ARC</div>
-                <div>Actividad</div>
-            </div>
-
-            <div id="tablaNoRealizado"></div>
-
-        </div>
+        <table class="tabla-actividades">
+            <thead>
+                <tr>
+                    <th class="col-codigo">Código ARC</th>
+                    <th>Actividad</th>
+                    <th class="col-estado">Estado</th>
+                </tr>
+            </thead>
+            <tbody id="tablaActividadesPasadas"></tbody>
+        </table>
 
     </div>
 
     <!-- ================= FILA 8 ================= -->
-    <div class="fila fila8-proximo">
+    <div class="fila fila8">
 
-        <div class="titulo">
-            Actividades programadas para el siguiente mes por ARC¹
+        <div class="titulo-arc">
+            ACTIVIDADES PROGRAMADAS PARA EL SIGUIENTE MES POR ARC¹
         </div>
 
-        <div class="tabla-simple">
-
-            <div class="header">
-                <div>ARC</div>
-                <div>Actividad</div>
-            </div>
-
-            <div id="tablaProximo"></div>
-
-        </div>
+        <table class="tabla-actividades">
+            <thead>
+                <tr>
+                    <th class="col-codigo">Código ARC</th>
+                    <th>Actividad</th>
+                </tr>
+            </thead>
+            <tbody id="tablaActividadesFuturas"></tbody>
+        </table>
 
     </div>
 
-    <!-- ================= FILA 9 ================= -->
-    <div class="fila fila9-doble">
+    <!-- ================= FILA 9 y 10 ================= -->
+    <div class="fila fila910">
 
-        <!-- IZQUIERDA -->
         <div class="bloque-texto">
-            <div class="titulo-bloque">Acuerdos alcanzados</div>
+            <label>Acuerdos alcanzados</label>
             <textarea id="acuerdos"></textarea>
         </div>
 
-        <!-- DERECHA -->
         <div class="bloque-texto">
-            <div class="titulo-bloque">Otros temas importantes</div>
-            <textarea id="otrosTemas"></textarea>
+            <label>Otros temas importantes</label>
+            <textarea id="otros"></textarea>
         </div>
 
-    </div>
-
-    <!-- ================= FILA 10 ================= -->
-    <div class="fila fila10-unico">
-
-        <div class="titulo-bloque">
-            Actividades que requieran atención inmediata
+        <div class="bloque-texto full">
+            <label>Actividades que requieran atención inmediata</label>
+            <textarea id="urgentes"></textarea>
         </div>
-
-        <textarea id="atencionInmediata"></textarea>
 
     </div>
 
     <!-- ================= FILA FIRMAS ================= -->
-    <div class="fila fila-firmas">
+    <div class="fila-firmas">
 
         <!-- FIRMA 1 -->
         <div class="firma-box">
-            <input type="file" onchange="previewFirma(event,1)">
-            <img id="imgFirma1">
+            
+            <div class="firma-img-container" onclick="clickFirma(1)">
+                <img id="imgFirma1" src="" />
+                <span class="firma-plus">+</span>
+                <input type="file" id="fileFirma1" accept="image/*" style="display:none">
+            </div>
 
-            <div class="linea"></div>
+            <div class="linea-firma"></div>
 
-            <input class="input-texto" placeholder="Cargo">
-            <input class="input-texto" placeholder="Nombre">
+            <input class="input-texto" id="cargo1" placeholder="Cargo">
+            <input class="input-texto" id="nombre1" placeholder="Nombre">
+
         </div>
 
         <!-- FIRMA 2 -->
         <div class="firma-box">
-            <input type="file" onchange="previewFirma(event,2)">
-            <img id="imgFirma2">
+            
+            <div class="firma-img-container" onclick="clickFirma(2)">
+                <img id="imgFirma2" src="" />
+                <span class="firma-plus">+</span>
+                <input type="file" id="fileFirma2" accept="image/*" style="display:none">
+            </div>
 
-            <div class="linea"></div>
+            <div class="linea-firma"></div>
 
-            <input class="input-texto" placeholder="Cargo">
-            <input class="input-texto" placeholder="Nombre">
+            <input class="input-texto" id="cargo2" placeholder="Cargo">
+            <input class="input-texto" id="nombre2" placeholder="Nombre">
+
         </div>
 
         <!-- FIRMA 3 -->
         <div class="firma-box">
-            <input type="file" onchange="previewFirma(event,3)">
-            <img id="imgFirma3">
+            
+            <div class="firma-img-container" onclick="clickFirma(3)">
+                <img id="imgFirma3" src="" />
+                <span class="firma-plus">+</span>
+                <input type="file" id="fileFirma3" accept="image/*" style="display:none">
+            </div>
 
-            <div class="linea"></div>
+            <div class="linea-firma"></div>
 
-            <input class="input-texto" placeholder="Cargo">
-            <input class="input-texto" placeholder="Nombre">
+            <input class="input-texto" id="cargo3" placeholder="Cargo">
+            <input class="input-texto" id="nombre3" placeholder="Nombre">
+
         </div>
 
     </div>
-
-</div>
 
 <!-- ================= JS ================= -->
 <script src="/static/reportes/reporteD.js"></script>

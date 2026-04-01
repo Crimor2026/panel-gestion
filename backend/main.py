@@ -11,7 +11,7 @@ import pandas as pd
 import pytz
 import requests
 
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, APIRouter
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, APIRouter, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
@@ -62,19 +62,28 @@ def limpiar_numero(valor):
 
 def limpiar_fecha(valor):
 
-    # Si viene vacío
-    if valor is None:
-        return None
-
-    if valor == "":
-        return None
-
-    # Si pandas lo interpreta como NaT
-    if pd.isna(valor):
+    # 🔥 1. VACÍOS REALES
+    if valor is None or valor == "":
         return None
 
     try:
-        return pd.to_datetime(valor).date()
+        import pandas as pd
+
+        # 🔥 2. CONVERTIR
+        fecha = pd.to_datetime(valor, errors="coerce")
+
+        # 🔥 3. INVALIDOS → NULL
+        if pd.isna(fecha):
+            return None
+
+        fecha = fecha.date()
+
+        # 🔥 4. FILTRO ANTI BASURA (CLAVE 🔥)
+        if fecha.year < 2000:
+            return None
+
+        return fecha
+
     except:
         return None
 
@@ -124,10 +133,22 @@ app.mount(
 @app.get("/reportes/{tipo}")
 def ver_reporte(tipo: str):
 
-    ruta = os.path.join(FRONTEND_DIR, f"reportes/reporte{tipo}.html")
+    rutas = {
+        "A": "reporteA.html",
+        "B": "reporteB.html",
+        "C": "reporteC.html",
+        "D": "reporteD.html",
+        "E": "reporteE.html",
+        "F": "reporteF.html",
+        "LLENADO": "llenado.html"
+    }
 
-    if not os.path.exists(ruta):
+    archivo = rutas.get(tipo)
+
+    if not archivo:
         return {"error": f"No existe el reporte: {tipo}"}
+
+    ruta = os.path.join(FRONTEND_DIR, f"reportes/{archivo}")
 
     return FileResponse(ruta)
 
@@ -235,97 +256,85 @@ def dashboard_global(fecha: Optional[str] = None):
         with engine.connect() as conn:
 
             # ================= KPIs =================
-            kpis = conn.execute(
-                text("""
-                    SELECT 
-                        COUNT(*) AS total,
-                        COUNT(*) FILTER (WHERE LOWER(pv.estado) LIKE '%ejec%') AS en_ejecucion,
-                        COUNT(*) FILTER (WHERE LOWER(pv.estado) LIKE '%paraliz%') AS paralizado,
-                        COUNT(*) FILTER (WHERE LOWER(pv.estado) LIKE '%sin%') AS sin_iniciar,
-                        COUNT(*) FILTER (WHERE LOWER(pv.estado) LIKE '%conclu%') AS concluido
-                    FROM proyectos p
+            kpis = conn.execute(text("""
+                SELECT 
+                    COUNT(*) AS total,
+                    COUNT(*) FILTER (WHERE LOWER(fl.estado) LIKE '%ejec%') AS en_ejecucion,
+                    COUNT(*) FILTER (WHERE LOWER(fl.estado) LIKE '%paraliz%') AS paralizado,
+                    COUNT(*) FILTER (WHERE LOWER(fl.estado) LIKE '%sin%') AS sin_iniciar,
+                    COUNT(*) FILTER (WHERE LOWER(fl.estado) LIKE '%conclu%') AS concluido
+                FROM proyectos p
+                LEFT JOIN LATERAL (
+                    SELECT *
+                    FROM ficha_llenado fl2
+                    WHERE fl2.proyecto_id = p.id
+                    AND (:fecha IS NULL OR fl2.fecha_corte = :fecha)
+                    ORDER BY fl2.fecha_corte DESC
+                    LIMIT 1
+                ) fl ON true
+            """), {"fecha": fecha_corte}).fetchone()
 
-                    JOIN LATERAL (
-                        SELECT *
-                        FROM proyecto_version pv2
-                        WHERE pv2.proyecto_id = p.id
-                        AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
-                        ORDER BY pv2.fecha_corte DESC
-                        LIMIT 1
-                    ) pv ON true
-                """),
-                {"fecha": fecha_corte}
-            ).fetchone()
 
             # ================= ESTADOS =================
-            estados = conn.execute(
-                text("""
-                    SELECT pv.estado, COUNT(*) as cantidad
-                    FROM proyectos p
-                    JOIN LATERAL (
-                        SELECT *
-                        FROM proyecto_version pv2
-                        WHERE pv2.proyecto_id = p.id
-                        AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
-                        ORDER BY pv2.fecha_corte DESC
-                        LIMIT 1
-                    ) pv ON true
-                    GROUP BY pv.estado
-                """),
-                {"fecha": fecha_corte}
-            ).fetchall()
+            estados = conn.execute(text("""
+                SELECT fl.estado, COUNT(*) as cantidad
+                FROM proyectos p
+                LEFT JOIN LATERAL (
+                    SELECT *
+                    FROM ficha_llenado fl2
+                    WHERE fl2.proyecto_id = p.id
+                    AND (:fecha IS NULL OR fl2.fecha_corte = :fecha)
+                    ORDER BY fl2.fecha_corte DESC
+                    LIMIT 1
+                ) fl ON true
+                GROUP BY fl.estado
+            """), {"fecha": fecha_corte}).fetchall()
 
-            # ================= DEPENDENCIAS EXTERNAS =================
+
+            # ================= DEPENDENCIAS =================
             dependencias = conn.execute(text("""
                 SELECT 
                     CASE 
-                        WHEN pv.dependencias_externas IS NULL 
-                            OR TRIM(pv.dependencias_externas) = '' 
-                            OR LOWER(TRIM(pv.dependencias_externas)) IN ('ninguna', 'sin dependencia', 'undefined', 'null')
+                        WHEN fl.dependencias_externas IS NULL 
+                            OR TRIM(fl.dependencias_externas) = '' 
                         THEN 'SIN DEPENDENCIA'
-                        ELSE UPPER(TRIM(pv.dependencias_externas))
+                        ELSE UPPER(TRIM(fl.dependencias_externas))
                     END AS dependencia,
                     COUNT(*) as cantidad
                 FROM proyectos p
-                JOIN LATERAL (
+                LEFT JOIN LATERAL (
                     SELECT *
-                    FROM proyecto_version pv2
-                    WHERE pv2.proyecto_id = p.id
+                    FROM ficha_llenado fl2
+                    WHERE fl2.proyecto_id = p.id
                     AND (
-                        pv2.fecha_corte <= :fecha
-                        OR :fecha IS NULL
+                        fl2.fecha_corte <= :fecha OR :fecha IS NULL
                     )
-                    ORDER BY pv2.fecha_corte DESC
+                    ORDER BY fl2.fecha_corte DESC
                     LIMIT 1
-                ) pv ON true
+                ) fl ON true
                 GROUP BY dependencia
-                ORDER BY cantidad DESC
-            """), {
-                "fecha": fecha_corte
-            }).fetchall()
+            """), {"fecha": fecha_corte}).fetchall()
 
-            # ================= DIRECCIONES TOTAL =================
+
+            # ================= DIRECCIONES =================
             direcciones_total = conn.execute(text("""
                 SELECT 
                     d.id,
                     d.nombre AS direccion,
                     COUNT(*) as cantidad
                 FROM proyectos p
-                JOIN LATERAL (
+                LEFT JOIN LATERAL (
                     SELECT *
-                    FROM proyecto_version pv2
-                    WHERE pv2.proyecto_id = p.id
-                    AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
-                    ORDER BY pv2.fecha_corte DESC
+                    FROM ficha_llenado fl2
+                    WHERE fl2.proyecto_id = p.id
+                    AND (:fecha IS NULL OR fl2.fecha_corte = :fecha)
+                    ORDER BY fl2.fecha_corte DESC
                     LIMIT 1
-                ) pv ON true
-                JOIN direcciones d 
-                    ON d.id = pv.direccion_id
+                ) fl ON true
+                JOIN direcciones d ON d.id = fl.direccion_id
                 GROUP BY d.id, d.nombre
-                ORDER BY cantidad DESC
-            """), {
-                "fecha": fecha_corte
-            }).fetchall()
+            """), {"fecha": fecha_corte}).fetchall()
+
 
             # ================= DIRECCIONES FILTRADAS =================
             direcciones_filtradas = conn.execute(text("""
@@ -333,70 +342,41 @@ def dashboard_global(fecha: Optional[str] = None):
                     d.id,
                     d.nombre AS direccion,
                     COUNT(*) as cantidad
-                FROM proyecto_version pv
-                JOIN direcciones d 
-                    ON d.id = pv.direccion_id
-                WHERE (:fecha IS NULL OR pv.fecha_corte = :fecha)
+                FROM ficha_llenado fl
+                JOIN direcciones d ON d.id = fl.direccion_id
+                WHERE (:fecha IS NULL OR fl.fecha_corte = :fecha)
                 GROUP BY d.id, d.nombre
-                ORDER BY cantidad DESC
-            """), {
-                "fecha": fecha_corte
-            }).fetchall()
+            """), {"fecha": fecha_corte}).fetchall()
 
-            # ================= PROYECTOS (🔥 CLAVE PARA PDF) =================
-            proyectos = conn.execute(
-                text("""
-                    SELECT 
-                        p.nombre,
-                        pv.estado
-                    FROM proyectos p
 
-                    JOIN LATERAL (
-                        SELECT *
-                        FROM proyecto_version pv2
-                        WHERE pv2.proyecto_id = p.id
-                        AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
-                        ORDER BY pv2.fecha_corte DESC
-                        LIMIT 1
-                    ) pv ON true
+            # ================= PROYECTOS =================
+            proyectos = conn.execute(text("""
+                SELECT p.nombre, fl.estado
+                FROM proyectos p
+                LEFT JOIN LATERAL (
+                    SELECT *
+                    FROM ficha_llenado fl2
+                    WHERE fl2.proyecto_id = p.id
+                    AND (:fecha IS NULL OR fl2.fecha_corte = :fecha)
+                    ORDER BY fl2.fecha_corte DESC
+                    LIMIT 1
+                ) fl ON true
+                ORDER BY p.nombre
+            """), {"fecha": fecha_corte}).fetchall()
 
-                    ORDER BY p.nombre
-                """),
-                {"fecha": fecha_corte}
-            ).fetchall()
 
-        return {
-            "kpis": dict(kpis._mapping) if kpis else {
-                "total": 0,
-                "en_ejecucion": 0,
-                "paralizado": 0,
-                "sin_iniciar": 0,
-                "concluido": 0
-            },
-            "estados": [dict(r._mapping) for r in estados],
-            "dependencias": [dict(r._mapping) for r in dependencias],
-            "direcciones_total": [dict(r._mapping) for r in direcciones_total],
-            "direcciones_filtradas": [dict(r._mapping) for r in direcciones_filtradas],
-            "proyectos": [dict(r._mapping) for r in proyectos]  # 🔥 NUEVO
-        }
+            return {
+                "kpis": dict(kpis._mapping) if kpis else {},
+                "estados": [dict(r._mapping) for r in estados],
+                "dependencias": [dict(r._mapping) for r in dependencias],
+                "direcciones_total": [dict(r._mapping) for r in direcciones_total],
+                "direcciones_filtradas": [dict(r._mapping) for r in direcciones_filtradas],
+                "proyectos": [dict(r._mapping) for r in proyectos]
+            }
 
     except Exception as e:
         print("ERROR dashboard_global:", str(e))
-
-        return {
-            "kpis": {
-                "total": 0,
-                "en_ejecucion": 0,
-                "paralizado": 0,
-                "sin_iniciar": 0,
-                "concluido": 0
-            },
-            "estados": [],
-            "dependencias": [],
-            "direcciones_total": [],
-            "direcciones_filtradas": [],
-            "proyectos": []  # 🔥 IMPORTANTE TAMBIÉN AQUÍ
-        }
+        return {"error": str(e)}
 
 # =====================================================
 # DASHBOARD POR DIRECCIÓN
@@ -415,48 +395,54 @@ def dashboard_por_direccion(direccion_id: int, fecha: Optional[str] = None):
 
             # ================= ESTADOS =================
             estados = conn.execute(text("""
-                SELECT pv.estado, COUNT(*) as cantidad
+                SELECT fl.estado, COUNT(*) as cantidad
                 FROM proyectos p
-                JOIN LATERAL (
+
+                LEFT JOIN LATERAL (
                     SELECT *
-                    FROM proyecto_version pv2
-                    WHERE pv2.proyecto_id = p.id
-                    AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
-                    ORDER BY pv2.fecha_corte DESC
+                    FROM ficha_llenado fl2
+                    WHERE fl2.proyecto_id = p.id
+                    AND (:fecha IS NULL OR fl2.fecha_corte = :fecha)
+                    ORDER BY fl2.fecha_corte DESC
                     LIMIT 1
-                ) pv ON true
-                WHERE pv.direccion_id = :direccion_id
-                GROUP BY pv.estado
+                ) fl ON true
+
+                WHERE COALESCE(fl.direccion_id, p.direccion_id) = :direccion_id
+
+                GROUP BY fl.estado
             """), {
                 "direccion_id": direccion_id,
                 "fecha": fecha_corte
             }).fetchall()
 
+
             # ================= DEPENDENCIAS INTERNAS =================
+            # 🔥 VERSION LIMPIA (SIN TABLA ANTIGUA)
             dependencias = conn.execute(text("""
                 SELECT 
                     CASE 
-                        WHEN d.codigo IS NULL THEN 'SIN DEPENDENCIA'
-                        ELSE UPPER(TRIM(d.codigo))
+                        WHEN fl.dependencias_externas IS NULL 
+                            OR TRIM(fl.dependencias_externas) = '' 
+                        THEN 'SIN DEPENDENCIA'
+                        ELSE UPPER(TRIM(fl.dependencias_externas))
                     END AS dependencia,
                     COUNT(*) as cantidad
                 FROM proyectos p
-                JOIN LATERAL (
+
+                LEFT JOIN LATERAL (
                     SELECT *
-                    FROM proyecto_version pv2
-                    WHERE pv2.proyecto_id = p.id
+                    FROM ficha_llenado fl2
+                    WHERE fl2.proyecto_id = p.id
                     AND (
-                        pv2.fecha_corte <= :fecha
+                        fl2.fecha_corte <= :fecha
                         OR :fecha IS NULL
                     )
-                    ORDER BY pv2.fecha_corte DESC
+                    ORDER BY fl2.fecha_corte DESC
                     LIMIT 1
-                ) pv ON true
-                LEFT JOIN proyecto_dependencia_interna pdi
-                    ON pdi.proyecto_version_id = pv.id
-                LEFT JOIN direcciones d
-                    ON d.id = pdi.direccion_id
-                WHERE pv.direccion_id = :direccion_id   -- 🔥 CLAVE
+                ) fl ON true
+
+                WHERE COALESCE(fl.direccion_id, p.direccion_id) = :direccion_id
+
                 GROUP BY dependencia
                 ORDER BY cantidad DESC
             """), {
@@ -464,23 +450,28 @@ def dashboard_por_direccion(direccion_id: int, fecha: Optional[str] = None):
                 "direccion_id": direccion_id
             }).fetchall()
 
+
             # ================= CLASIFICACIÓN =================
             clasificacion = conn.execute(text("""
                 SELECT 
                     c.nombre AS clasificacion,
                     COUNT(*) as cantidad
                 FROM proyectos p
-                JOIN LATERAL (
+
+                LEFT JOIN LATERAL (
                     SELECT *
-                    FROM proyecto_version pv2
-                    WHERE pv2.proyecto_id = p.id
-                    AND (:fecha IS NULL OR pv2.fecha_corte = :fecha)
-                    ORDER BY pv2.fecha_corte DESC
+                    FROM ficha_llenado fl2
+                    WHERE fl2.proyecto_id = p.id
+                    AND (:fecha IS NULL OR fl2.fecha_corte = :fecha)
+                    ORDER BY fl2.fecha_corte DESC
                     LIMIT 1
-                ) pv ON true
+                ) fl ON true
+
                 JOIN clasificaciones c
-                    ON c.id = pv.clasificacion_id
-                WHERE pv.direccion_id = :direccion_id
+                    ON c.id = fl.clasificacion_id
+
+                WHERE fl.direccion_id = :direccion_id
+
                 GROUP BY c.nombre
                 ORDER BY c.nombre
             """), {
@@ -488,16 +479,17 @@ def dashboard_por_direccion(direccion_id: int, fecha: Optional[str] = None):
                 "fecha": fecha_corte
             }).fetchall()
 
-        return {
-            "estados": [dict(r._mapping) for r in estados],
-            "dependencias": [dict(r._mapping) for r in dependencias],
-            "clasificacion": [dict(r._mapping) for r in clasificacion]
-        }
+
+            return {
+                "estados": [dict(r._mapping) for r in estados],
+                "dependencias": [dict(r._mapping) for r in dependencias],
+                "clasificacion": [dict(r._mapping) for r in clasificacion]
+            }
 
     except Exception as e:
         print("ERROR dashboard_direccion:", str(e))
         return {"error": str(e)}
-    
+                
 # =====================================================
 # LISTAR PROYECTOS (FILTRADO POR DIRECCIÓN + FECHA + CLASIFICACIÓN)
 # =====================================================
@@ -525,12 +517,17 @@ def proyectos_por_direccion(
             p.nombre
         FROM proyectos p
 
-        JOIN proyecto_version pv
-            ON pv.proyecto_id = p.id
+        LEFT JOIN LATERAL (
+            SELECT *
+            FROM ficha_llenado fl
+            WHERE fl.proyecto_id = p.id
+            AND (:fecha IS NULL OR fl.fecha_corte = :fecha)
+            ORDER BY fl.fecha_corte DESC
+            LIMIT 1
+        ) fl ON true
 
-        WHERE pv.direccion_id = :direccion_id
-        AND (:fecha IS NULL OR pv.fecha_corte = :fecha)
-        AND (:clasificacion_id IS NULL OR pv.clasificacion_id = :clasificacion_id)
+        WHERE COALESCE(fl.direccion_id, p.direccion_id) = :direccion_id
+        AND (:clasificacion_id IS NULL OR fl.clasificacion_id = :clasificacion_id)
 
         ORDER BY p.nombre
 
@@ -606,7 +603,7 @@ def obtener_historico(proyecto_id: int, fecha: str):
 
         version = conn.execute(text("""
         SELECT *
-        FROM proyecto_version
+        FROM ficha_llenado
         WHERE proyecto_id = :id
         AND fecha_corte <= :fecha
         ORDER BY fecha_corte DESC
@@ -974,13 +971,21 @@ def upload_excel(file: UploadFile = File(...)):
                 nombre_original = " ".join(str(row.get("nombre")).strip().split()) if row.get("nombre") else None
                 nombre_normalizado = normalizar_texto(nombre_original)
 
-                direccion_id = int(row.get("direccion_id")) if row.get("direccion_id") else None
+                # ================= DIRECCIÓN =================
+                try:
+                    direccion_id = int(row.get("direccion_id")) if row.get("direccion_id") else None
+                except:
+                    direccion_id = None
 
                 if not direccion_id:
                     print(f"Fila ignorada (sin direccion_id): {nombre_original}")
                     continue
 
-                fecha_corte = pd.to_datetime(row.get("fecha_corte")).date()
+                # ================= FECHA =================
+                try:
+                    fecha_corte = pd.to_datetime(row.get("fecha_corte")).date()
+                except:
+                    fecha_corte = None
 
                 avance_fisico = limpiar_numero(row.get("avance_fisico"))
                 avance_financiero = limpiar_numero(row.get("avance_financiero"))
@@ -1105,11 +1110,11 @@ def upload_excel(file: UploadFile = File(...)):
                         proyecto_id = nuevo.id
 
 
-                    # ================= VERSION (SIEMPRE) =================
+                    # ================= VERSION (AHORA FICHA_LLENAdo 🔥) =================
 
                     version = conn.execute(text("""
 
-                    INSERT INTO proyecto_version (
+                    INSERT INTO ficha_llenado (
                         proyecto_id,
                         fecha_corte,
                         estado,
@@ -1147,12 +1152,19 @@ def upload_excel(file: UploadFile = File(...)):
 
                     ON CONFLICT (proyecto_id, fecha_corte)
                     DO UPDATE SET
-                        estado = EXCLUDED.estado,
-                        direccion_id = EXCLUDED.direccion_id,
-                        entidad_ejecutora = EXCLUDED.entidad_ejecutora,
-                        coordinador = EXCLUDED.coordinador,
-                        correo = EXCLUDED.correo,
-                        celular = EXCLUDED.celular
+                        estado = COALESCE(EXCLUDED.estado, ficha_llenado.estado),
+                        fecha_inicio_programado = COALESCE(EXCLUDED.fecha_inicio_programado, ficha_llenado.fecha_inicio_programado),
+                        fecha_inicio_ejecutado = COALESCE(EXCLUDED.fecha_inicio_ejecutado, ficha_llenado.fecha_inicio_ejecutado),
+                        fecha_fin_programado = COALESCE(EXCLUDED.fecha_fin_programado, ficha_llenado.fecha_fin_programado),
+                        dependencias_externas = COALESCE(EXCLUDED.dependencias_externas, ficha_llenado.dependencias_externas),
+                        presupuesto_programado = COALESCE(EXCLUDED.presupuesto_programado, ficha_llenado.presupuesto_programado),
+                        proyecto_inversion = COALESCE(EXCLUDED.proyecto_inversion, ficha_llenado.proyecto_inversion),
+                        clasificacion_id = COALESCE(EXCLUDED.clasificacion_id, ficha_llenado.clasificacion_id),
+                        direccion_id = COALESCE(EXCLUDED.direccion_id, ficha_llenado.direccion_id),
+                        entidad_ejecutora = COALESCE(EXCLUDED.entidad_ejecutora, ficha_llenado.entidad_ejecutora),
+                        coordinador = COALESCE(EXCLUDED.coordinador, ficha_llenado.coordinador),
+                        correo = COALESCE(EXCLUDED.correo, ficha_llenado.correo),
+                        celular = COALESCE(EXCLUDED.celular, ficha_llenado.celular)
 
                     RETURNING id
 
@@ -1225,211 +1237,113 @@ def upload_excel(file: UploadFile = File(...)):
                         "avance_programado": avance_programado
                     })
 
+                    # ================= DEPENDENCIAS INTERNAS =================
 
-                    # ================= VERSION =================
+                    if dependencias_internas:
 
-                    version = conn.execute(text("""
+                        conn.execute(text("""
+                            DELETE FROM proyecto_dependencia_interna
+                            WHERE ficha_llenado_id = :version_id
+                        """), {"version_id": version_id})
 
-                    INSERT INTO proyecto_version (
-                        proyecto_id,
-                        fecha_corte,
-                        estado,
-                        fecha_inicio_programado,
-                        fecha_inicio_ejecutado,
-                        fecha_fin_programado,
-                        dependencias_externas,
-                        presupuesto_programado,
-                        proyecto_inversion,
-                        clasificacion_id,
-                        direccion_id,
-                        entidad_ejecutora,
-                        coordinador,
-                        correo,
-                        celular
-                    )
+                        codigos = [c.strip() for c in dependencias_internas.split(";") if c.strip()]
 
-                    VALUES (
-                        :proyecto_id,
-                        :fecha_corte,
-                        :estado,
-                        :fecha_inicio_programado,
-                        :fecha_inicio_ejecutado,
-                        :fecha_fin_programado,
-                        :dependencias_externas,
-                        :presupuesto_programado,
-                        :proyecto_inversion,
-                        :clasificacion_id,
-                        :direccion_id,
-                        :entidad_ejecutora,
-                        :coordinador,
-                        :correo,
-                        :celular
-                    )
+                        for codigo in codigos:
 
-                    ON CONFLICT (proyecto_id, fecha_corte)
-                    DO UPDATE SET
-                        estado = EXCLUDED.estado,
-                        direccion_id = EXCLUDED.direccion_id,
-                        entidad_ejecutora = EXCLUDED.entidad_ejecutora,
-                        coordinador = EXCLUDED.coordinador,
-                        correo = EXCLUDED.correo,
-                        celular = EXCLUDED.celular
+                            direccion_dep = conn.execute(text("""
+                                SELECT id
+                                FROM direcciones
+                                WHERE codigo = :codigo
+                            """), {"codigo": codigo}).fetchone()
 
-                    RETURNING id
+                            if direccion_dep:
 
-                    """), {
-                        "proyecto_id": proyecto_id,
-                        "fecha_corte": fecha_corte,
-                        "estado": estado,
-                        "fecha_inicio_programado": limpiar_fecha(row.get("fecha_inicio_programado")),
-                        "fecha_inicio_ejecutado": limpiar_fecha(row.get("fecha_inicio_ejecutado")),
-                        "fecha_fin_programado": limpiar_fecha(row.get("fecha_fin_programado")),
-                        "dependencias_externas": dependencias_externas,
-                        "presupuesto_programado": presupuesto_programado,
-                        "proyecto_inversion": proyecto_inversion,
-                        "clasificacion_id": clasificacion_id,
-                        "direccion_id": direccion_id,
-                        "entidad_ejecutora": row.get("entidad_ejecutora"),
-                        "coordinador": row.get("coordinador"),
-                        "correo": row.get("correo"),
-                        "celular": row.get("celular")
-                    }).fetchone()
-
-                    version_id = version.id
+                                conn.execute(text("""
+                                    INSERT INTO proyecto_dependencia_interna (
+                                        ficha_llenado_id,
+                                        direccion_id
+                                    )
+                                    VALUES (:version_id, :direccion_id)
+                                """), {
+                                    "version_id": version_id,
+                                    "direccion_id": direccion_dep.id
+                                })
 
 
+                    # ================= ARC =================
+                    if "codigo_arc" in df.columns and pd.notna(row["codigo_arc"]):
+
+                        conn.execute(text("""
+                            INSERT INTO proyecto_arc (
+                                proyecto_id,
+                                fecha_corte,
+                                codigo_arc,
+                                descripcion,
+                                inicio_programado,
+                                fin_programado,
+                                inicio_ejecutado,
+                                fin_ejecutado,
+                                avance_percent
+                            )
+                            VALUES (
+                                :proyecto_id,
+                                :fecha_corte,
+                                :codigo_arc,
+                                :descripcion,
+                                :inicio_programado,
+                                :fin_programado,
+                                :inicio_ejecutado,
+                                :fin_ejecutado,
+                                :avance_percent
+                            )
+                            ON CONFLICT (proyecto_id, fecha_corte, codigo_arc)
+                            DO UPDATE SET
+                                descripcion = COALESCE(EXCLUDED.descripcion, proyecto_arc.descripcion),
+                                inicio_programado = COALESCE(EXCLUDED.inicio_programado, proyecto_arc.inicio_programado),
+                                fin_programado = COALESCE(EXCLUDED.fin_programado, proyecto_arc.fin_programado),
+                                inicio_ejecutado = COALESCE(EXCLUDED.inicio_ejecutado, proyecto_arc.inicio_ejecutado),
+                                fin_ejecutado = COALESCE(EXCLUDED.fin_ejecutado, proyecto_arc.fin_ejecutado),
+                                avance_percent = COALESCE(EXCLUDED.avance_percent, proyecto_arc.avance_percent)
+                        """), {
+                            "proyecto_id": proyecto_id,
+                            "fecha_corte": fecha_corte,
+                            "codigo_arc": str(row["codigo_arc"]).strip(),
+                            "descripcion": str(row["descripcion_arc"]).strip()
+                                if "descripcion_arc" in df.columns and pd.notna(row["descripcion_arc"])
+                                else None,
+                            "inicio_programado":
+                                pd.to_datetime(row["inicio_programado_arc"]).date()
+                                if "inicio_programado_arc" in df.columns and pd.notna(row["inicio_programado_arc"])
+                                else None,
+                            "fin_programado":
+                                pd.to_datetime(row["fin_programado_arc"]).date()
+                                if "fin_programado_arc" in df.columns and pd.notna(row["fin_programado_arc"])
+                                else None,
+                            "inicio_ejecutado":
+                                pd.to_datetime(row["inicio_ejecutado_arc"]).date()
+                                if "inicio_ejecutado_arc" in df.columns and pd.notna(row["inicio_ejecutado_arc"])
+                                else None,
+                            "fin_ejecutado":
+                                pd.to_datetime(row["fin_ejecutado_arc"]).date()
+                                if "fin_ejecutado_arc" in df.columns and pd.notna(row["fin_ejecutado_arc"])
+                                else None,
+                            "avance_percent":
+                                float(row["avance_arc"] or 0)
+                                if "avance_arc" in df.columns
+                                else 0
+                        })
+
+                    # ================= COMMIT =================
                     conn.commit()
 
             except Exception as e:
-
-                import traceback
-                traceback.print_exc()
-
-                print(f"Error en proyecto {row.get('nombre')} -> {e}")
-
-                conn.rollback()
-
+                print(f"Error en fila {row.get('nombre')} -> {e}")
                 continue
 
-            # ================= DEPENDENCIAS INTERNAS =================
-
-            if dependencias_internas:
-
-                conn.execute(text("""
-                    DELETE FROM proyecto_dependencia_interna
-                    WHERE proyecto_version_id = :version_id
-                """), {"version_id": version_id})
-
-                codigos = [c.strip() for c in dependencias_internas.split(";") if c.strip()]
-
-                for codigo in codigos:
-
-                    direccion_dep = conn.execute(text("""
-                        SELECT id
-                        FROM direcciones
-                        WHERE codigo = :codigo
-                    """), {"codigo": codigo}).fetchone()
-
-                    if direccion_dep:
-                        conn.execute(text("""
-                            INSERT INTO proyecto_dependencia_interna (
-                                proyecto_version_id,
-                                direccion_id
-                            )
-                            VALUES (:version_id, :direccion_id)
-                        """), {
-                            "version_id": version_id,
-                            "direccion_id": direccion_dep.id
-                        })
-
-            # ================= ARC DEL PROYECTO =================
-
-            if "codigo_arc" in df.columns and pd.notna(row["codigo_arc"]):
-
-                conn.execute(text("""
-
-                    INSERT INTO proyecto_arc (
-
-                        proyecto_id,
-                        fecha_corte,
-                        codigo_arc,
-                        descripcion,
-                        inicio_programado,
-                        fin_programado,
-                        inicio_ejecutado,
-                        fin_ejecutado,
-                        avance_percent
-
-                    )
-
-                    VALUES (
-
-                        :proyecto_id,
-                        :fecha_corte,
-                        :codigo_arc,
-                        :descripcion,
-                        :inicio_programado,
-                        :fin_programado,
-                        :inicio_ejecutado,
-                        :fin_ejecutado,
-                        :avance_percent
-
-                    )
-
-                    ON CONFLICT (proyecto_id, fecha_corte, codigo_arc)
-                    DO UPDATE SET
-
-                    descripcion = EXCLUDED.descripcion,
-                    inicio_programado = EXCLUDED.inicio_programado,
-                    fin_programado = EXCLUDED.fin_programado,
-                    inicio_ejecutado = EXCLUDED.inicio_ejecutado,
-                    fin_ejecutado = EXCLUDED.fin_ejecutado,
-                    avance_percent = EXCLUDED.avance_percent
-
-                """), {
-
-                    "proyecto_id": proyecto_id,
-                    "fecha_corte": fecha_corte,
-
-                    "codigo_arc": str(row["codigo_arc"]).strip(),
-
-                    "descripcion": str(row["descripcion_arc"]).strip()
-                        if "descripcion_arc" in df.columns and pd.notna(row["descripcion_arc"])
-                        else None,
-
-                    "inicio_programado":
-                        pd.to_datetime(row["inicio_programado_arc"]).date()
-                        if "inicio_programado_arc" in df.columns and pd.notna(row["inicio_programado_arc"])
-                        else None,
-
-                    "fin_programado":
-                        pd.to_datetime(row["fin_programado_arc"]).date()
-                        if "fin_programado_arc" in df.columns and pd.notna(row["fin_programado_arc"])
-                        else None,
-
-                    "inicio_ejecutado":
-                        pd.to_datetime(row["inicio_ejecutado_arc"]).date()
-                        if "inicio_ejecutado_arc" in df.columns and pd.notna(row["inicio_ejecutado_arc"])
-                        else None,
-
-                    "fin_ejecutado":
-                        pd.to_datetime(row["fin_ejecutado_arc"]).date()
-                        if "fin_ejecutado_arc" in df.columns and pd.notna(row["fin_ejecutado_arc"])
-                        else None,
-
-                    "avance_percent":
-                        float(row["avance_arc"] or 0)
-                        if "avance_arc" in df.columns
-                        else 0
-
-                })
-
-            conn.commit()
-
-    return {
-        "mensaje": "Excel cargado correctamente",
-        "filas_procesadas": len(df)
-    }
+        return {
+            "mensaje": "Excel cargado correctamente",
+            "filas_procesadas": len(df)
+        }
 
 @app.post("/admin/upload-arc")
 def upload_arc(file: UploadFile = File(...)):
@@ -1754,3 +1668,902 @@ Responde claro, breve y profesional:
 # =====================================================
 
 app.include_router(router)
+
+# =====================================================
+# OBTENER VALOR ACTUAL
+# =====================================================
+
+def obtener_valor_actual(conn, proyecto_id, codigo_arc, campo):
+    r = conn.execute(text(f"""
+        SELECT {campo}
+        FROM proyecto_arc
+        WHERE proyecto_id = :proyecto_id
+        AND codigo_arc = :codigo_arc
+        ORDER BY fecha_corte DESC
+        LIMIT 1
+    """), {
+        "proyecto_id": proyecto_id,
+        "codigo_arc": codigo_arc
+    }).fetchone()
+
+    return r[0] if r else None
+
+# =====================================================
+# FORMULARIO MAESTRO
+# =====================================================
+
+@app.post("/api/guardar-arc")
+def guardar_arc(data: dict):
+
+    proyecto_id = data.get("proyecto_id")
+    fecha_corte = data.get("fecha_corte")
+    arcs = data.get("arcs", [])
+
+    clear_fields = data.get("_clear_fields", [])
+
+    if not proyecto_id or not fecha_corte:
+        raise HTTPException(status_code=400, detail="Faltan datos")
+
+    if not isinstance(arcs, list):
+        raise HTTPException(status_code=400, detail="ARC inválidos")
+
+    from datetime import datetime
+    import math
+
+    fecha_corte = datetime.strptime(fecha_corte, "%Y-%m-%d").date()
+
+    with engine.begin() as conn:
+
+        for arc in arcs:
+
+            # ================= LIMPIEZA =================
+            codigo_arc = arc.get("codigo_arc") or arc.get("codigo")
+
+            inicio = limpiar_fecha(arc.get("inicio_programado") or arc.get("inicio"))
+            fin = limpiar_fecha(arc.get("fin_programado") or arc.get("fin"))
+            inicio_ejec = limpiar_fecha(arc.get("inicio_ejecutado") or arc.get("inicio_ejec"))
+            fin_ejec = limpiar_fecha(arc.get("fin_ejecutado") or arc.get("fin_ejec"))
+
+            avance = arc.get("avance_percent") or arc.get("avance") or 0
+
+            try:
+                avance = float(avance)
+                if math.isnan(avance):
+                    avance = 0
+            except:
+                avance = 0
+
+            # ================= CAMPOS =================
+            nueva_fecha_fin = limpiar_fecha(arc.get("nueva_fecha_fin"))
+            riesgo = arc.get("riesgo")
+            actividad = arc.get("actividades_mes")
+            descripcion = arc.get("descripcion")
+
+            # 🔥 NUEVO
+            estado_arc = arc.get("estado_arc")
+
+            # ================= FIX =================
+            if descripcion is None:
+                descripcion = obtener_valor_actual(conn, proyecto_id, codigo_arc, "descripcion")
+
+            if inicio is None:
+                inicio = obtener_valor_actual(conn, proyecto_id, codigo_arc, "inicio_programado")
+
+            if fin is None:
+                fin = obtener_valor_actual(conn, proyecto_id, codigo_arc, "fin_programado")
+
+            # ================= INSERT / UPDATE =================
+            conn.execute(text("""
+                INSERT INTO proyecto_arc (
+                    proyecto_id,
+                    fecha_corte,
+                    codigo_arc,
+                    descripcion,
+                    inicio_programado,
+                    fin_programado,
+                    inicio_ejecutado,
+                    fin_ejecutado,
+                    avance_percent,
+                    actividades_mes,
+                    no_realizado,
+                    proximo_mes,
+                    nueva_fecha_fin,
+                    riesgo,
+                    estado_arc
+                )
+                VALUES (
+                    :proyecto_id,
+                    :fecha_corte,
+                    :codigo_arc,
+                    :descripcion,
+                    :inicio,
+                    :fin,
+                    :inicio_ejec,
+                    :fin_ejec,
+                    :avance,
+                    :actividad,
+                    :no_realizado,
+                    :proximo,
+                    :nueva_fecha_fin,
+                    :riesgo,
+                    :estado_arc
+                )
+                ON CONFLICT (proyecto_id, fecha_corte, codigo_arc)
+                DO UPDATE SET
+
+                    descripcion = COALESCE(EXCLUDED.descripcion, proyecto_arc.descripcion),
+                    inicio_programado = COALESCE(EXCLUDED.inicio_programado, proyecto_arc.inicio_programado),
+                    fin_programado = COALESCE(EXCLUDED.fin_programado, proyecto_arc.fin_programado),
+                    inicio_ejecutado = COALESCE(EXCLUDED.inicio_ejecutado, proyecto_arc.inicio_ejecutado),
+                    fin_ejecutado = COALESCE(EXCLUDED.fin_ejecutado, proyecto_arc.fin_ejecutado),
+                    avance_percent = COALESCE(EXCLUDED.avance_percent, proyecto_arc.avance_percent),
+
+                    actividades_mes =
+                        CASE 
+                            WHEN 'actividades_mes' = ANY(:clear_fields) THEN NULL
+                            ELSE COALESCE(EXCLUDED.actividades_mes, proyecto_arc.actividades_mes)
+                        END,
+
+                    no_realizado = EXCLUDED.no_realizado,
+                    proximo_mes = EXCLUDED.proximo_mes,
+
+                    nueva_fecha_fin =
+                        CASE 
+                            WHEN 'nueva_fecha_fin' = ANY(:clear_fields) THEN NULL
+                            ELSE COALESCE(EXCLUDED.nueva_fecha_fin, proyecto_arc.nueva_fecha_fin)
+                        END,
+
+                    riesgo =
+                        CASE 
+                            WHEN 'riesgo' = ANY(:clear_fields) THEN NULL
+                            ELSE COALESCE(EXCLUDED.riesgo, proyecto_arc.riesgo)
+                        END,
+
+                    -- 🔥 NUEVO (CLAVE)
+                    estado_arc =
+                        CASE 
+                            WHEN 'estado_arc' = ANY(:clear_fields) THEN NULL
+                            ELSE COALESCE(EXCLUDED.estado_arc, proyecto_arc.estado_arc)
+                        END
+            """), {
+                "proyecto_id": proyecto_id,
+                "fecha_corte": fecha_corte,
+                "codigo_arc": codigo_arc,
+                "descripcion": descripcion,
+                "inicio": inicio,
+                "fin": fin,
+                "inicio_ejec": inicio_ejec,
+                "fin_ejec": fin_ejec,
+                "avance": avance,
+                "no_realizado": arc.get("no_realizado"),
+                "proximo": arc.get("proximo_mes"),
+                "nueva_fecha_fin": nueva_fecha_fin,
+                "riesgo": riesgo,
+                "actividad": actividad,
+                "clear_fields": clear_fields,
+                "estado_arc": estado_arc
+            })
+
+    return {"mensaje": "ARC guardados correctamente"}
+
+# =====================================================
+# ENDPOINT PARA LEER ARC - FORMATO D (FINAL PRO 🔥)
+# =====================================================
+
+@app.get("/api/arc/{proyecto_id}")
+def obtener_arc(proyecto_id: int, fecha: str = None):
+
+    import math
+    from datetime import datetime
+
+    with engine.connect() as conn:
+
+        query = """
+            SELECT
+                codigo_arc,
+                descripcion,
+                inicio_programado,
+                fin_programado,
+                nueva_fecha_fin,
+                riesgo,
+                inicio_ejecutado,
+                fin_ejecutado,
+                avance_percent,
+                actividades_mes,
+                estado_arc
+            FROM proyecto_arc
+            WHERE proyecto_id = :proyecto_id
+        """
+
+        params = {"proyecto_id": proyecto_id}
+
+        # =====================================================
+        # 🔥 FILTRO POR FECHA (CORRECTO)
+        # =====================================================
+        if fecha:
+            try:
+                fecha_limpia = datetime.strptime(fecha[:10], "%Y-%m-%d").date()
+                query += " AND fecha_corte = :fecha"
+                params["fecha"] = fecha_limpia
+            except:
+                pass  # evita romper si fecha viene mal
+
+        query += " ORDER BY codigo_arc"
+
+        result = conn.execute(text(query), params).fetchall()
+
+        data = []
+
+        for r in result:
+
+            row = r._mapping  # 🔥 forma segura
+
+            # =====================================================
+            # 🔥 AVANCE SEGURO (ANTI NaN)
+            # =====================================================
+            avance = 0
+            try:
+                val = row["avance_percent"]
+                if val is not None:
+                    val = float(val)
+                    if not math.isnan(val):
+                        avance = val
+            except:
+                avance = 0
+
+            # =====================================================
+            # 🔥 FORMATEO LIMPIO
+            # =====================================================
+            data.append({
+                "codigo_arc": row["codigo_arc"],
+                "descripcion": row["descripcion"],
+
+                "inicio_programado": row["inicio_programado"].isoformat() if row["inicio_programado"] else None,
+                "fin_programado": row["fin_programado"].isoformat() if row["fin_programado"] else None,
+
+                "inicio_ejecutado": row["inicio_ejecutado"].isoformat() if row["inicio_ejecutado"] else None,
+                "fin_ejecutado": row["fin_ejecutado"].isoformat() if row["fin_ejecutado"] else None,
+
+                "nueva_fecha_fin": row["nueva_fecha_fin"].isoformat() if row["nueva_fecha_fin"] else None,
+                "riesgo": row["riesgo"],
+
+                "actividades_mes": row["actividades_mes"],
+
+                # 🔥 CLAVE
+                "estado": row["estado_arc"],
+
+                "avance_percent": avance
+            })
+
+        return data
+    
+# =====================================================
+# DIRECCIONES USADAS EN PROYECTOS - REUTILIZABLE PROYECTOS
+# =====================================================
+
+@app.get("/api/direcciones")
+def obtener_direcciones():
+
+    with engine.connect() as conn:
+
+        result = conn.execute(text("""
+            SELECT DISTINCT d.id, d.nombre
+            FROM proyectos p
+            JOIN direcciones d ON p.direccion_id = d.id
+            ORDER BY d.nombre
+        """))
+
+        direcciones = [dict(row._mapping) for row in result]
+
+    return direcciones
+
+# =====================================================
+# DATOS DEL PROYECTO (FORMATO D) - FINAL LIMPIO 🔥
+# =====================================================
+
+from sqlalchemy import text
+
+@app.get("/api/proyecto/{proyecto_id}")
+def obtener_proyecto(proyecto_id: int, fecha: str = None):
+
+    with engine.connect() as conn:
+
+        try:
+
+            # =====================================================
+            # 🔥 VALIDACIÓN
+            # =====================================================
+            if not fecha:
+                return {}
+
+            fecha_limpia = fecha.split("T")[0]
+
+            # ====================================================
+            # 🔥 CONSULTA DIRECTA (SIN COALESCE, SIN JOIN)
+            # =====================================================
+            query = text("""
+                SELECT *
+                FROM ficha_llenado
+                WHERE proyecto_id = :proyecto_id
+                AND fecha_corte = :fecha
+                LIMIT 1
+            """)
+
+            result = conn.execute(query, {
+                "proyecto_id": proyecto_id,
+                "fecha": fecha_limpia
+            }).fetchone()
+
+            # =====================================================
+            # ❌ SIN DATA
+            # =====================================================
+            if not result:
+                return {}
+
+            data = dict(result._mapping)
+
+            # =====================================================
+            # 🔧 NORMALIZACIÓN SEGURA (VERSIÓN FINAL PRO 🔥)
+            # =====================================================
+
+            data["estado"] = data.get("estado") or "Sin iniciar"
+            data["coordinador"] = data.get("coordinador") or ""
+
+            # =====================================================
+            # 🔥 AVANCE FÍSICO (DOBLE COMPATIBILIDAD)
+            # =====================================================
+            data["avance_real"] = float(
+                data.get("avance_real") 
+                if data.get("avance_real") is not None 
+                else data.get("avance_fisico") or 0
+            )
+
+            data["avance_prog"] = float(
+                data.get("avance_prog") 
+                if data.get("avance_prog") is not None 
+                else data.get("avance_programado") or 0
+            )
+
+            # =====================================================
+            # 🔥 PRESUPUESTO (DOBLE COMPATIBILIDAD)
+            # =====================================================
+            data["presupuesto"] = float(
+                data.get("presupuesto") 
+                if data.get("presupuesto") is not None 
+                else data.get("presupuesto_programado") or 0
+            )
+
+            data["presupuesto_actualizado"] = float(
+                data.get("presupuesto_actualizado") or 0
+            )
+
+            # =====================================================
+            # 🔥 AVANCE FINANCIERO (NUEVO - CLAVE)
+            # =====================================================
+            data["avance_financiero_programado"] = float(
+                data.get("avance_financiero_programado") or 0
+            )
+
+            data["avance_financiero_real"] = float(
+                data.get("avance_financiero_real") or 0
+            )
+
+            # =====================================================
+            # 🔥 CAMPOS NUEVOS
+            # =====================================================
+            data["subdireccion"] = data.get("subdireccion") or ""
+            data["modalidad"] = data.get("modalidad") or ""
+
+            # =====================================================
+            # 🔥 FECHAS (PARA FRONTEND)
+            # =====================================================
+            data["fecha_inicio_programado"] = data.get("fecha_inicio_programado")
+            data["fecha_fin_programado"] = data.get("fecha_fin_programado")
+            data["fecha_conclusion_real"] = data.get("fecha_conclusion_real")
+
+            # =====================================================
+            # 🔥 OTROS
+            # =====================================================
+            data["cui"] = data.get("cui") or ""
+            data["direccion_id"] = data.get("direccion_id")
+
+            # =====================================================
+            # ✅ RETURN FINAL
+            # =====================================================
+            return data
+
+        except Exception as e:
+            print("❌ ERROR EN /api/proyecto:", e)
+            return {"error": str(e)}
+        
+# =====================================================
+# FORMULARIO PRINCIPAL
+# =====================================================
+
+@app.post("/api/guardar-reporte")
+def guardar_reporte(data: dict):
+
+    try:
+
+        proyecto_id = data.get("proyecto_id")
+        fecha_corte = limpiar_fecha(data.get("fecha_corte"))
+
+        if not proyecto_id or not fecha_corte:
+            raise HTTPException(status_code=400, detail="Faltan datos")
+
+        # =====================================================
+        # 🔥 NUEVO: CAMPOS A BORRAR INTENCIONALMENTE
+        # =====================================================
+        clear_fields = data.get("_clear_fields", [])
+
+        # =====================================================
+        # 🔥 LIMPIEZA 
+        # =====================================================
+
+        estado = data.get("estado") or None
+
+        fecha_inicio_prog = limpiar_fecha(data.get("fecha_inicio_programado"))
+        fecha_inicio_ejec = limpiar_fecha(data.get("fecha_inicio_ejecutado"))
+        fecha_fin_prog = limpiar_fecha(data.get("fecha_fin_programado"))
+        fecha_conclusion_real = limpiar_fecha(data.get("fecha_conclusion_real"))
+
+        dependencias = data.get("dependencias_externas") or None
+
+        presupuesto_prog = data.get("presupuesto_programado")
+        presupuesto_prog = float(presupuesto_prog) if presupuesto_prog not in [None, ""] else None
+
+        presupuesto_actualizado = data.get("presupuesto_actualizado")
+        presupuesto_actualizado = float(presupuesto_actualizado) if presupuesto_actualizado not in [None, ""] else None
+
+        avance_prog = data.get("avance_programado")
+        avance_prog = float(avance_prog) if avance_prog not in [None, ""] else None
+
+        avance_real = data.get("avance_fisico")
+        avance_real = float(avance_real) if avance_real not in [None, ""] else None
+
+        avance_fin_prog = data.get("avance_financiero_programado")
+        avance_fin_prog = float(avance_fin_prog) if avance_fin_prog not in [None, ""] else None
+
+        avance_fin_real = data.get("avance_financiero_real")
+        avance_fin_real = float(avance_fin_real) if avance_fin_real not in [None, ""] else None
+
+        proyecto_inv = data.get("proyecto_inversion") or None
+        clasificacion_id = data.get("clasificacion_id") or None
+        direccion_id = data.get("direccion_id") or None
+
+        entidad = data.get("entidad_ejecutora") or None
+        coordinador = data.get("coordinador") or None
+        correo = data.get("correo") or None
+        celular = data.get("celular") or None
+
+        subdireccion = data.get("subdireccion") or None
+        modalidad = data.get("modalidad") or None
+        cui = data.get("cui") or None
+
+        # =====================================================
+        # 🔥 INSERT / UPDATE (CON BORRADO CONTROLADO)
+        # =====================================================
+
+        with engine.begin() as conn:
+
+            conn.execute(text("""
+                INSERT INTO ficha_llenado (
+                    proyecto_id,
+                    fecha_corte,
+                    estado,
+                    fecha_inicio_programado,
+                    fecha_inicio_ejecutado,
+                    fecha_fin_programado,
+                    fecha_conclusion_real,
+                    dependencias_externas,
+                    presupuesto_programado,
+                    presupuesto_actualizado,
+                    avance_programado,
+                    avance_fisico,
+                    avance_financiero_programado,
+                    avance_financiero_real,
+                    proyecto_inversion,
+                    clasificacion_id,
+                    direccion_id,
+                    entidad_ejecutora,
+                    coordinador,
+                    correo,
+                    celular,
+                    subdireccion,
+                    modalidad,
+                    cui
+                )
+                VALUES (
+                    :proyecto_id,
+                    :fecha_corte,
+                    :estado,
+                    :fecha_inicio_programado,
+                    :fecha_inicio_ejecutado,
+                    :fecha_fin_programado,
+                    :fecha_conclusion_real,
+                    :dependencias_externas,
+                    :presupuesto_programado,
+                    :presupuesto_actualizado,
+                    :avance_programado,
+                    :avance_fisico,
+                    :avance_financiero_programado,
+                    :avance_financiero_real,
+                    :proyecto_inversion,
+                    :clasificacion_id,
+                    :direccion_id,
+                    :entidad_ejecutora,
+                    :coordinador,
+                    :correo,
+                    :celular,
+                    :subdireccion,
+                    :modalidad,
+                    :cui
+                )
+                ON CONFLICT (proyecto_id, fecha_corte)
+                DO UPDATE SET
+
+                    estado = CASE WHEN 'estado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.estado, ficha_llenado.estado) END,
+
+                    fecha_inicio_programado = CASE WHEN 'fecha_inicio_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.fecha_inicio_programado, ficha_llenado.fecha_inicio_programado) END,
+                    fecha_inicio_ejecutado = CASE WHEN 'fecha_inicio_ejecutado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.fecha_inicio_ejecutado, ficha_llenado.fecha_inicio_ejecutado) END,
+                    fecha_fin_programado = CASE WHEN 'fecha_fin_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.fecha_fin_programado, ficha_llenado.fecha_fin_programado) END,
+                    fecha_conclusion_real = CASE WHEN 'fecha_conclusion_real' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.fecha_conclusion_real, ficha_llenado.fecha_conclusion_real) END,
+
+                    dependencias_externas = CASE WHEN 'dependencias_externas' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.dependencias_externas, ficha_llenado.dependencias_externas) END,
+
+                    presupuesto_programado = CASE WHEN 'presupuesto_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.presupuesto_programado, ficha_llenado.presupuesto_programado) END,
+                    presupuesto_actualizado = CASE WHEN 'presupuesto_actualizado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.presupuesto_actualizado, ficha_llenado.presupuesto_actualizado) END,
+
+                    avance_programado = CASE WHEN 'avance_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_programado, ficha_llenado.avance_programado) END,
+                    avance_fisico = CASE WHEN 'avance_fisico' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_fisico, ficha_llenado.avance_fisico) END,
+
+                    avance_financiero_programado = CASE WHEN 'avance_financiero_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_financiero_programado, ficha_llenado.avance_financiero_programado) END,
+                    avance_financiero_real = CASE WHEN 'avance_financiero_real' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_financiero_real, ficha_llenado.avance_financiero_real) END,
+
+                    proyecto_inversion = CASE WHEN 'proyecto_inversion' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.proyecto_inversion, ficha_llenado.proyecto_inversion) END,
+                    clasificacion_id = CASE WHEN 'clasificacion_id' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.clasificacion_id, ficha_llenado.clasificacion_id) END,
+                    direccion_id = CASE WHEN 'direccion_id' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.direccion_id, ficha_llenado.direccion_id) END,
+
+                    entidad_ejecutora = CASE WHEN 'entidad_ejecutora' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.entidad_ejecutora, ficha_llenado.entidad_ejecutora) END,
+                    coordinador = CASE WHEN 'coordinador' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.coordinador, ficha_llenado.coordinador) END,
+                    correo = CASE WHEN 'correo' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.correo, ficha_llenado.correo) END,
+                    celular = CASE WHEN 'celular' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.celular, ficha_llenado.celular) END,
+
+                    subdireccion = CASE WHEN 'subdireccion' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.subdireccion, ficha_llenado.subdireccion) END,
+                    modalidad = CASE WHEN 'modalidad' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.modalidad, ficha_llenado.modalidad) END,
+                    cui = CASE WHEN 'cui' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.cui, ficha_llenado.cui) END
+            """), {
+                "proyecto_id": proyecto_id,
+                "fecha_corte": fecha_corte,
+                "estado": estado,
+                "fecha_inicio_programado": fecha_inicio_prog,
+                "fecha_inicio_ejecutado": fecha_inicio_ejec,
+                "fecha_fin_programado": fecha_fin_prog,
+                "fecha_conclusion_real": fecha_conclusion_real,
+                "dependencias_externas": dependencias,
+                "presupuesto_programado": presupuesto_prog,
+                "presupuesto_actualizado": presupuesto_actualizado,
+                "avance_programado": avance_prog,
+                "avance_fisico": avance_real,
+                "avance_financiero_programado": avance_fin_prog,
+                "avance_financiero_real": avance_fin_real,
+                "proyecto_inversion": proyecto_inv,
+                "clasificacion_id": clasificacion_id,
+                "direccion_id": direccion_id,
+                "entidad_ejecutora": entidad,
+                "coordinador": coordinador,
+                "correo": correo,
+                "celular": celular,
+                "subdireccion": subdireccion,
+                "modalidad": modalidad,
+                "cui": cui,
+                "clear_fields": clear_fields
+            })
+
+        return {"mensaje": "Reporte guardado correctamente"}
+
+    except Exception as e:
+        print("🔥 ERROR GUARDAR REPORTE:", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+# =====================================================
+# 🔥 FILA 9 y 10 (FIX REAL FINAL)
+# =====================================================
+
+@app.post("/api/guardar-campos-finales")
+def guardar_campos(data: dict):
+
+    from datetime import datetime
+
+    proyecto_id = data.get("proyecto_id")
+    fecha = data.get("fecha_corte")
+
+    if not proyecto_id or not fecha:
+        raise HTTPException(status_code=400, detail="Faltan datos")
+
+    # 🔥 FIX CLAVE
+    fecha = datetime.strptime(fecha, "%Y-%m-%d").date()
+
+    clear_fields = data.get("_clear_fields", [])
+
+    with engine.begin() as conn:
+
+        # 🔥 ASEGURAR FILA
+        conn.execute(text("""
+            INSERT INTO ficha_llenado (proyecto_id, fecha_corte)
+            VALUES (:proyecto_id, :fecha)
+            ON CONFLICT (proyecto_id, fecha_corte) DO NOTHING
+        """), {
+            "proyecto_id": proyecto_id,
+            "fecha": fecha
+        })
+
+        # 🔥 UPDATE
+        conn.execute(text("""
+            UPDATE ficha_llenado
+            SET
+                acuerdos =
+                    CASE
+                        WHEN 'acuerdos' = ANY(:clear_fields) THEN NULL
+                        ELSE COALESCE(:acuerdos, acuerdos)
+                    END,
+
+                otros =
+                    CASE
+                        WHEN 'otros' = ANY(:clear_fields) THEN NULL
+                        ELSE COALESCE(:otros, otros)
+                    END,
+
+                urgentes =
+                    CASE
+                        WHEN 'urgentes' = ANY(:clear_fields) THEN NULL
+                        ELSE COALESCE(:urgentes, urgentes)
+                    END
+
+            WHERE proyecto_id = :proyecto_id
+            AND fecha_corte = :fecha
+        """), {
+            "proyecto_id": proyecto_id,
+            "fecha": fecha,
+            "acuerdos": data.get("acuerdos"),
+            "otros": data.get("otros"),
+            "urgentes": data.get("urgentes"),
+            "clear_fields": clear_fields
+        })
+
+    return {"msg": "ok"}
+
+
+# =====================================================
+# 🔥 OBTENER CAMPOS FINALES (CLAVE PARA FRONT)
+# =====================================================
+
+@app.get("/api/campos-finales/{proyecto_id}")
+def obtener_campos_finales(proyecto_id: int, fecha: str):
+
+    from datetime import datetime
+
+    if not fecha:
+        return {}
+
+    fecha = datetime.strptime(fecha[:10], "%Y-%m-%d").date()
+
+    with engine.connect() as conn:
+
+        row = conn.execute(text("""
+            SELECT acuerdos, otros, urgentes
+            FROM ficha_llenado
+            WHERE proyecto_id = :proyecto_id
+            AND fecha_corte = :fecha
+        """), {
+            "proyecto_id": proyecto_id,
+            "fecha": fecha
+        }).fetchone()
+
+        if not row:
+            return {}
+
+        return dict(row._mapping)
+
+# =====================================================
+# 🔥 SUBIR FIRMA (IMAGEN) - FIX FINAL PRO
+# =====================================================
+@app.post("/api/subir-firma")
+async def subir_firma(
+    file: UploadFile = File(...),
+    proyecto_id: int = Form(...),
+    fecha_corte: str = Form(...),
+    firma_num: int = Form(...),
+    cargo: str = Form(None),
+    nombre: str = Form(None)
+):
+
+    from datetime import datetime
+    import os
+
+    fecha = datetime.strptime(fecha_corte, "%Y-%m-%d").date()
+
+    # 🔥 RUTA
+    FIRMAS_DIR = os.path.join(FRONTEND_DIR, "firmas")
+    os.makedirs(FIRMAS_DIR, exist_ok=True)
+
+    # =====================================================
+    # 🔥 EXTENSIÓN
+    # =====================================================
+    ext = file.filename.split(".")[-1].lower()
+
+    if ext == "jpeg":
+        ext = "jpg"
+
+    if ext not in ["png", "jpg", "jpeg", "svg"]:
+        ext = "png"
+
+    # =====================================================
+    # 🔥 LIMPIAR ANTERIORES
+    # =====================================================
+    for e in ["png", "jpg", "jpeg", "svg"]:
+        old_file = os.path.join(FIRMAS_DIR, f"firma_{proyecto_id}_{fecha}_{firma_num}.{e}")
+        if os.path.exists(old_file):
+            os.remove(old_file)
+
+    # =====================================================
+    # 🔥 GUARDAR
+    # =====================================================
+    filename = f"firma_{proyecto_id}_{fecha}_{firma_num}.{ext}"
+    path = os.path.join(FIRMAS_DIR, filename)
+
+    content = await file.read()
+
+    with open(path, "wb") as f:
+        f.write(content)
+
+    url = f"/static/firmas/{filename}"
+
+    # =====================================================
+    # 🔥 NORMALIZAR (CLAVE 🔥)
+    # =====================================================
+    def limpiar(v):
+        if v in ["", "-"]:
+            return None
+        return v
+
+    cargo = limpiar(cargo)
+    nombre = limpiar(nombre)
+
+    # =====================================================
+    # 🔥 DB
+    # =====================================================
+    with engine.begin() as conn:
+
+        conn.execute(text("""
+            INSERT INTO firmas (proyecto_id, fecha_corte)
+            VALUES (:proyecto_id, :fecha)
+            ON CONFLICT (proyecto_id, fecha_corte) DO NOTHING
+        """), {
+            "proyecto_id": proyecto_id,
+            "fecha": fecha
+        })
+
+        result = conn.execute(text(f"""
+            UPDATE firmas
+            SET 
+                firma{firma_num} = :url,
+
+                cargo{firma_num} = COALESCE(:cargo, cargo{firma_num}),
+                nombre{firma_num} = COALESCE(:nombre, nombre{firma_num})
+
+            WHERE proyecto_id = :proyecto_id
+            AND DATE(fecha_corte) = :fecha
+        """), {
+            "url": url,
+            "cargo": cargo,
+            "nombre": nombre,
+            "proyecto_id": proyecto_id,
+            "fecha": fecha
+        })
+
+        print("FILAS ACTUALIZADAS:", result.rowcount)
+
+    return {"url": url}
+
+# =====================================================
+# 🔥 FIRMAS - GUARDAR SOLO TEXTOS (FIX REAL FINAL)
+# =====================================================
+@app.post("/api/guardar-firmas")
+def guardar_firmas(data: dict):
+
+    from datetime import datetime
+
+    proyecto_id = data.get("proyecto_id")
+    fecha_str = data.get("fecha_corte")
+
+    if not proyecto_id or not fecha_str:
+        raise HTTPException(status_code=400, detail="Faltan datos")
+
+    fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+
+    with engine.begin() as conn:
+
+        # 🔥 ASEGURA FILA
+        conn.execute(text("""
+            INSERT INTO firmas (proyecto_id, fecha_corte)
+            VALUES (:proyecto_id, :fecha)
+            ON CONFLICT (proyecto_id, fecha_corte) DO NOTHING
+        """), {
+            "proyecto_id": proyecto_id,
+            "fecha": fecha
+        })
+
+        # =====================================================
+        # 🔥 NORMALIZACIÓN (CLAVE 🔥)
+        # =====================================================
+        def limpiar(valor):
+            if valor in ["", "-"]:
+                return None
+            return valor
+
+        # =====================================================
+        # 🔥 UPDATE TEXTOS
+        # =====================================================
+        conn.execute(text("""
+            UPDATE firmas
+            SET
+                cargo1 = :cargo1,
+                nombre1 = :nombre1,
+                cargo2 = :cargo2,
+                nombre2 = :nombre2,
+                cargo3 = :cargo3,
+                nombre3 = :nombre3
+            WHERE proyecto_id = :proyecto_id
+            AND DATE(fecha_corte) = :fecha
+        """), {
+            "proyecto_id": proyecto_id,
+            "fecha": fecha,
+
+            "cargo1": limpiar(data.get("cargo1")),
+            "nombre1": limpiar(data.get("nombre1")),
+
+            "cargo2": limpiar(data.get("cargo2")),
+            "nombre2": limpiar(data.get("nombre2")),
+
+            "cargo3": limpiar(data.get("cargo3")),
+            "nombre3": limpiar(data.get("nombre3")),
+        })
+
+    return {"msg": "ok"}
+
+# =====================================================
+# 🔥 OBTENER FIRMAS (CARGA AUTOMÁTICA)
+# =====================================================
+@app.get("/api/firmas/{proyecto_id}")
+def obtener_firmas(proyecto_id: int, fecha: str):
+
+    from datetime import datetime
+
+    if not fecha:
+        raise HTTPException(status_code=400, detail="Falta fecha")
+
+    fecha = datetime.strptime(fecha[:10], "%Y-%m-%d").date()
+
+    with engine.connect() as conn:
+
+        row = conn.execute(text("""
+            SELECT *
+            FROM firmas
+            WHERE proyecto_id = :proyecto_id
+            AND fecha_corte = :fecha
+        """), {
+            "proyecto_id": proyecto_id,
+            "fecha": fecha
+        }).mappings().fetchone()
+
+    return dict(row) if row else {}
+
+# =====================================================
+# RUTA FIRMAS (FIX REAL 🔥)
+# =====================================================
+
+FIRMAS_DIR = os.path.join(FRONTEND_DIR, "firmas")
+
+# crear carpeta si no existe
+os.makedirs(FIRMAS_DIR, exist_ok=True)

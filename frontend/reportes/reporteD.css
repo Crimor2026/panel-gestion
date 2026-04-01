@@ -5,404 +5,1163 @@ font-family: Arial, Helvetica, sans-serif;
 font-size:12px;
 }
 
-/* ================= FILA 1 ================= */
+/* ================= FILA 1 BASE ================= */
 
 .fila1{
-display:grid;
-grid-template-columns: 200px 1fr 400px;
-align-items:center;
-border:2px solid #000;
-padding:6px;
-background:#efefef;
-font-weight:bold;
+    display:grid;
+    grid-template-columns: 200px 1fr 420px; /* 🔥 un poco más de espacio */
+    align-items:center;
+    padding:8px 10px;
+    background:#f5f7fa;
+    border-bottom:1px solid #ccc;
 }
 
+/* IZQUIERDA */
+.f1-izq{
+    font-size:17px;
+    font-weight:bold;
+}
+
+/* CENTRO */
 .f1-centro{
-text-align:center;
-font-size:16px;
+    text-align:center;
+    font-size:24px;
+    font-weight:bold;
 }
 
+/* DERECHA (CONTENEDOR GENERAL) */
 .f1-der{
-text-align:right;
-color:#1f4e79;
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:12px;
+    font-size:13px;
+    color:#1f4e79;
+    flex-wrap:nowrap; /* 🔥 TODO EN UNA LINEA */
+}
+
+/* 🔹 BLOQUE BOTONES */
+.f1-botones{
+    display:flex;
+    gap:6px;
+}
+
+/* 🔹 BLOQUE FICHA */
+.f1-ficha{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    white-space:nowrap; /* 🔥 evita salto */
+}
+
+/* CODIGO PROYECTO */
+#codigoProyecto{
+    white-space:nowrap;
+    font-weight:bold;
+}
+
+/* INPUT */
+#numeroFicha{
+    width:55px;
+    border:none;
+    border-bottom:1px solid #333;
+    text-align:center;
+    font-weight:bold;
+    background:transparent;
+}
+
+/* BOTONES */
+.btn-guardar{
+    background:#1f4e79;
+    color:#fff;
+    border:none;
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:12px;
+}
+
+.btn-guardar:hover{
+    background:#163a5a;
+}
+
+.btn-pdf{
+    background:#b71c1c;
+    color:#fff;
+    border:none;
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:12px;
+}
+
+.btn-pdf:hover{
+    background:#7f0000;
+}
+
+/* ================= PRINT ================= */
+
+@media print {
+
+    .btn-guardar,
+    .btn-pdf {
+        display: none;
+    }
+
+    body{
+        background:white;
+    }
+
+}
+
+/* ================= 📱 RESPONSIVE ================= */
+
+@media (max-width: 768px){
+
+    .fila1{
+        grid-template-columns: 1fr;
+        gap:8px;
+        text-align:center;
+    }
+
+    .f1-izq{
+        font-size:15px;
+    }
+
+    .f1-centro{
+        font-size:18px;
+    }
+
+    .f1-der{
+        justify-content:center;
+        flex-wrap:wrap; /* 🔥 solo en móvil */
+        font-size:12px;
+    }
+
+    .f1-ficha{
+        flex-wrap:wrap;
+        justify-content:center;
+    }
+
+    #numeroFicha{
+        width:45px;
+    }
 }
 
 /* ================= FILA 2 ================= */
 
 .fila2{
-display:grid;
-grid-template-columns: 250px 1fr 400px;
-border-left:2px solid #000;
-border-right:2px solid #000;
-border-bottom:1px solid #000;
+    display:grid;
+    grid-template-columns: 240px 1fr 450px;
+    align-items:center;
+    gap:12px;
+    padding:10px 12px;
+    background:#f5f7fa;
+    border-bottom:1px solid #ccc;
 }
 
-/* LOGO */
+
+/* ================= IZQUIERDA ================= */
+
 .f2-logo{
-display:flex;
-align-items:center;
-justify-content:center;
-background:#f5f5f5;
+    display:flex;
+    align-items:center;
+    gap:10px;
 }
 
 .f2-logo img{
-width:180px;
+    width:120px;
+    height:auto;
+    display:block;
 }
 
-/* CENTRO */
+.texto-entidad{
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    line-height:1.2;
+}
+
+.titulo-entidad{
+    font-size:11px;
+    font-weight:bold;
+}
+
+.subtitulo-entidad{
+    font-size:8px;
+    color:#555;
+}
+
+
+/* ================= CENTRO ================= */
+
 .f2-centro{
-display:flex;
-align-items:center;
-justify-content:center;
-font-weight:bold;
-color:#1f4e79;
-font-size:14px;
-background:#e9ecef;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    gap:6px;
+    width:100%;
 }
 
-/* DERECHA */
+
+/* ================= SELECT2 PROYECTO (TEXTO PURO) ================= */
+
+.select2-container{
+    width:100% !important;
+}
+
+/* ================= SELECT2 PROYECTO FINAL SIN BORDE ================= */
+
+.select2-container{
+    width:100% !important;
+}
+
+/* 🔥 SIN BORDE EN TODOS LOS ESTADOS */
+.select2-container--default .select2-selection--single,
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--default.select2-container--open .select2-selection--single,
+.select2-container--default.select2-container--focus.select2-container--open .select2-selection--single {
+
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* TEXTO */
+.select2-selection__rendered{
+    font-size:18px !important;
+    font-weight:600;
+    color:#1f4e79;
+    text-align:center !important;
+    text-transform:uppercase;
+    white-space:normal !important;
+}
+/* placeholder */
+.select2-selection__placeholder{
+    text-transform:uppercase;
+    color:#999 !important;
+    font-size:16px;
+    text-align:center;
+}
+
+/* flecha más discreta */
+.select2-selection__arrow{
+    opacity:0.5;
+}
+
+/* 🔥 eliminar borde del contenedor */
+.f2-centro{
+    border:none !important;
+    box-shadow:none !important;
+}
+
+.select2-container *:focus{
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* ================= DROPDOWN ================= */
+
+.select2-dropdown{
+    font-size:14px;
+    border-radius:10px;
+    overflow:hidden;
+}
+
+/* ================= OPCIONES ================= */
+
+.select2-results__option{
+    font-size:14px;
+    padding:6px 10px;
+    white-space:normal !important;
+    line-height:1.2;
+}
+
+
+/* ================= HOVER ================= */
+
+.select2-results__option--highlighted{
+    background:#1f4e79 !important;
+    color:#fff;
+}
+
+
+/* ================= TEXTO AUXILIAR ================= */
+
+#nombreCorto{
+    font-size:12px;
+    font-weight:bold;
+    color:#1f4e79;
+    text-align:center;
+}
+
+/* ================= DERECHA ================= */
+
 .f2-der{
-display:flex;
-flex-direction:column;
-justify-content:center;
-padding:10px;
-font-size:11px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    height:100%;
+    gap:6px;
+    font-size:12px;
 }
 
 .f2-der .item{
-display:flex;
-justify-content:space-between;
-border-bottom:1px dotted #000;
-padding:3px 0;
+    display:grid;
+    grid-template-columns: 1.6fr 1fr; 
+    align-items:center;
+    gap:8px;
+    border-bottom:1px dotted #999;
+    padding:4px 0;
 }
 
-/* ================= FILA 3 ================= */
-
-.fila3{
-border:2px solid #000;
-border-top:none;
-padding:8px;
+.f2-der span{
+    color:#333;
 }
 
-.fila3 .titulo{
-font-weight:bold;
-margin-bottom:5px;
+.f2-der b{
+    color:#000;
 }
 
-.fila3 .contenido{
-border:1px dashed #000;
-padding:10px;
-text-align:center;
-font-style:italic;
-color:#1f4e79;
-font-weight:bold;
+
+/* ================= INPUT FECHA ================= */
+
+.fechaInput{
+    border:1px solid #ccc;
+    border-radius:8px;
+    padding:5px 8px;
+    font-size:12px;
+    width:130px;
+    outline:none;
+    background:#fff;
+    transition:all 0.2s ease;
+}
+
+.fechaInput:hover{
+    border-color:#1f4e79;
+}
+
+.fechaInput:focus{
+    border-color:#1f4e79;
+    box-shadow:0 0 4px rgba(31,78,121,0.3);
+}
+
+
+/* ================= SELECT DIRECCIÓN (FINAL PRO) ================= */
+
+/* select base */
+#selectDireccion{
+    width:100%;
+    border:1px solid #ccc;
+    border-radius:6px;
+    padding:4px 6px;
+    font-size:12px;
+}
+
+
+/* ================= SELECT2 CONTENEDOR ================= */
+
+.select2-container{
+    width:100% !important;
+}
+
+/* caja principal */
+.select2-container .select2-selection--single{
+    height:auto !important;
+    min-height:34px;
+    display:flex;
+    align-items:center;
+    padding:2px 6px;
+}
+
+/* texto seleccionado (multilínea) */
+.select2-container--default 
+.select2-selection--single 
+.select2-selection__rendered{
+    white-space:normal !important;
+    line-height:1.2;
+    font-size:12px;
+}
+
+
+/* ================= DROPDOWN ================= */
+
+.select2-dropdown{
+    border-radius:8px;
+    overflow:hidden;
+}
+
+/* opciones (multilínea 🔥) */
+.select2-results__option{
+    white-space:normal !important;
+    word-wrap:break-word;
+    line-height:1.2;
+    font-size:13px;
+    padding:6px 10px;
+}
+
+/* hover */
+.select2-results__option--highlighted{
+    background:#1f4e79 !important;
+    color:#fff;
+}
+
+/* ================= FLATPICKR ================= */
+
+.flatpickr-calendar{
+    border-radius:12px !important;
+    box-shadow:0 8px 25px rgba(0,0,0,0.2) !important;
+    font-family:Arial, sans-serif;
+}
+
+.flatpickr-day.selected{
+    background:#1f4e79 !important;
+    border-color:#1f4e79 !important;
+}
+
+.flatpickr-day:hover{
+    background:#e3f2fd !important;
+}
+
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width:768px){
+
+    .fila2{
+        grid-template-columns: 1fr;
+        text-align:center;
+    }
+
+    .f2-logo{
+        justify-content:center;
+    }
+
+    .f2-centro{
+        width:100%;
+    }
+
+    .f2-der{
+        align-items:center;
+    }
+
+    .f2-der .item{
+        width:100%;
+    }
+
 }
 
 /* ================= FILA 4 ================= */
 
 .fila4{
-display:grid;
-grid-template-columns: 1fr 1fr 1fr;
-gap:20px;
-border-left:2px solid #000;
-border-right:2px solid #000;
-border-bottom:2px solid #000;
-padding:15px;
-background:#f7f7f7;
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:16px;
+
+    padding:16px;
+    background:#ffffff;
+
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
 }
 
-/* columnas */
+
+/* ================= COLUMNAS ================= */
+
 .col{
-display:flex;
-flex-direction:column;
-gap:12px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
 }
 
-/* campo */
+
+/* ================= CAMPOS ================= */
+
 .campo{
-display:flex;
-flex-direction:column;
-gap:3px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
 }
 
-/* label */
+
+/* LABEL */
 .campo label{
-font-size:12px;
-color:#333;
+    font-size:12px;
+    color:#555;
+    font-weight:500;
 }
 
-/* caja gris */
+
+/* ================= INPUT / BOX ================= */
+
 .box{
-background:#e5e5e5;
-padding:6px 8px;
-font-weight:bold;
-min-height:18px;
-display:flex;
-align-items:center;
+    width:100%;
+    border:none;
+
+    background:#f1f3f5;
+    padding:7px 10px;
+
+    border-radius:6px;
+    font-size:13px;
+
+    transition:all 0.2s ease;
+}
+
+
+/* HOVER */
+.box:hover{
+    background:#e9ecef;
+}
+
+
+/* FOCUS (EDITABLE) */
+.box:focus{
+    outline:none;
+    background:#ffffff;
+    box-shadow:0 0 5px rgba(31,78,121,0.3);
+}
+
+
+/* ================= VARIANTE EDITABLE ================= */
+
+.campo-editable{
+    width:100%;
+    border:none;
+    background:#f1f3f5;
+    padding:7px 10px;
+    border-radius:6px;
+    font-size:13px;
+}
+
+.campo-editable:focus{
+    outline:none;
+    background:#ffffff;
+    box-shadow:0 0 5px rgba(31,78,121,0.3);
+}
+
+
+/* ================= RESPONSIVE ================= */
+
+/* TABLET */
+@media (max-width:1024px){
+
+    .fila4{
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+}
+
+/* MOBILE */
+@media (max-width:768px){
+
+    .fila4{
+        grid-template-columns: 1fr;
+        gap:12px;
+        padding:12px;
+    }
+
+    .campo label{
+        font-size:11px;
+    }
+
+    .box{
+        font-size:12px;
+        padding:6px 8px;
+    }
+
 }
 
 /* ================= FILA 5 ================= */
+/* ================= TABLA ARC PRO FINAL ================= */
+
+.tabla-arc{
+    width: 100%;
+    min-width: 720px;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+    font-family: inherit; /* 🔥 usa misma fuente que todo el formulario */
+}
+
+/* 🔹 HEADER */
+.tabla-arc th{
+    background: #f4f6f8;
+    font-weight: 600;
+    padding: 8px 6px;
+    text-align: left;
+    border: none;
+    color: #333;
+}
+
+/* 🔹 CELDAS */
+.tabla-arc td{
+    padding: 6px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+
+/* 🔹 HOVER */
+.tabla-arc tbody tr:hover{
+    background: #f9fbfd;
+}
+
+/* ================= INPUTS ================= */
+
+.tabla-arc input,
+.tabla-arc textarea{
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    font-family: inherit; /* 🔥 MISMA TIPOGRAFÍA */
+    outline: none;
+    padding: 4px;
+    color: #2c3e50;
+}
+
+/* 🔹 textarea */
+.tabla-arc textarea{
+    resize: none;
+    min-height: 28px;
+    line-height: 1.4;
+}
+
+/* 🔹 inputs activos (mejora UX) */
+.tabla-arc input:focus,
+.tabla-arc textarea:focus{
+    background: #eef6ff;
+    border-radius: 4px;
+}
+
+/* ================= COLUMNAS ================= */
+
+.col-codigo{
+    min-width: 150px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.col-descripcion{
+    min-width: 280px;
+}
+
+/* 🔥 NUEVA FECHA (AMARILLO 70%) */
+.highlight{
+    background: rgba(255, 235, 59, 0.7);
+}
+
+/* 🔹 riesgo */
+.col-riesgo{
+    background: #fafafa;
+}
+
+/* ===================================================== */
+/* 🔥 TITULO ARC MEJORADO */
+/* ===================================================== */
+.titulo-arc{
+    font-weight: bold;        /* negrita */
+    font-size: 16px;          /* +2 puntos aprox */
+    text-transform: uppercase; /* MAYÚSCULA */
+    margin-top: 12px;         /* espacio arriba */
+    margin-bottom: 12px;      /* espacio abajo */
+}
+
+/* ================= RESPONSIVE ================= */
 
 .fila5-arc{
-border:2px solid #000;
-padding:10px;
+    overflow-x: auto;
 }
 
-.titulo-arc{
-font-weight:bold;
-margin-bottom:10px;
+@media (max-width: 768px){
+
+    .tabla-arc{
+        font-size: 11px;
+        min-width: 650px;
+    }
+
+    .col-descripcion{
+        min-width: 220px;
+    }
 }
 
-/* tabla */
-.tabla-arc{
-display:flex;
-flex-direction:column;
-font-size:11px;
-}
+@media (max-width: 600px){
 
-/* header */
-.header-arc,
-.fila-arc{
-display:grid;
-grid-template-columns: 150px 1fr 120px 120px 140px 1fr;
-}
+    .tabla-arc{
+        font-size: 10px;
+        min-width: 600px;
+    }
 
-.header-arc{
-background:#e5e5e5;
-font-weight:bold;
-border:1px solid #999;
-}
+    .col-codigo{
+        min-width: 120px;
+    }
 
-.header-arc div{
-padding:6px;
-border-right:1px solid #ccc;
-}
-
-/* filas */
-.fila-arc{
-border:1px solid #ccc;
-border-top:none;
-}
-
-.fila-arc div{
-padding:4px;
-border-right:1px solid #eee;
-display:flex;
-align-items:center;
-}
-
-/* inputs */
-.fila-arc input,
-.fila-arc textarea{
-width:100%;
-border:none;
-background:transparent;
-font-size:11px;
-outline:none;
-}
-
-/* textarea */
-.fila-arc textarea{
-resize:none;
-height:40px;
+    .col-descripcion{
+        min-width: 180px;
+    }
 }
 
 /* ================= FILA 6 ================= */
 
-.fila6-seguimiento{
-border:2px solid #000;
-margin-top:5px;
-font-size:12px;
+/* ===================================================== */
+/* 🔥 TABLA ACTIVIDADES */
+/* ===================================================== */
+
+.tabla-actividades{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
 }
 
-/* TITULO */
-.titulo-seguimiento{
-font-weight:bold;
-padding:6px;
-border-bottom:1px solid #000;
+.tabla-actividades th,
+.tabla-actividades td{
+    border: 1px solid #ddd;
+    padding: 6px;
 }
 
-/* SUBTITULO */
-.subtitulo{
-padding:4px 6px;
-border-bottom:1px solid #000;
-font-size:11px;
+.tabla-actividades th{
+    background: #f5f5f5;
+    text-align: left;
 }
 
-/* TABLA */
-.tabla-seguimiento{
-display:flex;
-flex-direction:column;
+/* 🔥 SUBTÍTULO */
+.subtitulo-arc{
+    font-size: 12px;
+    margin-bottom: 8px;
+    color: #555;
 }
 
-/* HEADER */
-.tabla-seguimiento .header{
-display:grid;
-grid-template-columns: 150px 1fr;
-background:#e6e6e6;
-font-weight:bold;
-border-bottom:1px solid #000;
+/* 🔥 Código ARC (AJUSTADO) */
+.tabla-actividades .col-codigo{
+    width: 180px;
+    min-width: 160px;
+    max-width: 200px;
 }
 
-.tabla-seguimiento .header div{
-padding:5px;
-border-right:1px solid #000;
+.tabla-actividades .col-codigo input{
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-weight: 500;
 }
 
-/* FILAS */
-.fila-seg{
-display:grid;
-grid-template-columns: 150px 1fr;
-border-bottom:1px solid #ccc;
+/* 🔥 Actividad editable */
+.tabla-actividades textarea{
+    width: 100%;
+    border: none;
+    resize: none;
+    font-size: 13px;
+    background: transparent;
+    padding: 4px;
 }
 
-.fila-seg div{
-padding:5px;
-border-right:1px solid #ccc;
+/* 🔥 foco elegante */
+.tabla-actividades textarea:focus{
+    outline: none;
+    background: #fffbe6;
 }
 
-/* TEXTAREA ACTIVIDADES */
-.fila-seg textarea{
-width:100%;
-min-height:60px;
-border:none;
-resize:vertical;
-font-size:11px;
-outline:none;
-background:#fafafa;
+/* 🔥 hover suave */
+.tabla-actividades tr:hover{
+    background: #fafafa;
+}
+
+/* 🔥 Responsive */
+@media (max-width: 768px){
+
+    .tabla-actividades th,
+    .tabla-actividades td{
+        font-size: 12px;
+        padding: 4px;
+    }
+
+    .tabla-actividades .col-codigo{
+        width: 120px;
+        min-width: 100px;
+    }
+
 }
 
 /* ================= FILA 7 y 8 ================= */
 
+/* Estado */
+.col-estado{
+    width: 120px;
+    text-align: center;
+}
+
+/* 🔴 En proceso */
+.fila-pendiente{
+    background-color: #ffe5e5;
+}
+
+/* 🟢 Concluida */
+.estado-ok{
+    color: green;
+    font-weight: bold;
+}
+
+/* 🔥 SELECT ESTADO (NUEVO) */
+.estado-select{
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 13px;
+    text-align: center;
+    outline: none;
+    cursor: pointer;
+}
+
+/* ================= TABLAS ================= */
+
+.tabla-actividades{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.tabla-actividades th,
+.tabla-actividades td{
+    border: 1px solid #ddd;
+    padding: 6px;
+}
+
+.tabla-actividades th{
+    background: #f5f5f5;
+    text-align: left;
+}
+
+/* Código ARC (compacto) */
+.tabla-actividades .col-codigo{
+    width: 160px;
+    white-space: nowrap;
+}
+
+/* textarea editable */
+.tabla-actividades textarea{
+    width: 100%;
+    min-height: 60px;
+    border: none;
+    resize: vertical;
+    font-size: 12px;
+    background: #fafafa;
+    outline: none;
+}
+
 /* ================= TABLAS SIMPLES ================= */
 
 .tabla-simple{
-display:flex;
-flex-direction:column;
-border-top:1px solid #000;
+    display:flex;
+    flex-direction:column;
+    border-top:1px solid #000;
 }
 
 .tabla-simple .header{
-display:grid;
-grid-template-columns: 120px 1fr;
-background:#e6e6e6;
-font-weight:bold;
-border-bottom:1px solid #000;
+    display:grid;
+    grid-template-columns: 120px 1fr;
+    background:#e6e6e6;
+    font-weight:bold;
+    border-bottom:1px solid #000;
 }
 
 .tabla-simple .header div{
-padding:5px;
-border-right:1px solid #000;
+    padding:5px;
+    border-right:1px solid #000;
 }
 
 /* filas */
 .fila-simple{
-display:grid;
-grid-template-columns: 120px 1fr;
-border-bottom:1px solid #ccc;
+    display:grid;
+    grid-template-columns: 120px 1fr;
+    border-bottom:1px solid #ccc;
 }
 
 .fila-simple div{
-padding:5px;
-border-right:1px solid #ccc;
+    padding:5px;
+    border-right:1px solid #ccc;
 }
 
 /* textarea */
 .fila-simple textarea{
-width:100%;
-min-height:60px;
-border:none;
-resize:vertical;
-font-size:11px;
-background:#fafafa;
-outline:none;
+    width:100%;
+    min-height:60px;
+    border:none;
+    resize:vertical;
+    font-size:11px;
+    background:#fafafa;
+    outline:none;
 }
 
-/* ================= FILA 9 ================= */
+/* ===================================================== */
+/* 📱 RESPONSIVE (TABLET) */
+/* ===================================================== */
+@media (max-width: 1024px){
 
-.fila9-doble{
-display:grid;
-grid-template-columns: 1fr 1fr;
-gap:10px;
-margin-top:8px;
+    .tabla-actividades{
+        font-size: 12px;
+    }
+
+    .tabla-actividades .col-codigo{
+        width: 130px;
+    }
+
+    .col-estado{
+        width: 100px;
+    }
+
+    .estado-select{
+        font-size: 12px;
+    }
+
+    .tabla-actividades textarea{
+        font-size: 11px;
+        min-height: 50px;
+    }
 }
 
-/* ================= FILA 10 ================= */
+/* ===================================================== */
+/* 📱 RESPONSIVE (MOBILE) */
+/* ===================================================== */
+@media (max-width: 768px){
 
-.fila10-unico{
-margin-top:8px;
+    /* 🔥 FIX GLOBAL (EVITA CORTE A LA DERECHA) */
+    .tabla-actividades,
+    .tabla-actividades *{
+        box-sizing: border-box;
+    }
+
+    .tabla-actividades,
+    .tabla-actividades thead,
+    .tabla-actividades tbody,
+    .tabla-actividades th,
+    .tabla-actividades td,
+    .tabla-actividades tr{
+        display: block;
+        width: 100%;
+    }
+
+    .tabla-actividades thead{
+        display: none;
+    }
+
+    /* 🔥 FILA COMO CARD PRO */
+    .tabla-actividades tr{
+        margin-bottom: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 10px;
+        background: #fff;
+        overflow: hidden; /* 🔥 evita desbordes */
+    }
+
+    /* 🔥 ORDEN LIMPIO */
+    .tabla-actividades td{
+        border: none;
+        padding: 6px 0;
+        width: 100%;
+    }
+
+    /* 🔥 LABELS */
+    .tabla-actividades td::before{
+        content: attr(data-label);
+        font-weight: bold;
+        display: block;
+        margin-bottom: 4px;
+        color: #666;
+        font-size: 11px;
+    }
+
+    /* 🔥 CODIGO MÁS VISIBLE */
+    .tabla-actividades .col-codigo{
+        font-weight: bold;
+        font-size: 13px;
+    }
+
+    /* 🔥 TEXTAREA MEJORADO */
+    .tabla-actividades textarea{
+        width: 100%;
+        min-height: 60px;
+        background: #f0f0f0;
+        border-radius: 6px;
+        padding: 6px;
+        box-sizing: border-box; /* 🔥 clave */
+    }
+
+    /* 🔥 ESTADO ABAJO Y ORDENADO */
+    .col-estado{
+        margin-top: 6px;
+        width: 100%;
+    }
+
+    .estado-select{
+        width: 100%;
+        background: #f0f0f0;
+        border-radius: 6px;
+        padding: 4px;
+        text-align: left;
+        box-sizing: border-box; /* 🔥 clave */
+    }
+
 }
 
-/* ================= BLOQUES ================= */
+/* ================= FILA 9 y 10 ================= */
+
+.fila910{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 10px;
+}
 
 .bloque-texto{
-display:flex;
-flex-direction:column;
-border:2px solid #000;
-background:#f5f5f5;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border: none; /* 🔥 QUITADO */
+    border-radius: 8px;
+    padding: 8px;
 }
 
-/* TITULO */
-.titulo-bloque{
-font-weight:bold;
-font-size:12px;
-padding:5px;
-border-bottom:1px solid #000;
-background:#e6e6e6;
+.bloque-texto.full{
+    grid-column: span 2;
 }
 
-/* TEXTAREAS */
-.bloque-texto textarea,
-.fila10-unico textarea{
-width:100%;
-min-height:120px;
-border:none;
-padding:6px;
-font-size:12px;
-resize:vertical;
-background:white;
-outline:none;
+.bloque-texto label{
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
 }
 
-/* ================= FIRMAS ================= */
+.bloque-texto textarea{
+    width: 100%;
+    min-height: 80px;
+    border: none;
+    resize: vertical;
+    background: #f0f0f0; /* 🔥 más oscuro */
+    font-size: 12px;
+    outline: none;
+    padding: 6px;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+/* 🔥 efecto al escribir (pro UX) */
+.bloque-texto textarea:focus{
+    background: #e6e6e6;
+}
+
+/* 📱 RESPONSIVE */
+@media (max-width: 768px){
+    .fila910{
+        grid-template-columns: 1fr;
+    }
+
+    .bloque-texto.full{
+        grid-column: span 1;
+    }
+}
+
+/* ================= FIRMAS PRO ================= */
 
 .fila-firmas{
-display:grid;
-grid-template-columns: 1fr 1fr 1fr;
-gap:40px;
-margin-top:15px;
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:40px;
+    margin-top:15px;
 }
 
-/* CAJA */
+/* 📱 RESPONSIVE */
+@media (max-width: 768px){
+    .fila-firmas{
+        grid-template-columns: 1fr;
+        gap:20px;
+    }
+}
+
 .firma-box{
-display:flex;
-flex-direction:column;
-align-items:center;
-gap:6px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
 }
 
-/* IMAGEN */
-.firma-box img{
-width:150px;
-height:80px;
-object-fit:contain;
-border:1px solid #ccc;
+/* 🔥 CONTENEDOR FIRMA */
+.firma-img-container{
+    width:150px;
+    height:80px;
+    position:relative;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#f2f2f2;
+    border-radius:6px;
+    overflow:hidden;
 }
 
-/* LINEA */
-.linea{
-width:150px;
-border-top:2px solid #000;
-margin-top:5px;
+/* 🔥 IMAGEN */
+.firma-img-container img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
 }
 
-/* INPUTS */
+/* 🔥 PLUS */
+.firma-plus{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    font-size:26px;
+    color:#aaa;
+    pointer-events:none;
+    transition:opacity 0.2s;
+}
+
+/* 🔥 OCULTAR "+" CUANDO HAY IMAGEN */
+.firma-img-container img[src]:not([src=""]) + .firma-plus{
+    opacity:0;
+}
+
+/* 🔥 LINEA DE FIRMA */
+.linea-firma{
+    width:150px;
+    border-top:2px solid #000;
+    margin-top:4px;
+}
+
+/* 🔥 INPUTS BASE */
 .input-texto{
-width:150px;
-border:none;
-border-bottom:1px solid #999;
-text-align:center;
-font-size:11px;
-outline:none;
-background:transparent;
+    width:150px;
+    border:none;
+    border-bottom:1px solid #ccc;
+    text-align:center;
+    font-size:12px;
+    outline:none;
+    background:transparent;
+    padding:3px 0;
+    transition:all 0.2s ease;
+}
+
+/* 🔥 FOCUS */
+.input-texto:focus{
+    border-bottom:1px solid #000;
+}
+
+/* 🔥 PLACEHOLDER */
+.input-texto::placeholder{
+    color:#999;
+}
+
+/* 🔥 OCULTAR LÍNEA SI TIENE TEXTO */
+.input-texto:not(:placeholder-shown){
+    border-bottom:none;
+}
+
+/* 🔥 OPCIONAL: SI HACE CLICK, QUE VUELVA LA LÍNEA */
+.input-texto:not(:placeholder-shown):focus{
+    border-bottom:1px solid #000;
 }

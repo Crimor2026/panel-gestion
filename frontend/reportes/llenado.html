@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Formulario Maestro - ARC</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="/static/reportes/llenado.css">
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- ================= HEADER ================= -->
+    <div class="header">
+
+        <h1>FORMULARIO MAESTRO DE ARC</h1>
+
+        <div class="filtros">
+
+            <div>
+                <label>Proyecto:</label>
+                <select id="selectProyecto"></select>
+            </div>
+
+            <div>
+                <label>Fecha de corte:</label>
+                <input type="date" id="fechaCorte">
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ================= TABLA ARC ================= -->
+    <div class="tabla-arc">
+
+        <div class="tabla-header">
+            <div>Código</div>
+            <div>Descripción</div>
+            <div>Inicio Prog</div>
+            <div>Fin Prog</div>
+            <div>Inicio Ejec</div>
+            <div>Fin Ejec</div>
+            <div>%</div>
+        </div>
+
+        <div id="tablaARC"></div>
+
+    </div>
+
+    <!-- ================= ACTIVIDADES ================= -->
+    <div class="bloques-actividades">
+
+        <!-- 🔹 FILA 6 -->
+        <div class="bloque">
+            <h3>Actividades realizadas en el mes</h3>
+            <div id="tablaSeguimiento"></div>
+        </div>
+
+        <!-- 🔹 FILA 7 -->
+        <div class="bloque">
+            <h3>Actividades no realizadas</h3>
+            <div id="tablaNoRealizado"></div>
+        </div>
+
+        <!-- 🔹 FILA 8 -->
+        <div class="bloque">
+            <h3>Actividades programadas (próximo mes)</h3>
+            <div id="tablaProximo"></div>
+        </div>
+
+    </div>
+
+    <!-- ================= BOTÓN ================= -->
+    <div class="acciones">
+        <button id="btnGuardar" type="button">Guardar</button>
+    </div>
+
+</div>
+
+<!-- ================= JS ================= -->
+<script src="/static/reportes/llenado.js"></script>
+
+<script>
+document.getElementById("btnGuardar")
+    ?.addEventListener("click", guardarARC);
+</script>
+
+</body>
+</html>
