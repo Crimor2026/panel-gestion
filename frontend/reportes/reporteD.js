@@ -2,7 +2,7 @@
 // VARIABLES GLOBALES
 // =====================================================
 let data = []; // 🔥 DATA GLOBAL (SIEMPRE ESTA SE USA)
-
+let fechaGlobal = null;
 
 // =====================================================
 // INIT (VERSIÓN FINAL CORRECTA)
@@ -513,75 +513,12 @@ function renderActividadesAvanzadas(){
 }
 
 // =====================================================
-// 💾 GUARDAR REPORTE D (VERSIÓN FINAL FIX 🔥)
-// =====================================================
-async function guardarReporte(){
-
-    try{
-
-        const proyecto_id = document.getElementById("selectProyecto")?.value;
-        const fecha = document.getElementById("fechaCorte")?.value;
-
-        if(!proyecto_id || !fecha){
-            mostrarMensaje("Selecciona proyecto y fecha", true);
-            return;
-        }
-
-        const data = {
-            proyecto_id: parseInt(proyecto_id),
-            fecha_corte: fecha,
-
-            codigo_dsp: document.getElementById("codigoDSP")?.innerText || "",
-            unidad: document.getElementById("unidad")?.innerText || "",
-
-            direccion_id: document.getElementById("selectDireccion")?.value || null,
-
-            subdireccion: document.getElementById("subdireccion")?.value || "",
-            coordinador: document.getElementById("coordinador")?.value || "",
-
-            cui: document.getElementById("cui")?.value || "",
-            estado: document.getElementById("estado")?.value || "",
-            modalidad: document.getElementById("modalidad")?.value || "",
-
-            // 🔥 FECHAS
-            fecha_inicio_programado: getFecha("inicio"),
-            fecha_fin_programado: getFecha("fin"),
-            fecha_conclusion_real: getFecha("nuevaFecha"),
-
-            // 🔥 PRESUPUESTO
-            presupuesto_programado: document.getElementById("presupuestoA")?.value || 0,
-            presupuesto_actualizado: document.getElementById("presupuestoAct")?.value || 0,
-
-            // 🔥 AVANCES
-            avance_programado: document.getElementById("avancePlan")?.value || 0,
-            avance_fisico: document.getElementById("avanceReal")?.value || 0,
-
-            // 🔥 FINANCIERO
-            avance_financiero_programado: document.getElementById("avanceFinPlan")?.value || 0,
-            avance_financiero_real: document.getElementById("avanceFinReal")?.value || 0
-        };
-
-        // 🔥 YA NO SE ENVÍA (porque no existe endpoint)
-        // fetch eliminado correctamente
-
-        console.log("Datos del reporte (local):", data);
-
-        // 🔥 MENSAJE OK
-        mostrarMensaje("Información actualizada correctamente");
-
-    }catch(e){
-        console.error(e);
-        mostrarMensaje("Error al guardar: " + e.message, true);
-    }
-}
-
-// =====================================================
 // 💾 GUARDAR FILA ARC (VERSIÓN FINAL PRO 🔥)
 // =====================================================
 async function guardarFila(index, fila){
 
     const proyecto_id = document.getElementById("selectProyecto")?.value;
-    const fecha = document.getElementById("fechaCorte")?.value;
+    const fecha = fechaGlobal || document.getElementById("fechaCorte")?.value;
 
     if(!proyecto_id || !fecha){
         console.warn("Falta proyecto o fecha");
@@ -637,7 +574,7 @@ async function guardarFila(index, fila){
 
     try{
 
-        const res = await fetch("/api/guardar-arc", {
+        const res = await fetch("/api/guardar-todo", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -695,7 +632,7 @@ async function guardarFila(index, fila){
 async function guardarActividad(index, fila){
 
     const proyecto_id = document.getElementById("selectProyecto")?.value;
-    const fecha = document.getElementById("fechaCorte")?.value;
+    const fecha = fechaGlobal || document.getElementById("fechaCorte")?.value;
 
     if(!proyecto_id || !fecha) return;
 
@@ -727,7 +664,7 @@ async function guardarActividad(index, fila){
 
     try{
 
-        await fetch("/api/guardar-arc", {
+        await fetch("/api/guardar-todo", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1272,12 +1209,34 @@ async function guardarReporte(){
     try{
 
         const proyecto_id = document.getElementById("selectProyecto")?.value;
-        const fecha = document.getElementById("fechaCorte")?.value;
+        let fecha = document.getElementById("fechaCorte")?.value;
 
         if(!proyecto_id || !fecha){
             mostrarMensaje("Selecciona proyecto y fecha", true);
             return;
         }
+
+        // =====================================================
+        // 🔥 POPUP PARA ELEGIR FECHA (CLAVE)
+        // =====================================================
+        const fechaElegida = prompt(
+            "¿En qué fecha deseas guardar este reporte? (YYYY-MM-DD)",
+            fecha
+        );
+
+        if(!fechaElegida){
+            mostrarMensaje("Guardado cancelado", true);
+            return;
+        }
+
+        // 🔥 usar la nueva fecha elegida
+        fecha = fechaElegida;
+
+        // 🔥🔥🔥 FIX CRÍTICO (SIN ESTO TODO FALLA)
+        document.getElementById("fechaCorte").value = fecha;
+
+        // 🔥🔥🔥 NUEVO (NO ROMPE NADA - VARIABLE GLOBAL)
+        fechaGlobal = fecha;
 
         // 🔥 NUEVO: lista de campos a borrar intencionalmente
         const clear_fields = [];
@@ -1311,12 +1270,12 @@ async function guardarReporte(){
             estado: procesarCampoTexto(document.getElementById("estado")?.value, "estado", clear_fields),
             modalidad: procesarCampoTexto(document.getElementById("modalidad")?.value, "modalidad", clear_fields),
 
-            // 🔥 FECHAS (MISMA LÓGICA, SOLO CAMBIA VARIABLE)
+            // 🔥 FECHAS
             fecha_inicio_programado: fInicio,
             fecha_fin_programado: fFin,
             fecha_conclusion_real: fConclusion,
 
-            // 🔥 NÚMEROS (SIN CAMBIOS)
+            // 🔥 NÚMEROS
             presupuesto_programado: procesarNumero(document.getElementById("presupuestoA")?.value, "presupuesto_programado", clear_fields),
             presupuesto_actualizado: procesarNumero(document.getElementById("presupuestoAct")?.value, "presupuesto_actualizado", clear_fields),
 
@@ -1326,19 +1285,42 @@ async function guardarReporte(){
             avance_financiero_programado: procesarNumero(document.getElementById("avanceFinPlan")?.value, "avance_financiero_programado", clear_fields),
             avance_financiero_real: procesarNumero(document.getElementById("avanceFinReal")?.value, "avance_financiero_real", clear_fields),
 
-            // 🔥 NUEVO: se envía al backend
             _clear_fields: clear_fields
+        };
+
+        // =====================================================
+        // 🔥 ENVOLVER DATA (NUEVO ENDPOINT)
+        // =====================================================
+        const payload = {
+            proyecto_id: data.proyecto_id,
+            fecha_corte: data.fecha_corte,
+            reporte: data,
+            arcs: (data && data.length > 0) ? data : (window.data || []),
+            campos_finales: {
+                acuerdos: document.getElementById("acuerdos")?.value,
+                otros: document.getElementById("otros")?.value,
+                urgentes: document.getElementById("urgentes")?.value
+            },
+            firmas: {
+                cargo1: document.getElementById("cargo1")?.value,
+                nombre1: document.getElementById("nombre1")?.value,
+                cargo2: document.getElementById("cargo2")?.value,
+                nombre2: document.getElementById("nombre2")?.value,
+                cargo3: document.getElementById("cargo3")?.value,
+                nombre3: document.getElementById("nombre3")?.value
+            },
+            _clear_fields: data._clear_fields || []
         };
 
         // =====================================================
         // ENVÍO REAL AL BACKEND
         // =====================================================
-        const res = await fetch("/api/guardar-reporte", {
+        const res = await fetch("/api/guardar-todo", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify(payload)
         });
 
         if(!res.ok){
@@ -1355,7 +1337,9 @@ async function guardarReporte(){
         // REFRESH CONTROLADO
         // =====================================================
         await cargarDatos();
-        await cargarInfoProyecto();
+
+        // 🔥 IMPORTANTE
+        fechaGlobal = null;
 
     }catch(e){
         console.error(e);
@@ -1428,7 +1412,7 @@ function getFecha(id){
 async function guardarEstado(index, fila){
 
     const proyecto_id = document.getElementById("selectProyecto")?.value;
-    const fecha = document.getElementById("fechaCorte")?.value;
+    const fecha = fechaGlobal || document.getElementById("fechaCorte")?.value;
 
     if(!proyecto_id || !fecha) return;
 
@@ -1441,7 +1425,7 @@ async function guardarEstado(index, fila){
 
     try{
 
-        await fetch("/api/guardar-arc", {
+        await fetch("/api/guardar-todo", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1513,7 +1497,7 @@ async function guardarCamposFinales(){
     if(urgentes !== undefined) payload.urgentes = urgentes;
 
     try{
-        await fetch("/api/guardar-campos-finales", {
+        await fetch("/api/guardar-todo", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -1703,7 +1687,7 @@ async function guardarFirmasTexto(){
     };
 
     try{
-        await fetch("/api/guardar-firmas", {
+        await fetch("/api/guardar-todo", {
             method:"POST",
             headers:{ "Content-Type":"application/json" },
             body: JSON.stringify(payload)

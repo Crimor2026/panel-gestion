@@ -1,326 +1,902 @@
 /* ================= BASE ================= */
 
 .container{
-display:flex;
-flex-direction:column;
-font-family: Arial, Helvetica, sans-serif;
-font-size:12px;
-background:white;
-}
-
-/* FILAS */
-.fila{
-border-left:2px solid #000;
-border-right:2px solid #000;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size:12px;
 }
 
 /* ================= FILA 1 ================= */
 
 .fila1{
-display:grid;
-grid-template-columns: 180px 1fr 320px;
-align-items:center;
-background:#f2f2f2;
-border-top:2px solid #000;
-border-bottom:1px solid #000;
-padding:4px 8px;
-font-weight:bold;
+    display:grid;
+    grid-template-columns: 200px 1fr 420px;
+    align-items:center;
+    padding:8px 10px;
+    background:#f5f7fa;
+    border-bottom:1px solid #ccc;
 }
 
-.fila1 .izquierda{font-size:13px;}
-.fila1 .centro{text-align:center;font-size:14px;}
-.fila1 .derecha{text-align:right;font-size:11px;white-space:nowrap;}
+.f1-izq{
+    font-size:17px;
+    font-weight:bold;
+}
+
+.f1-centro{
+    text-align:center;
+    font-size:24px;
+    font-weight:bold;
+}
+
+.f1-der{
+    display:flex;
+    justify-content:flex-end;
+    align-items:center;
+    gap:12px;
+    font-size:13px;
+    color:#1f4e79;
+    flex-wrap:nowrap;
+}
+
+.f1-botones{
+    display:flex;
+    gap:6px;
+}
+
+.f1-ficha{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    white-space:nowrap;
+}
+
+#codigoProyecto{
+    white-space:nowrap;
+    font-weight:bold;
+}
 
 #numeroFicha{
-width:50px;
-border:none;
-border-bottom:1px solid black;
-text-align:center;
-background:transparent;
-font-weight:bold;
+    width:55px;
+    border:none;
+    border-bottom:1px solid #333;
+    text-align:center;
+    font-weight:bold;
+    background:transparent;
+}
+
+.btn-guardar{
+    background:#1f4e79;
+    color:#fff;
+    border:none;
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:12px;
+}
+
+.btn-pdf{
+    background:#b71c1c;
+    color:#fff;
+    border:none;
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:12px;
 }
 
 /* ================= FILA 2 ================= */
 
 .fila2{
-display:grid;
-grid-template-columns: 180px 1fr 320px;
-background:#e9e9e9;
-border-bottom:2px solid #000;
+    display:grid;
+    grid-template-columns: 240px 1fr 450px;
+    align-items:center;
+    gap:12px;
+    padding:10px 12px;
+    background:#f5f7fa;
+    border-bottom:1px solid #ccc;
 }
 
-.f2-izq{background:#dcdcdc;}
+.f2-logo{
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.f2-logo img{
+    width:120px;
+    height:auto;
+}
+
+.texto-entidad{
+    display:flex;
+    flex-direction:column;
+    line-height:1.2;
+}
+
+.titulo-entidad{
+    font-size:11px;
+    font-weight:bold;
+}
+
+.subtitulo-entidad{
+    font-size:8px;
+    color:#555;
+}
+
+/* ================= CENTRO ================= */
 
 .f2-centro{
-display:flex;
-flex-direction:column;
-align-items:center;
-justify-content:center;
-padding:10px;
-background:#dcdcdc;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    width:100%;
+    border:none !important;
+    box-shadow:none !important;
 }
 
-#selectProyecto{
-width:80%;
-padding:4px;
-font-size:12px;
-margin-bottom:5px;
+/* ================= SELECT2 BASE ================= */
+
+.select2-container{
+    width:100% !important;
 }
 
-#nombreProyecto{
-font-weight:bold;
-font-style:italic;
-color:#1f4e79;
-font-size:16px;
-text-align:center;
+/* ================= SELECT PROYECTO ================= */
+
+#selectProyecto + .select2-container .select2-selection--single{
+    border:none !important;
+    background:transparent !important;
+    box-shadow:none !important;
+    outline:none !important;
 }
 
-/* TABLA DERECHA */
-.tabla-info{
-display:grid;
-grid-template-columns: 1fr 1fr;
-font-size:11px;
-background:white;
-border-left:1px solid #999;
+#selectProyecto + .select2-container.select2-container--focus .select2-selection--single{
+    border:none !important;
+    box-shadow:none !important;
 }
 
-.tabla-info div:nth-child(odd){
-padding:4px 6px;
-font-weight:bold;
-background:#f7f7f7;
-border-bottom:1px dotted #999;
+#selectProyecto + .select2-container .select2-selection__rendered{
+    font-size:18px !important;
+    font-weight:600;
+    color:#1f4e79;
+    text-align:center !important;
+    text-transform:uppercase;
+    white-space:normal !important;
+    letter-spacing:0.5px;
 }
 
-.tabla-info div:nth-child(even){
-padding:4px 6px;
-border-bottom:1px dotted #999;
+#selectProyecto + .select2-container .select2-selection__placeholder{
+    font-size:16px;
+    text-transform:uppercase;
+    text-align:center;
+    color:#999 !important;
 }
 
-.tabla-info input,
-.tabla-info select{
-width:100%;
-border:none;
-background:transparent;
-font-size:11px;
-outline:none;
+#selectProyecto + .select2-container .select2-selection__arrow{
+    opacity:0.4;
 }
 
-/* ================= DATOS GENERALES ================= */
+/* ================= DERECHA (FIX FINAL 🔥) ================= */
 
-.fila-datos{
-display:grid;
-grid-template-columns: 200px 1fr;
-border:2px solid #000;
+.f2-der{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    font-size:12px;
 }
 
-.datos-titulo{
-background:#d9d9d9;
-font-weight:bold;
-display:flex;
-align-items:center;
-justify-content:center;
-border-right:2px solid #000;
+.f2-der .item{
+    display:grid;
+    grid-template-columns: 220px 1fr;
+    align-items: stretch;
+    gap:8px;
+
+    min-height: 60px;   /* 🔥 altura base */
 }
 
-.datos-contenido{
-display:grid;
-grid-template-columns: 1fr 1fr 1fr;
+/* 🔥 DOBLE ALTURA SOLO PARA FILTROS */
+.f2-der .item:nth-child(1),
+.f2-der .item:nth-child(3){
+    min-height: 40px;   /* 🔥 doble altura */
 }
 
-.bloque{border-right:1px solid #ccc;}
-.bloque:last-child{border-right:none;}
-
-.fila-item{
-display:grid;
-grid-template-columns: 1fr 1fr;
-border-bottom:1px dotted #999;
+.f2-der .label{
+    display:block;
 }
 
-.fila-item span:first-child{
-background:#f2f2f2;
-padding:4px;
-font-weight:bold;
+.f2-der .valor{
+    width:100%;
 }
 
-.fila-item span:last-child{padding:4px;}
-
-/* ================= FILA 5 TIMELINE ================= */
-
-.fila5-timeline{
-display:grid;
-grid-template-columns: 200px 1fr;
-border:2px solid #000;
+/* TEXTO IZQUIERDA */
+.f2-der .item span{
+    min-width:220px;
 }
 
-.timeline-label{
-background:#d9d9d9;
-font-weight:bold;
-display:flex;
-align-items:center;
-justify-content:center;
-border-right:2px solid #000;
+/* INPUT / SELECT */
+.f2-der .item input,
+.f2-der .item select{
+    width:100%;
+    height:100%;           /* 🔥 ocupa toda la altura */
+    box-sizing:border-box;
 }
 
-.timeline-container{
-overflow-x:auto;
-padding:10px;
-background:#fafafa;
+/* TEXTO (b) */
+.f2-der .item b{
+    display:flex;
+    align-items:center;
+    width:100%;
 }
 
-#timeline{
-display:flex;
-gap:6px;
-position:relative;
+.f2-der .item span{
+    min-width:220px;
+    display:flex;
+    align-items:center;   /* 🔥 centra vertical */
 }
 
-.arc{
-background:#e67e22;
-color:white;
-padding:6px 18px;
-font-size:11px;
-white-space:nowrap;
+/* ================= INPUT FECHA ================= */
 
-clip-path:polygon(
-0% 0%,85% 0%,100% 50%,85% 100%,0% 100%,10% 50%
-);
+.fechaInput{
+    border:1px solid #ccc;
+    border-radius:8px;
+    padding:5px 8px;
+    font-size:12px;
+    width:100%;
 }
 
-/* ================= FILA 6 CRONOGRAMA ================= */
+/* ================= SELECT DIRECCIÓN ================= */
 
-.fila6{
-display:flex;
-border:2px solid #000;
-height:500px;
+#selectDireccion{
+    width:100%;
+    border:1px solid #ccc;
+    border-radius:6px;
+    padding:4px 6px;
+    font-size:12px;
 }
 
-/* TABLA */
-.tabla-cronograma{
-width:45%;
-border-right:2px solid #000;
-overflow:auto;
+/* ================= PRINT ================= */
+
+@media print {
+    .btn-guardar,
+    .btn-pdf {
+        display: none;
+    }
+
+    body{
+        background:white;
+    }
 }
 
-.header-tabla,
-.fila-tabla{
-display:grid;
-grid-template-columns: 80px 1fr 80px 80px 80px 80px 80px 50px;
-font-size:11px;
+/* ================= RESPONSIVE ================= */
+
+@media (max-width:1024px){
+
+    .fila1{
+        grid-template-columns: 180px 1fr;
+        grid-template-rows: auto auto;
+        gap:10px;
+    }
+
+    .f1-der{
+        grid-column: 1 / -1;
+        justify-content:flex-end;
+        flex-wrap:wrap;
+    }
+
+    .f1-centro{
+        font-size:20px;
+    }
+
+    .fila2{
+        grid-template-columns: 200px 1fr;
+        grid-template-rows: auto auto;
+    }
+
+    .f2-der{
+        grid-column: 1 / -1;
+    }
+
+    #selectProyecto + .select2-container .select2-selection__rendered{
+        font-size:16px !important;
+    }
 }
 
-.header-tabla{
-background:#e5e5e5;
-font-weight:bold;
-border-bottom:2px solid #000;
+@media (max-width:768px){
+
+    .fila1{
+        grid-template-columns: 1fr;
+        text-align:center;
+    }
+
+    .f1-izq{
+        font-size:14px;
+    }
+
+    .f1-centro{
+        font-size:18px;
+    }
+
+    .f1-der{
+        justify-content:center;
+        flex-wrap:wrap;
+        gap:8px;
+    }
+
+    .fila2{
+        grid-template-columns: 1fr;
+        gap:10px;
+    }
+
+    .f2-logo{
+        justify-content:center;
+        text-align:center;
+    }
+
+    .f2-logo img{
+        width:90px;
+    }
+
+    .texto-entidad{
+        align-items:center;
+    }
+
+    #selectProyecto + .select2-container .select2-selection__rendered{
+        font-size:14px !important;
+        line-height:1.2;
+    }
+
+    .f2-der .item{
+        flex-direction:column;   /* 🔥 en móvil sí vertical */
+        align-items:flex-start;
+    }
+
+    .fechaInput{
+        width:100%;
+    }
 }
 
-.header-tabla div,
-.fila-tabla div{
-padding:4px;
-border-right:1px solid #ccc;
+/* ================= FILA 4 ================= */
+
+.fila4{
+    display:grid !important; /* 🔥 fuerza el grid (evita que otro CSS lo rompa) */
+    grid-template-columns: repeat(3, 1fr);
+    gap:16px;
+
+    padding:16px;
+    background:#ffffff;
+
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
 }
 
-/* GANTT */
-.gantt-cronograma{
-width:55%;
-position:relative;
-overflow:auto;
+
+/* ================= COLUMNAS ================= */
+
+.col{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+
+    width:100%;            /* 🔥 asegura que respete el grid */
+    min-width:0;           /* 🔥 evita que se desborde */
 }
 
-#ganttHeader{
-position:sticky;
-top:0;
-height:40px;
-background:#ddd;
-border-bottom:2px solid #000;
+
+/* ================= CAMPOS ================= */
+
+.campo{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+
+    width:100%;            /* 🔥 evita que se expandan mal */
 }
 
-#ganttGrid{
-position:relative;
-height:100%;
-min-width:2500px;
+
+/* LABEL */
+.campo label{
+    font-size:12px;
+    color:#555;
+    font-weight:500;
 }
 
-.mes{
-position:absolute;
-top:0;
-width:80px;
-text-align:center;
-font-size:10px;
-border-right:1px solid #999;
+
+/* ================= INPUT / BOX ================= */
+
+.box{
+    width:100%;
+    border:none;
+    background:#f1f3f5;
+    padding:7px 10px;
+    border-radius:6px;
+    font-size:13px;
+
+    resize:none;        /* 🔥 NO deformable */
+    overflow:hidden;    /* 🔥 limpio */
+    min-height:30px;
+
+    box-sizing:border-box;
 }
 
-.barra{
-position:absolute;
-height:20px;
-background:#93c47d;
-border-radius:4px;
+
+/* 🔥 INPUTS DENTRO DE BOX */
+.box input,
+.box select{
+    width:100%;
+    border:none;
+    background:transparent;
+    outline:none;
+
+    /* 🔥 CLAVE */
+    white-space:normal;
+    word-break:break-word;
+    line-height:1.3;
 }
 
-/* ================= FILA 7 ================= */
 
-.fila7-leyenda{
-display:flex;
-justify-content:space-between;
-align-items:center;
-border:2px solid #000;
-padding:8px;
-background:#f5f5f5;
-font-size:11px;
+/* HOVER */
+.box:hover{
+    background:#e9ecef;
 }
 
-.leyenda-colores{
-display:flex;
-gap:15px;
+
+/* FOCUS */
+.box:focus{
+    outline:none;
+    background:#ffffff;
+    box-shadow:0 0 5px rgba(31,78,121,0.3);
 }
 
-.item{
-display:flex;
-align-items:center;
-gap:5px;
+
+/* ================= VARIANTE EDITABLE ================= */
+
+.campo-editable{
+    width:100%;
+    border:none;
+    background:#f1f3f5;
+    padding:7px 10px;
+    border-radius:6px;
+    font-size:13px;
 }
 
-.color{
-width:20px;
-height:10px;
+.campo-editable:focus{
+    outline:none;
+    background:#ffffff;
+    box-shadow:0 0 5px rgba(31,78,121,0.3);
 }
 
-.programado{background:#d9d9d9;}
-.ejecutado{background:#93c47d;}
 
-/* ================= FILA 8 ================= */
+/* ================= ANTI-CONFLICTOS (CLAVE 🔥) ================= */
 
-.fila8-firmas{
-display:flex;
-justify-content:space-around;
-border:2px solid #000;
-padding:20px;
+/* evita que estilos globales rompan el layout */
+.fila4 input,
+.fila4 select{
+    width:100% !important;
+    display:block;
 }
 
-.firma{
-display:flex;
-flex-direction:column;
-align-items:center;
-width:250px;
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width:1024px){
+    .fila4{
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
-.imgFirma{
-width:180px;
-height:80px;
-object-fit:contain;
+@media (max-width:768px){
+    .fila4{
+        grid-template-columns: 1fr;
+        gap:12px;
+        padding:12px;
+    }
+
+    .campo label{
+        font-size:11px;
+    }
+
+    .box{
+        font-size:12px;
+        padding:6px 8px;
+    }
 }
 
+/* ================= FILA 5 ================= */
+
+.linea-tiempo{
+    display:flex;
+    align-items:center;
+    gap:20px;
+    padding:10px 16px;
+    background:#ffffff;
+    border-top:2px solid #000;
+}
+
+.titulo-linea{
+    font-weight:bold;
+    font-size:13px;
+    min-width:150px;
+}
+
+/* ================= ARC ================= */
+
+.arc-container{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+}
+
+.arc-item{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:6px 12px;
+    border-radius:20px;
+    background:linear-gradient(135deg, #f28c28, #e67e22);
+    color:#fff;
+    font-size:11px;
+    font-weight:600;
+    cursor:pointer;
+    transition:all 0.2s ease;
+    min-width:90px;
+}
+
+.arc-badge{ font-size:11px; }
+
+.arc-codigo{
+    font-size:9px;
+    opacity:0.9;
+}
+
+.arc-item:hover{
+    transform:translateY(-2px);
+    box-shadow:0 4px 10px rgba(0,0,0,0.15);
+}
+
+/* ================= CRONOGRAMA ================= */
+
+.bloque-cronograma{
+    margin-top:10px;
+    border-top:2px solid #000;
+}
+
+.cronograma-grid{
+    display:flex;
+    flex-direction:column;
+    width:100%;
+    overflow-x:auto;
+}
+
+.cronograma-header,
+.cronograma-row{
+    display:grid;
+    grid-template-columns: minmax(650px, 50%) minmax(650px, 50%);
+}
+
+/* ================= TABLA ================= */
+
+.tabla-header,
+.tabla-row{
+    display:grid;
+    grid-template-columns: 140px 2fr 180px 140px 140px 140px 140px 110px;
+    align-items:center;
+    min-width:900px;
+}
+
+.tabla-header{
+    background:#e6e6e6;
+    font-weight:bold;
+    font-size:12px;
+}
+
+.tabla-header div{
+    padding:6px;
+    border-right:1px solid #ccc;
+}
+
+.tabla-row div{
+    padding:6px;
+    border-bottom:1px solid #eee;
+    border-right:1px solid #f5f5f5;
+    white-space:normal;
+    word-break:break-word;
+    line-height:1.3;
+}
+
+.tabla-row div:first-child{
+    white-space:nowrap;
+}
+
+.tabla-row div:nth-child(2){
+    font-size:11px;
+}
+
+/* ================= GANTT ================= */
+
+.gantt{
+    position:relative;
+    min-width:700px;
+}
+
+/* =====================================================
+   🔥 TEXTO COMPLETO EN DHTMLX
+===================================================== */
+
+.gantt_grid_data .gantt_cell{
+    white-space: normal !important;
+    word-break: break-word !important;
+    line-height: 1.1;
+    padding:6px 8px;
+}
+
+.gantt_cell{
+    overflow: visible !important;
+    text-overflow: unset !important;
+}
+
+/* =====================================================
+   🔥 LÍNEAS MANUALES (TU IMPLEMENTACIÓN)
+===================================================== */
+
+.linea-marcador{
+    pointer-events:none;
+    z-index:9999;
+}
+
+/* =====================================================
+   🔥 ETIQUETAS (FIX IMPORTANTE)
+===================================================== */
+
+.label-marcador{
+    position:absolute;
+    pointer-events:none;
+    white-space:nowrap;
+    font-size:10px;
+    padding:2px 6px;
+    border-radius:4px;
+    color:#fff;
+    z-index:10000;
+}
+
+/* 🔴 CORTE */
+.label-marcador.corte{
+    background:red;
+}
+
+/* 🔵 HOY */
+.label-marcador.hoy{
+    background:#007bff;
+}
+
+/* =====================================================
+   🔥 CLAVE: EVITA QUE SE CORTEN LAS ETIQUETAS
+===================================================== */
+
+.gantt_data_area{
+    overflow:visible !important;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width:1024px){
+
+    .linea-tiempo{
+        flex-direction:column;
+        align-items:flex-start;
+        gap:10px;
+    }
+
+    .titulo-linea{
+        min-width:auto;
+    }
+
+    .cronograma-header,
+    .cronograma-row{
+        grid-template-columns: 1fr;
+    }
+
+    .tabla-header{
+        border-bottom:2px solid #000;
+    }
+
+    .gantt{
+        margin-top:5px;
+    }
+}
+
+@media (max-width:768px){
+
+    .arc-container{ gap:6px; }
+
+    .arc-item{
+        min-width:70px;
+        padding:5px 8px;
+        font-size:10px;
+    }
+
+    .arc-codigo{ font-size:8px; }
+
+    .tabla-header,
+    .tabla-row{
+        font-size:11px;
+        grid-template-columns: 110px 1.5fr 150px 110px 110px 110px 110px 90px;
+    }
+
+    .gantt{
+        min-width:1000px;
+    }
+}
+
+/* ================= LEYENDA CRONOGRAMA ================= */
+.leyenda-cronograma{
+    width:100%;
+    padding:6px 10px;
+    margin-top:6px;
+    border-top:1px solid #ccc;
+    display:flex;
+    justify-content:flex-end;
+}
+
+.leyenda-der{
+    font-size:11px;          /* 🔥 reducido */
+    color:#333;
+    max-width:900px;         /* evita que se estire demasiado */
+    text-align:left;
+    line-height:1.1;
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width:768px){
+
+    .leyenda-cronograma{
+        justify-content:center;
+        padding:6px;
+    }
+
+    .leyenda-der{
+        font-size:10px;      /* aún más pequeño en móvil */
+        text-align:center;
+        max-width:100%;
+    }
+
+}
+
+/* ================= FIRMAS PRO ================= */
+
+.fila-firmas{
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:40px;
+    margin-top:15px;
+}
+
+/* 📱 RESPONSIVE */
+@media (max-width: 768px){
+    .fila-firmas{
+        grid-template-columns: 1fr;
+        gap:20px;
+    }
+}
+
+.firma-box{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+}
+
+/* 🔥 CONTENEDOR FIRMA */
+.firma-img-container{
+    width:150px;
+    height:80px;
+    position:relative;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#f2f2f2;
+    border-radius:6px;
+    overflow:hidden;
+}
+
+/* 🔥 IMAGEN */
+.firma-img-container img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+    display:block;
+}
+
+/* 🔥 PLUS */
+.firma-plus{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    font-size:26px;
+    color:#aaa;
+    pointer-events:none;
+    transition:opacity 0.2s;
+}
+
+/* 🔥 OCULTAR "+" CUANDO HAY IMAGEN */
+.firma-img-container img[src]:not([src=""]) + .firma-plus{
+    opacity:0;
+}
+
+/* 🔥 LINEA DE FIRMA */
 .linea-firma{
-width:180px;
-border-bottom:2px solid black;
-margin:10px 0;
+    width:150px;
+    border-top:2px solid #000;
+    margin-top:4px;
 }
 
+/* 🔥 INPUTS BASE */
 .input-texto{
-border:none;
-border-bottom:1px solid #999;
-text-align:center;
-width:100%;
-font-size:11px;
-outline:none;
+    width:150px;
+    border:none;
+    border-bottom:1px solid #ccc;
+    text-align:center;
+    font-size:12px;
+    outline:none;
+    background:transparent;
+    padding:3px 0;
+    transition:all 0.2s ease;
+
+    /* 🔥 FIX */
+    resize: none;        /* ❌ evita que el usuario lo estire */
+    height: 21px;        /* 🔥 altura tipo input */
+    overflow: hidden;    /* 🔥 evita scroll feo */
 }
 
+/* 🔥 FOCUS */
+.input-texto:focus{
+    border-bottom:1px solid #000;
+}
+
+/* 🔥 PLACEHOLDER */
+.input-texto::placeholder{
+    color:#999;
+}
+
+/* 🔥 OCULTAR LÍNEA SI TIENE TEXTO */
+.input-texto:not(:placeholder-shown){
+    border-bottom:none;
+}
+
+/* 🔥 OPCIONAL: SI HACE CLICK, QUE VUELVA LA LÍNEA */
+.input-texto:not(:placeholder-shown):focus{
+    border-bottom:1px solid #000;
+}
+
+/* 🔥 FIX FIRMA PDF */
+.modo-pdf .input-texto{
+    border: none !important;
+    color: #000 !important;
+    display: block !important;
+}
+
+.modo-pdf .input-texto::placeholder{
+    color: transparent !important;
+}
+
+/* 🔥 FIX DEFINITIVO PARA PDF */
+.modo-pdf .cronograma-header,
+.modo-pdf .cronograma-row{
+    grid-template-columns: 1fr 1fr !important;
+}
+
+.modo-pdf .tabla-header,
+.modo-pdf .tabla-row{
+    min-width: unset !important;
+    width: 100% !important;
+}
+
+.modo-pdf .gantt{
+    min-width: unset !important;
+    width: 100% !important;
+}
+
+/* 🔥 EVITA QUE NADA ROMPA EL ANCHO */
+.modo-pdf *{
+    max-width: 100% !important;
+}

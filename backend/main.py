@@ -1670,181 +1670,568 @@ Responde claro, breve y profesional:
 app.include_router(router)
 
 # =====================================================
-# OBTENER VALOR ACTUAL
+# OBTENER FECHA MÁXIMA (🔥 NUEVO)
 # =====================================================
 
-def obtener_valor_actual(conn, proyecto_id, codigo_arc, campo):
-    r = conn.execute(text(f"""
-        SELECT {campo}
+def obtener_fecha_max(conn, proyecto_id, codigo_arc):
+    r = conn.execute(text("""
+        SELECT MAX(fecha_corte)
         FROM proyecto_arc
         WHERE proyecto_id = :proyecto_id
         AND codigo_arc = :codigo_arc
-        ORDER BY fecha_corte DESC
-        LIMIT 1
     """), {
         "proyecto_id": proyecto_id,
         "codigo_arc": codigo_arc
     }).fetchone()
 
-    return r[0] if r else None
+    return r[0] if r and r[0] else None
+
 
 # =====================================================
-# FORMULARIO MAESTRO
+# OBTENER VALOR ACTUAL (VERSIÓN FINAL REAL 🔥)
 # =====================================================
 
-@app.post("/api/guardar-arc")
-def guardar_arc(data: dict):
+def obtener_valor_actual(conn, proyecto_id, fecha_corte, codigo_arc, campo):
+
+    campos_validos = {
+        "descripcion",
+        "inicio_programado",
+        "fin_programado",
+        "inicio_ejecutado",
+        "fin_ejecutado",
+        "avance_percent",
+        "actividades_mes",
+        "nueva_fecha_fin",
+        "riesgo",
+        "estado_arc"
+    }
+
+    if campo not in campos_validos:
+        return None
+
+    r = conn.execute(text(f"""
+        SELECT {campo}
+        FROM proyecto_arc
+        WHERE proyecto_id = :proyecto_id
+        AND codigo_arc = :codigo_arc
+        AND fecha_corte = :fecha_corte
+        ORDER BY fecha_corte DESC
+        LIMIT 1
+    """), {
+        "proyecto_id": proyecto_id,
+        "fecha_corte": fecha_corte,
+        "codigo_arc": codigo_arc
+    }).fetchone()
+
+    return r[0] if r and r[0] is not None else None
+
+# =====================================================
+# GUARDAR TODA LA DATA
+# =====================================================
+
+@app.post("/api/guardar-todo")
+def guardar_todo(data: dict):
 
     proyecto_id = data.get("proyecto_id")
-    fecha_corte = data.get("fecha_corte")
-    arcs = data.get("arcs", [])
-
-    clear_fields = data.get("_clear_fields", [])
+    fecha_corte = limpiar_fecha(data.get("fecha_corte"))
 
     if not proyecto_id or not fecha_corte:
         raise HTTPException(status_code=400, detail="Faltan datos")
 
-    if not isinstance(arcs, list):
-        raise HTTPException(status_code=400, detail="ARC inválidos")
-
-    from datetime import datetime
-    import math
-
-    fecha_corte = datetime.strptime(fecha_corte, "%Y-%m-%d").date()
+    reporte = data.get("reporte", {})
+    arcs = data.get("arcs", [])
+    finales = data.get("campos_finales", {})
+    firmas = data.get("firmas", {})
+    clear_fields = data.get("_clear_fields", [])
 
     with engine.begin() as conn:
 
-        for arc in arcs:
+        # =====================================================
+        # FORMULARIO PRINCIPAL
+        # =====================================================
 
-            # ================= LIMPIEZA =================
-            codigo_arc = arc.get("codigo_arc") or arc.get("codigo")
+        try:
 
-            inicio = limpiar_fecha(arc.get("inicio_programado") or arc.get("inicio"))
-            fin = limpiar_fecha(arc.get("fin_programado") or arc.get("fin"))
-            inicio_ejec = limpiar_fecha(arc.get("inicio_ejecutado") or arc.get("inicio_ejec"))
-            fin_ejec = limpiar_fecha(arc.get("fin_ejecutado") or arc.get("fin_ejec"))
+            proyecto_id = data.get("proyecto_id")
+            fecha_corte = limpiar_fecha(data.get("fecha_corte"))
 
-            avance = arc.get("avance_percent") or arc.get("avance") or 0
+            if not proyecto_id or not fecha_corte:
+                raise HTTPException(status_code=400, detail="Faltan datos")
 
-            try:
-                avance = float(avance)
-                if math.isnan(avance):
-                    avance = 0
-            except:
-                avance = 0
+            # =====================================================
+            # 🔥 NUEVO: CAMPOS A BORRAR INTENCIONALMENTE
+            # =====================================================
+            clear_fields = data.get("_clear_fields", [])
 
-            # ================= CAMPOS =================
-            nueva_fecha_fin = limpiar_fecha(arc.get("nueva_fecha_fin"))
-            riesgo = arc.get("riesgo")
-            actividad = arc.get("actividades_mes")
-            descripcion = arc.get("descripcion")
+            # =====================================================
+            # 🔥 LIMPIEZA 
+            # =====================================================
 
-            # 🔥 NUEVO
-            estado_arc = arc.get("estado_arc")
+            estado = reporte.get("estado") or None
 
-            # ================= FIX =================
-            if descripcion is None:
-                descripcion = obtener_valor_actual(conn, proyecto_id, codigo_arc, "descripcion")
+            fecha_inicio_prog = limpiar_fecha(reporte.get("fecha_inicio_programado"))
+            fecha_inicio_ejec = limpiar_fecha(reporte.get("fecha_inicio_ejecutado"))
+            fecha_fin_prog = limpiar_fecha(reporte.get("fecha_fin_programado"))
+            fecha_conclusion_real = limpiar_fecha(reporte.get("fecha_conclusion_real"))
 
-            if inicio is None:
-                inicio = obtener_valor_actual(conn, proyecto_id, codigo_arc, "inicio_programado")
+            dependencias = reporte.get("dependencias_externas") or None
 
-            if fin is None:
-                fin = obtener_valor_actual(conn, proyecto_id, codigo_arc, "fin_programado")
+            presupuesto_prog = reporte.get("presupuesto_programado")
+            presupuesto_prog = float(presupuesto_prog) if presupuesto_prog not in [None, ""] else None
 
-            # ================= INSERT / UPDATE =================
+            presupuesto_actualizado = reporte.get("presupuesto_actualizado")
+            presupuesto_actualizado = float(presupuesto_actualizado) if presupuesto_actualizado not in [None, ""] else None
+
+            avance_prog = reporte.get("avance_programado")
+            avance_prog = float(avance_prog) if avance_prog not in [None, ""] else None
+
+            avance_real = reporte.get("avance_fisico")
+            avance_real = float(avance_real) if avance_real not in [None, ""] else None
+
+            avance_fin_prog = reporte.get("avance_financiero_programado")
+            avance_fin_prog = float(avance_fin_prog) if avance_fin_prog not in [None, ""] else None
+
+            avance_fin_real = reporte.get("avance_financiero_real")
+            avance_fin_real = float(avance_fin_real) if avance_fin_real not in [None, ""] else None
+
+            proyecto_inv = reporte.get("proyecto_inversion") or None
+            clasificacion_id = reporte.get("clasificacion_id") or None
+            direccion_id = reporte.get("direccion_id") or None
+
+            entidad = reporte.get("entidad_ejecutora") or None
+            coordinador = reporte.get("coordinador") or None
+            correo = reporte.get("correo") or None
+            celular = reporte.get("celular") or None
+
+            subdireccion = reporte.get("subdireccion") or None
+            modalidad = reporte.get("modalidad") or None
+            cui = reporte.get("cui") or None
+
+            # =====================================================
+            # 🔥 INSERT / UPDATE (CON BORRADO CONTROLADO)
+            # =====================================================
+
             conn.execute(text("""
-                INSERT INTO proyecto_arc (
+                INSERT INTO ficha_llenado (
                     proyecto_id,
                     fecha_corte,
-                    codigo_arc,
-                    descripcion,
-                    inicio_programado,
-                    fin_programado,
-                    inicio_ejecutado,
-                    fin_ejecutado,
-                    avance_percent,
-                    actividades_mes,
-                    no_realizado,
-                    proximo_mes,
-                    nueva_fecha_fin,
-                    riesgo,
-                    estado_arc
+                    estado,
+                    fecha_inicio_programado,
+                    fecha_inicio_ejecutado,
+                    fecha_fin_programado,
+                    fecha_conclusion_real,
+                    dependencias_externas,
+                    presupuesto_programado,
+                    presupuesto_actualizado,
+                    avance_programado,
+                    avance_fisico,
+                    avance_financiero_programado,
+                    avance_financiero_real,
+                    proyecto_inversion,
+                    clasificacion_id,
+                    direccion_id,
+                    entidad_ejecutora,
+                    coordinador,
+                    correo,
+                    celular,
+                    subdireccion,
+                    modalidad,
+                    cui
                 )
                 VALUES (
                     :proyecto_id,
                     :fecha_corte,
-                    :codigo_arc,
-                    :descripcion,
-                    :inicio,
-                    :fin,
-                    :inicio_ejec,
-                    :fin_ejec,
-                    :avance,
-                    :actividad,
-                    :no_realizado,
-                    :proximo,
-                    :nueva_fecha_fin,
-                    :riesgo,
-                    :estado_arc
+                    :estado,
+                    :fecha_inicio_programado,
+                    :fecha_inicio_ejecutado,
+                    :fecha_fin_programado,
+                    :fecha_conclusion_real,
+                    :dependencias_externas,
+                    :presupuesto_programado,
+                    :presupuesto_actualizado,
+                    :avance_programado,
+                    :avance_fisico,
+                    :avance_financiero_programado,
+                    :avance_financiero_real,
+                    :proyecto_inversion,
+                    :clasificacion_id,
+                    :direccion_id,
+                    :entidad_ejecutora,
+                    :coordinador,
+                    :correo,
+                    :celular,
+                    :subdireccion,
+                    :modalidad,
+                    :cui
                 )
-                ON CONFLICT (proyecto_id, fecha_corte, codigo_arc)
+                ON CONFLICT (proyecto_id, fecha_corte)
                 DO UPDATE SET
 
-                    descripcion = COALESCE(EXCLUDED.descripcion, proyecto_arc.descripcion),
-                    inicio_programado = COALESCE(EXCLUDED.inicio_programado, proyecto_arc.inicio_programado),
-                    fin_programado = COALESCE(EXCLUDED.fin_programado, proyecto_arc.fin_programado),
-                    inicio_ejecutado = COALESCE(EXCLUDED.inicio_ejecutado, proyecto_arc.inicio_ejecutado),
-                    fin_ejecutado = COALESCE(EXCLUDED.fin_ejecutado, proyecto_arc.fin_ejecutado),
-                    avance_percent = COALESCE(EXCLUDED.avance_percent, proyecto_arc.avance_percent),
+                    estado = CASE WHEN 'estado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.estado, ficha_llenado.estado) END,
 
-                    actividades_mes =
-                        CASE 
-                            WHEN 'actividades_mes' = ANY(:clear_fields) THEN NULL
-                            ELSE COALESCE(EXCLUDED.actividades_mes, proyecto_arc.actividades_mes)
-                        END,
+                    fecha_inicio_programado = CASE WHEN 'fecha_inicio_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.fecha_inicio_programado, ficha_llenado.fecha_inicio_programado) END,
+                    fecha_inicio_ejecutado = CASE WHEN 'fecha_inicio_ejecutado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.fecha_inicio_ejecutado, ficha_llenado.fecha_inicio_ejecutado) END,
+                    fecha_fin_programado = CASE WHEN 'fecha_fin_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.fecha_fin_programado, ficha_llenado.fecha_fin_programado) END,
+                    fecha_conclusion_real = CASE WHEN 'fecha_conclusion_real' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.fecha_conclusion_real, ficha_llenado.fecha_conclusion_real) END,
 
-                    no_realizado = EXCLUDED.no_realizado,
-                    proximo_mes = EXCLUDED.proximo_mes,
+                    dependencias_externas = CASE WHEN 'dependencias_externas' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.dependencias_externas, ficha_llenado.dependencias_externas) END,
 
-                    nueva_fecha_fin =
-                        CASE 
-                            WHEN 'nueva_fecha_fin' = ANY(:clear_fields) THEN NULL
-                            ELSE COALESCE(EXCLUDED.nueva_fecha_fin, proyecto_arc.nueva_fecha_fin)
-                        END,
+                    presupuesto_programado = CASE WHEN 'presupuesto_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.presupuesto_programado, ficha_llenado.presupuesto_programado) END,
+                    presupuesto_actualizado = CASE WHEN 'presupuesto_actualizado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.presupuesto_actualizado, ficha_llenado.presupuesto_actualizado) END,
 
-                    riesgo =
-                        CASE 
-                            WHEN 'riesgo' = ANY(:clear_fields) THEN NULL
-                            ELSE COALESCE(EXCLUDED.riesgo, proyecto_arc.riesgo)
-                        END,
+                    avance_programado = CASE WHEN 'avance_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_programado, ficha_llenado.avance_programado) END,
+                    avance_fisico = CASE WHEN 'avance_fisico' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_fisico, ficha_llenado.avance_fisico) END,
 
-                    -- 🔥 NUEVO (CLAVE)
-                    estado_arc =
-                        CASE 
-                            WHEN 'estado_arc' = ANY(:clear_fields) THEN NULL
-                            ELSE COALESCE(EXCLUDED.estado_arc, proyecto_arc.estado_arc)
-                        END
+                    avance_financiero_programado = CASE WHEN 'avance_financiero_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_financiero_programado, ficha_llenado.avance_financiero_programado) END,
+                    avance_financiero_real = CASE WHEN 'avance_financiero_real' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_financiero_real, ficha_llenado.avance_financiero_real) END,
+
+                    proyecto_inversion = CASE WHEN 'proyecto_inversion' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.proyecto_inversion, ficha_llenado.proyecto_inversion) END,
+                    clasificacion_id = CASE WHEN 'clasificacion_id' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.clasificacion_id, ficha_llenado.clasificacion_id) END,
+                    direccion_id = CASE WHEN 'direccion_id' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.direccion_id, ficha_llenado.direccion_id) END,
+
+                    entidad_ejecutora = CASE WHEN 'entidad_ejecutora' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.entidad_ejecutora, ficha_llenado.entidad_ejecutora) END,
+                    coordinador = CASE WHEN 'coordinador' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.coordinador, ficha_llenado.coordinador) END,
+                    correo = CASE WHEN 'correo' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.correo, ficha_llenado.correo) END,
+                    celular = CASE WHEN 'celular' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.celular, ficha_llenado.celular) END,
+
+                    subdireccion = CASE WHEN 'subdireccion' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.subdireccion, ficha_llenado.subdireccion) END,
+                    modalidad = CASE WHEN 'modalidad' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.modalidad, ficha_llenado.modalidad) END,
+                    cui = CASE WHEN 'cui' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.cui, ficha_llenado.cui) END
             """), {
                 "proyecto_id": proyecto_id,
                 "fecha_corte": fecha_corte,
-                "codigo_arc": codigo_arc,
-                "descripcion": descripcion,
-                "inicio": inicio,
-                "fin": fin,
-                "inicio_ejec": inicio_ejec,
-                "fin_ejec": fin_ejec,
-                "avance": avance,
-                "no_realizado": arc.get("no_realizado"),
-                "proximo": arc.get("proximo_mes"),
-                "nueva_fecha_fin": nueva_fecha_fin,
-                "riesgo": riesgo,
-                "actividad": actividad,
-                "clear_fields": clear_fields,
-                "estado_arc": estado_arc
+                "estado": estado,
+                "fecha_inicio_programado": fecha_inicio_prog,
+                "fecha_inicio_ejecutado": fecha_inicio_ejec,
+                "fecha_fin_programado": fecha_fin_prog,
+                "fecha_conclusion_real": fecha_conclusion_real,
+                "dependencias_externas": dependencias,
+                "presupuesto_programado": presupuesto_prog,
+                "presupuesto_actualizado": presupuesto_actualizado,
+                "avance_programado": avance_prog,
+                "avance_fisico": avance_real,
+                "avance_financiero_programado": avance_fin_prog,
+                "avance_financiero_real": avance_fin_real,
+                "proyecto_inversion": proyecto_inv,
+                "clasificacion_id": clasificacion_id,
+                "direccion_id": direccion_id,
+                "entidad_ejecutora": entidad,
+                "coordinador": coordinador,
+                "correo": correo,
+                "celular": celular,
+                "subdireccion": subdireccion,
+                "modalidad": modalidad,
+                "cui": cui,
+                "clear_fields": clear_fields
             })
 
-    return {"mensaje": "ARC guardados correctamente"}
+        except Exception as e:
+            print("🔥 ERROR GUARDAR REPORTE:", e)
+            raise HTTPException(status_code=500, detail=str(e))
+
+        # =====================================================
+        # FORMULARIO MAESTRO
+        # =====================================================
+
+        try:
+            
+            proyecto_id = data.get("proyecto_id")
+            fecha_corte = limpiar_fecha(data.get("fecha_corte"))
+            arcs = data.get("arcs", [])
+
+            clear_fields = data.get("_clear_fields", [])
+
+            if not proyecto_id or not fecha_corte:
+                raise HTTPException(status_code=400, detail="Faltan datos")
+
+            if not isinstance(arcs, list):
+                raise HTTPException(status_code=400, detail="ARC inválidos")
+
+            if not arcs:
+                print("ARC vacío")
+
+            from datetime import datetime
+            import math
+
+            for arc in arcs:
+
+                codigo_arc = arc.get("codigo_arc") or arc.get("codigo")
+
+                # ================= LIMPIEZA =================
+                
+                inicio = limpiar_fecha(arc.get("inicio_programado") or arc.get("inicio"))
+                fin = limpiar_fecha(arc.get("fin_programado") or arc.get("fin"))
+                inicio_ejec = limpiar_fecha(arc.get("inicio_ejecutado") or arc.get("inicio_ejec"))
+                fin_ejec = limpiar_fecha(arc.get("fin_ejecutado") or arc.get("fin_ejec"))
+
+                avance = arc.get("avance_percent") or arc.get("avance") or 0
+
+                try:
+                    avance = float(avance)
+                    if math.isnan(avance):
+                        avance = 0
+                except:
+                    avance = 0
+
+                # ================= CAMPOS =================
+                nueva_fecha_fin = limpiar_fecha(arc.get("nueva_fecha_fin"))
+                riesgo = arc.get("riesgo")
+                actividad = arc.get("actividades_mes")
+                descripcion = arc.get("descripcion")
+
+                # 🔥 NUEVO
+                estado_arc = arc.get("estado_arc")
+
+                # ================= FIX FINAL REAL 🔥 =================
+
+                if descripcion == "-":
+                    descripcion = None
+
+                if inicio == "-":
+                    inicio = None
+
+                if fin == "-":
+                    fin = None
+
+                if descripcion is None:
+                    descripcion = obtener_valor_actual(conn, proyecto_id, fecha_corte, codigo_arc, "descripcion")
+
+                if inicio is None:
+                    inicio = obtener_valor_actual(conn, proyecto_id, fecha_corte, codigo_arc, "inicio_programado")
+
+                if fin is None:
+                    fin = obtener_valor_actual(conn, proyecto_id, fecha_corte, codigo_arc, "fin_programado")
+
+                # ================= INSERT / UPDATE =================
+                conn.execute(text("""
+                    INSERT INTO proyecto_arc (
+                        proyecto_id,
+                        fecha_corte,
+                        codigo_arc,
+                        descripcion,
+                        inicio_programado,
+                        fin_programado,
+                        inicio_ejecutado,
+                        fin_ejecutado,
+                        avance_percent,
+                        actividades_mes,
+                        no_realizado,
+                        proximo_mes,
+                        nueva_fecha_fin,
+                        riesgo,
+                        estado_arc
+                    )
+                    VALUES (
+                        :proyecto_id,
+                        :fecha_corte,
+                        :codigo_arc,
+                        :descripcion,
+                        :inicio,
+                        :fin,
+                        :inicio_ejec,
+                        :fin_ejec,
+                        :avance,
+                        :actividad,
+                        :no_realizado,
+                        :proximo,
+                        :nueva_fecha_fin,
+                        :riesgo,
+                        :estado_arc
+                    )
+                    ON CONFLICT (proyecto_id, fecha_corte, codigo_arc)
+                    DO UPDATE SET
+
+                        descripcion = COALESCE(EXCLUDED.descripcion, proyecto_arc.descripcion),
+                        inicio_programado = COALESCE(EXCLUDED.inicio_programado, proyecto_arc.inicio_programado),
+                        fin_programado = COALESCE(EXCLUDED.fin_programado, proyecto_arc.fin_programado),
+                        inicio_ejecutado = COALESCE(EXCLUDED.inicio_ejecutado, proyecto_arc.inicio_ejecutado),
+                        fin_ejecutado = COALESCE(EXCLUDED.fin_ejecutado, proyecto_arc.fin_ejecutado),
+                        avance_percent = COALESCE(EXCLUDED.avance_percent, proyecto_arc.avance_percent),
+
+                        actividades_mes =
+                            CASE 
+                                WHEN 'actividades_mes' = ANY(:clear_fields) THEN NULL
+                                ELSE COALESCE(EXCLUDED.actividades_mes, proyecto_arc.actividades_mes)
+                            END,
+
+                        no_realizado = EXCLUDED.no_realizado,
+                        proximo_mes = EXCLUDED.proximo_mes,
+
+                        nueva_fecha_fin =
+                            CASE 
+                                WHEN 'nueva_fecha_fin' = ANY(:clear_fields) THEN NULL
+                                ELSE COALESCE(EXCLUDED.nueva_fecha_fin, proyecto_arc.nueva_fecha_fin)
+                            END,
+
+                        riesgo =
+                            CASE 
+                                WHEN 'riesgo' = ANY(:clear_fields) THEN NULL
+                                ELSE COALESCE(EXCLUDED.riesgo, proyecto_arc.riesgo)
+                            END,
+
+                        estado_arc =
+                            CASE 
+                                WHEN 'estado_arc' = ANY(:clear_fields) THEN NULL
+                                ELSE COALESCE(EXCLUDED.estado_arc, proyecto_arc.estado_arc)
+                            END
+                """), {
+                    "proyecto_id": proyecto_id,
+                    "fecha_corte": fecha_corte,
+                    "codigo_arc": codigo_arc,
+                    "descripcion": descripcion,
+                    "inicio": inicio,
+                    "fin": fin,
+                    "inicio_ejec": inicio_ejec,
+                    "fin_ejec": fin_ejec,
+                    "avance": avance,
+                    "no_realizado": arc.get("no_realizado"),
+                    "proximo": arc.get("proximo_mes"),
+                    "nueva_fecha_fin": nueva_fecha_fin,
+                    "riesgo": riesgo,
+                    "actividad": actividad,
+                    "clear_fields": clear_fields,
+                    "estado_arc": estado_arc
+                })
+
+        except Exception as e:
+            print("🔥 ERROR GUARDAR ARC:", e)
+            raise HTTPException(status_code=500, detail=str(e))
+
+        # =====================================================
+        # 🔥 FILA 9 y 10 (FIX REAL FINAL)
+        # =====================================================
+
+        try:
+
+            from datetime import datetime
+
+            proyecto_id = data.get("proyecto_id")
+            fecha = data.get("fecha_corte")
+
+            if not proyecto_id or not fecha:
+                raise HTTPException(status_code=400, detail="Faltan datos")
+
+            # 🔥 FIX CLAVE
+            fecha = datetime.strptime(fecha, "%Y-%m-%d").date()
+
+            clear_fields = data.get("_clear_fields", [])
+
+            # 🔥 YA NO VA with engine.begin() AQUÍ
+
+            # 🔥 ASEGURAR FILA
+            conn.execute(text("""
+                INSERT INTO ficha_llenado (proyecto_id, fecha_corte)
+                VALUES (:proyecto_id, :fecha)
+                ON CONFLICT (proyecto_id, fecha_corte) DO NOTHING
+            """), {
+                "proyecto_id": proyecto_id,
+                "fecha": fecha
+            })
+
+            # 🔥 UPDATE
+            conn.execute(text("""
+                UPDATE ficha_llenado
+                SET
+                    acuerdos =
+                        CASE
+                            WHEN 'acuerdos' = ANY(:clear_fields) THEN NULL
+                            ELSE COALESCE(:acuerdos, acuerdos)
+                        END,
+
+                    otros =
+                        CASE
+                            WHEN 'otros' = ANY(:clear_fields) THEN NULL
+                            ELSE COALESCE(:otros, otros)
+                        END,
+
+                    urgentes =
+                        CASE
+                            WHEN 'urgentes' = ANY(:clear_fields) THEN NULL
+                            ELSE COALESCE(:urgentes, urgentes)
+                        END
+
+                WHERE proyecto_id = :proyecto_id
+                AND fecha_corte = :fecha
+            """), {
+                "proyecto_id": proyecto_id,
+                "fecha": fecha,
+                "acuerdos": data.get("acuerdos"),
+                "otros": data.get("otros"),
+                "urgentes": data.get("urgentes"),
+                "clear_fields": clear_fields
+            })
+
+        except Exception as e:
+            print("🔥 ERROR CAMPOS FINALES:", e)
+            raise HTTPException(status_code=500, detail=str(e))
+
+        # =====================================================
+        # 🔥 FIRMAS - GUARDAR SOLO TEXTOS (FIX REAL FINAL)
+        # =====================================================
+
+        try:
+
+            from datetime import datetime
+
+            proyecto_id = data.get("proyecto_id")
+            fecha_str = data.get("fecha_corte")
+
+            if not proyecto_id or not fecha_str:
+                raise HTTPException(status_code=400, detail="Faltan datos")
+
+            fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+
+            # 🔥 YA NO VA with engine.begin() AQUÍ
+
+            # 🔥 ASEGURA FILA
+            conn.execute(text("""
+                INSERT INTO firmas (proyecto_id, fecha_corte)
+                VALUES (:proyecto_id, :fecha)
+                ON CONFLICT (proyecto_id, fecha_corte) DO NOTHING
+            """), {
+                "proyecto_id": proyecto_id,
+                "fecha": fecha
+            })
+
+            # =====================================================
+            # 🔥 NORMALIZACIÓN (CLAVE 🔥)
+            # =====================================================
+            def limpiar(valor):
+                if valor in ["", "-"]:
+                    return None
+                return valor
+
+            # =====================================================
+            # 🔥 UPDATE TEXTOS
+            # =====================================================
+            conn.execute(text("""
+                UPDATE firmas
+                SET
+                    cargo1 = :cargo1,
+                    nombre1 = :nombre1,
+                    cargo2 = :cargo2,
+                    nombre2 = :nombre2,
+                    cargo3 = :cargo3,
+                    nombre3 = :nombre3
+                WHERE proyecto_id = :proyecto_id
+                AND fecha_corte = :fecha
+            """), {
+                "proyecto_id": proyecto_id,
+                "fecha": fecha,
+
+                "cargo1": limpiar(data.get("cargo1")),
+                "nombre1": limpiar(data.get("nombre1")),
+
+                "cargo2": limpiar(data.get("cargo2")),
+                "nombre2": limpiar(data.get("nombre2")),
+
+                "cargo3": limpiar(data.get("cargo3")),
+                "nombre3": limpiar(data.get("nombre3")),
+            })
+
+        except Exception as e:
+            print("🔥 ERROR FIRMAS:", e)
+            raise HTTPException(status_code=500, detail=str(e))
 
 # =====================================================
 # ENDPOINT PARA LEER ARC - FORMATO D (FINAL PRO 🔥)
@@ -1862,6 +2249,7 @@ def obtener_arc(proyecto_id: int, fecha: str = None):
             SELECT
                 codigo_arc,
                 descripcion,
+                direccion_responsable,
                 inicio_programado,
                 fin_programado,
                 nueva_fecha_fin,
@@ -1917,6 +2305,8 @@ def obtener_arc(proyecto_id: int, fecha: str = None):
             data.append({
                 "codigo_arc": row["codigo_arc"],
                 "descripcion": row["descripcion"],
+
+                "direccion_responsable": row["direccion_responsable"],
 
                 "inicio_programado": row["inicio_programado"].isoformat() if row["inicio_programado"] else None,
                 "fin_programado": row["fin_programado"].isoformat() if row["fin_programado"] else None,
@@ -2077,264 +2467,6 @@ def obtener_proyecto(proyecto_id: int, fecha: str = None):
             return {"error": str(e)}
         
 # =====================================================
-# FORMULARIO PRINCIPAL
-# =====================================================
-
-@app.post("/api/guardar-reporte")
-def guardar_reporte(data: dict):
-
-    try:
-
-        proyecto_id = data.get("proyecto_id")
-        fecha_corte = limpiar_fecha(data.get("fecha_corte"))
-
-        if not proyecto_id or not fecha_corte:
-            raise HTTPException(status_code=400, detail="Faltan datos")
-
-        # =====================================================
-        # 🔥 NUEVO: CAMPOS A BORRAR INTENCIONALMENTE
-        # =====================================================
-        clear_fields = data.get("_clear_fields", [])
-
-        # =====================================================
-        # 🔥 LIMPIEZA 
-        # =====================================================
-
-        estado = data.get("estado") or None
-
-        fecha_inicio_prog = limpiar_fecha(data.get("fecha_inicio_programado"))
-        fecha_inicio_ejec = limpiar_fecha(data.get("fecha_inicio_ejecutado"))
-        fecha_fin_prog = limpiar_fecha(data.get("fecha_fin_programado"))
-        fecha_conclusion_real = limpiar_fecha(data.get("fecha_conclusion_real"))
-
-        dependencias = data.get("dependencias_externas") or None
-
-        presupuesto_prog = data.get("presupuesto_programado")
-        presupuesto_prog = float(presupuesto_prog) if presupuesto_prog not in [None, ""] else None
-
-        presupuesto_actualizado = data.get("presupuesto_actualizado")
-        presupuesto_actualizado = float(presupuesto_actualizado) if presupuesto_actualizado not in [None, ""] else None
-
-        avance_prog = data.get("avance_programado")
-        avance_prog = float(avance_prog) if avance_prog not in [None, ""] else None
-
-        avance_real = data.get("avance_fisico")
-        avance_real = float(avance_real) if avance_real not in [None, ""] else None
-
-        avance_fin_prog = data.get("avance_financiero_programado")
-        avance_fin_prog = float(avance_fin_prog) if avance_fin_prog not in [None, ""] else None
-
-        avance_fin_real = data.get("avance_financiero_real")
-        avance_fin_real = float(avance_fin_real) if avance_fin_real not in [None, ""] else None
-
-        proyecto_inv = data.get("proyecto_inversion") or None
-        clasificacion_id = data.get("clasificacion_id") or None
-        direccion_id = data.get("direccion_id") or None
-
-        entidad = data.get("entidad_ejecutora") or None
-        coordinador = data.get("coordinador") or None
-        correo = data.get("correo") or None
-        celular = data.get("celular") or None
-
-        subdireccion = data.get("subdireccion") or None
-        modalidad = data.get("modalidad") or None
-        cui = data.get("cui") or None
-
-        # =====================================================
-        # 🔥 INSERT / UPDATE (CON BORRADO CONTROLADO)
-        # =====================================================
-
-        with engine.begin() as conn:
-
-            conn.execute(text("""
-                INSERT INTO ficha_llenado (
-                    proyecto_id,
-                    fecha_corte,
-                    estado,
-                    fecha_inicio_programado,
-                    fecha_inicio_ejecutado,
-                    fecha_fin_programado,
-                    fecha_conclusion_real,
-                    dependencias_externas,
-                    presupuesto_programado,
-                    presupuesto_actualizado,
-                    avance_programado,
-                    avance_fisico,
-                    avance_financiero_programado,
-                    avance_financiero_real,
-                    proyecto_inversion,
-                    clasificacion_id,
-                    direccion_id,
-                    entidad_ejecutora,
-                    coordinador,
-                    correo,
-                    celular,
-                    subdireccion,
-                    modalidad,
-                    cui
-                )
-                VALUES (
-                    :proyecto_id,
-                    :fecha_corte,
-                    :estado,
-                    :fecha_inicio_programado,
-                    :fecha_inicio_ejecutado,
-                    :fecha_fin_programado,
-                    :fecha_conclusion_real,
-                    :dependencias_externas,
-                    :presupuesto_programado,
-                    :presupuesto_actualizado,
-                    :avance_programado,
-                    :avance_fisico,
-                    :avance_financiero_programado,
-                    :avance_financiero_real,
-                    :proyecto_inversion,
-                    :clasificacion_id,
-                    :direccion_id,
-                    :entidad_ejecutora,
-                    :coordinador,
-                    :correo,
-                    :celular,
-                    :subdireccion,
-                    :modalidad,
-                    :cui
-                )
-                ON CONFLICT (proyecto_id, fecha_corte)
-                DO UPDATE SET
-
-                    estado = CASE WHEN 'estado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.estado, ficha_llenado.estado) END,
-
-                    fecha_inicio_programado = CASE WHEN 'fecha_inicio_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.fecha_inicio_programado, ficha_llenado.fecha_inicio_programado) END,
-                    fecha_inicio_ejecutado = CASE WHEN 'fecha_inicio_ejecutado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.fecha_inicio_ejecutado, ficha_llenado.fecha_inicio_ejecutado) END,
-                    fecha_fin_programado = CASE WHEN 'fecha_fin_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.fecha_fin_programado, ficha_llenado.fecha_fin_programado) END,
-                    fecha_conclusion_real = CASE WHEN 'fecha_conclusion_real' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.fecha_conclusion_real, ficha_llenado.fecha_conclusion_real) END,
-
-                    dependencias_externas = CASE WHEN 'dependencias_externas' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.dependencias_externas, ficha_llenado.dependencias_externas) END,
-
-                    presupuesto_programado = CASE WHEN 'presupuesto_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.presupuesto_programado, ficha_llenado.presupuesto_programado) END,
-                    presupuesto_actualizado = CASE WHEN 'presupuesto_actualizado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.presupuesto_actualizado, ficha_llenado.presupuesto_actualizado) END,
-
-                    avance_programado = CASE WHEN 'avance_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_programado, ficha_llenado.avance_programado) END,
-                    avance_fisico = CASE WHEN 'avance_fisico' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_fisico, ficha_llenado.avance_fisico) END,
-
-                    avance_financiero_programado = CASE WHEN 'avance_financiero_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_financiero_programado, ficha_llenado.avance_financiero_programado) END,
-                    avance_financiero_real = CASE WHEN 'avance_financiero_real' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_financiero_real, ficha_llenado.avance_financiero_real) END,
-
-                    proyecto_inversion = CASE WHEN 'proyecto_inversion' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.proyecto_inversion, ficha_llenado.proyecto_inversion) END,
-                    clasificacion_id = CASE WHEN 'clasificacion_id' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.clasificacion_id, ficha_llenado.clasificacion_id) END,
-                    direccion_id = CASE WHEN 'direccion_id' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.direccion_id, ficha_llenado.direccion_id) END,
-
-                    entidad_ejecutora = CASE WHEN 'entidad_ejecutora' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.entidad_ejecutora, ficha_llenado.entidad_ejecutora) END,
-                    coordinador = CASE WHEN 'coordinador' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.coordinador, ficha_llenado.coordinador) END,
-                    correo = CASE WHEN 'correo' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.correo, ficha_llenado.correo) END,
-                    celular = CASE WHEN 'celular' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.celular, ficha_llenado.celular) END,
-
-                    subdireccion = CASE WHEN 'subdireccion' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.subdireccion, ficha_llenado.subdireccion) END,
-                    modalidad = CASE WHEN 'modalidad' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.modalidad, ficha_llenado.modalidad) END,
-                    cui = CASE WHEN 'cui' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.cui, ficha_llenado.cui) END
-            """), {
-                "proyecto_id": proyecto_id,
-                "fecha_corte": fecha_corte,
-                "estado": estado,
-                "fecha_inicio_programado": fecha_inicio_prog,
-                "fecha_inicio_ejecutado": fecha_inicio_ejec,
-                "fecha_fin_programado": fecha_fin_prog,
-                "fecha_conclusion_real": fecha_conclusion_real,
-                "dependencias_externas": dependencias,
-                "presupuesto_programado": presupuesto_prog,
-                "presupuesto_actualizado": presupuesto_actualizado,
-                "avance_programado": avance_prog,
-                "avance_fisico": avance_real,
-                "avance_financiero_programado": avance_fin_prog,
-                "avance_financiero_real": avance_fin_real,
-                "proyecto_inversion": proyecto_inv,
-                "clasificacion_id": clasificacion_id,
-                "direccion_id": direccion_id,
-                "entidad_ejecutora": entidad,
-                "coordinador": coordinador,
-                "correo": correo,
-                "celular": celular,
-                "subdireccion": subdireccion,
-                "modalidad": modalidad,
-                "cui": cui,
-                "clear_fields": clear_fields
-            })
-
-        return {"mensaje": "Reporte guardado correctamente"}
-
-    except Exception as e:
-        print("🔥 ERROR GUARDAR REPORTE:", e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-# =====================================================
-# 🔥 FILA 9 y 10 (FIX REAL FINAL)
-# =====================================================
-
-@app.post("/api/guardar-campos-finales")
-def guardar_campos(data: dict):
-
-    from datetime import datetime
-
-    proyecto_id = data.get("proyecto_id")
-    fecha = data.get("fecha_corte")
-
-    if not proyecto_id or not fecha:
-        raise HTTPException(status_code=400, detail="Faltan datos")
-
-    # 🔥 FIX CLAVE
-    fecha = datetime.strptime(fecha, "%Y-%m-%d").date()
-
-    clear_fields = data.get("_clear_fields", [])
-
-    with engine.begin() as conn:
-
-        # 🔥 ASEGURAR FILA
-        conn.execute(text("""
-            INSERT INTO ficha_llenado (proyecto_id, fecha_corte)
-            VALUES (:proyecto_id, :fecha)
-            ON CONFLICT (proyecto_id, fecha_corte) DO NOTHING
-        """), {
-            "proyecto_id": proyecto_id,
-            "fecha": fecha
-        })
-
-        # 🔥 UPDATE
-        conn.execute(text("""
-            UPDATE ficha_llenado
-            SET
-                acuerdos =
-                    CASE
-                        WHEN 'acuerdos' = ANY(:clear_fields) THEN NULL
-                        ELSE COALESCE(:acuerdos, acuerdos)
-                    END,
-
-                otros =
-                    CASE
-                        WHEN 'otros' = ANY(:clear_fields) THEN NULL
-                        ELSE COALESCE(:otros, otros)
-                    END,
-
-                urgentes =
-                    CASE
-                        WHEN 'urgentes' = ANY(:clear_fields) THEN NULL
-                        ELSE COALESCE(:urgentes, urgentes)
-                    END
-
-            WHERE proyecto_id = :proyecto_id
-            AND fecha_corte = :fecha
-        """), {
-            "proyecto_id": proyecto_id,
-            "fecha": fecha,
-            "acuerdos": data.get("acuerdos"),
-            "otros": data.get("otros"),
-            "urgentes": data.get("urgentes"),
-            "clear_fields": clear_fields
-        })
-
-    return {"msg": "ok"}
-
-
-# =====================================================
 # 🔥 OBTENER CAMPOS FINALES (CLAVE PARA FRONT)
 # =====================================================
 
@@ -2467,72 +2599,6 @@ async def subir_firma(
     return {"url": url}
 
 # =====================================================
-# 🔥 FIRMAS - GUARDAR SOLO TEXTOS (FIX REAL FINAL)
-# =====================================================
-@app.post("/api/guardar-firmas")
-def guardar_firmas(data: dict):
-
-    from datetime import datetime
-
-    proyecto_id = data.get("proyecto_id")
-    fecha_str = data.get("fecha_corte")
-
-    if not proyecto_id or not fecha_str:
-        raise HTTPException(status_code=400, detail="Faltan datos")
-
-    fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
-
-    with engine.begin() as conn:
-
-        # 🔥 ASEGURA FILA
-        conn.execute(text("""
-            INSERT INTO firmas (proyecto_id, fecha_corte)
-            VALUES (:proyecto_id, :fecha)
-            ON CONFLICT (proyecto_id, fecha_corte) DO NOTHING
-        """), {
-            "proyecto_id": proyecto_id,
-            "fecha": fecha
-        })
-
-        # =====================================================
-        # 🔥 NORMALIZACIÓN (CLAVE 🔥)
-        # =====================================================
-        def limpiar(valor):
-            if valor in ["", "-"]:
-                return None
-            return valor
-
-        # =====================================================
-        # 🔥 UPDATE TEXTOS
-        # =====================================================
-        conn.execute(text("""
-            UPDATE firmas
-            SET
-                cargo1 = :cargo1,
-                nombre1 = :nombre1,
-                cargo2 = :cargo2,
-                nombre2 = :nombre2,
-                cargo3 = :cargo3,
-                nombre3 = :nombre3
-            WHERE proyecto_id = :proyecto_id
-            AND DATE(fecha_corte) = :fecha
-        """), {
-            "proyecto_id": proyecto_id,
-            "fecha": fecha,
-
-            "cargo1": limpiar(data.get("cargo1")),
-            "nombre1": limpiar(data.get("nombre1")),
-
-            "cargo2": limpiar(data.get("cargo2")),
-            "nombre2": limpiar(data.get("nombre2")),
-
-            "cargo3": limpiar(data.get("cargo3")),
-            "nombre3": limpiar(data.get("nombre3")),
-        })
-
-    return {"msg": "ok"}
-
-# =====================================================
 # 🔥 OBTENER FIRMAS (CARGA AUTOMÁTICA)
 # =====================================================
 @app.get("/api/firmas/{proyecto_id}")
@@ -2567,3 +2633,107 @@ FIRMAS_DIR = os.path.join(FRONTEND_DIR, "firmas")
 
 # crear carpeta si no existe
 os.makedirs(FIRMAS_DIR, exist_ok=True)
+
+# =====================================================
+# PDF REPORTE E (VERSIÓN FINAL PRO)
+# =====================================================
+
+from fastapi import APIRouter
+from fastapi.responses import Response
+from weasyprint import HTML
+from sqlalchemy import text
+from jinja2 import Environment, FileSystemLoader
+import os
+
+router = APIRouter()
+
+# ================= BASE =================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+templates_path = os.path.abspath(
+    os.path.join(BASE_DIR, "..", "reportes", "templates")
+)
+
+templates = Environment(
+    loader=FileSystemLoader(templates_path)
+)
+
+@router.get("/api/reporteE/pdf")
+def generar_pdf(proyecto_id: int, fecha: str):
+
+    try:
+
+        # ================= ARC =================
+        with engine.connect() as conn:
+
+            arc = conn.execute(text("""
+                SELECT * FROM proyecto_arc
+                WHERE proyecto_id = :id AND fecha_corte = :fecha
+            """), {
+                "id": proyecto_id,
+                "fecha": fecha
+            }).mappings().all()
+
+            # 🔥 DATOS DEL PROYECTO (AJUSTA SEGÚN TU TABLA)
+            proyecto_data = conn.execute(text("""
+                SELECT *
+                FROM proyecto
+                WHERE id = :id
+                LIMIT 1
+            """), {
+                "id": proyecto_id
+            }).mappings().first()
+
+        # ================= TEMPLATE =================
+        template = templates.get_template("reporteE_pdf.html")
+
+        html = template.render(
+            # básicos
+            fecha=fecha,
+            proyecto=proyecto_data["nombre"] if proyecto_data else "PROYECTO",
+
+            # ARC
+            arc=arc,
+
+            # 🔥 FILA 4 (usa tus columnas reales)
+            tipologia=proyecto_data.get("tipologia", "") if proyecto_data else "",
+            entidad=proyecto_data.get("entidad", "") if proyecto_data else "",
+            inicio=proyecto_data.get("inicio_programado", "") if proyecto_data else "",
+            estado=proyecto_data.get("estado", "") if proyecto_data else "",
+            presupuesto_aprobado=proyecto_data.get("presupuesto", "") if proyecto_data else "",
+            fin=proyecto_data.get("fin_programado", "") if proyecto_data else "",
+
+            # firmas
+            nombre1="",
+            cargo1="",
+            nombre2="",
+            cargo2="",
+            nombre3="",
+            cargo3=""
+        )
+
+        # ================= PDF =================
+        pdf = HTML(
+            string=html,
+            base_url=templates_path
+        ).write_pdf()
+
+        return Response(
+            content=pdf,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"inline; filename=reporteE_{proyecto_id}.pdf"
+            }
+        )
+
+    except Exception as e:
+        print("❌ ERROR PDF:", e)
+        return Response(
+            content=f"Error generando PDF: {str(e)}",
+            media_type="text/plain",
+            status_code=500
+        )
+
+
+# ================= ROUTER =================
+app.include_router(router)

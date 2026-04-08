@@ -6,8 +6,29 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- ================= CSS ================= -->
 <link rel="stylesheet" href="/static/reportes/reporteE.css">
-<link rel="stylesheet" href="/static/reportes/firma.css">
+
+<!-- Flatpickr -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+
+<!-- Select2 -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet"/>
+
+<!-- 🔥 DHTMLX GANTT -->
+<link rel="stylesheet" href="https://cdn.dhtmlx.com/gantt/7.1/dhtmlxgantt.css">
+
+<!-- ================= LIBRERÍAS ================= -->
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+<script src="https://cdn.dhtmlx.com/gantt/7.1/dhtmlxgantt.js"></script>
+
+<!-- 🔥 PDF LIBRERÍAS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 </head>
 
@@ -18,19 +39,29 @@
     <!-- ================= FILA 1 ================= -->
     <div class="fila fila1">
 
-        <div class="izquierda">
+        <div class="f1-izq">
             FORMATO "E"
         </div>
 
-        <div class="centro">
+        <div class="f1-centro">
             PROGRAMACIÓN DE EJECUCIÓN DEL PROYECTO
         </div>
 
-        <div class="derecha">
-            FICHA QUINCENAL:
-            <input id="numeroFicha" value="001">-2026-
-            <span id="siglas">DSP</span>-
-            <span id="codigoProyecto"></span>
+        <div class="f1-der">
+
+            <!-- BOTONES -->
+            <div class="f1-botones">
+                 <button class="btn-pdf" onclick="generarPDF()">PDF</button>
+            </div>
+
+            <!-- FICHA -->
+            <div class="f1-ficha">
+                <span>FICHA QUINCENAL: N°</span>
+                <input id="numeroFicha" type="text" value="001">
+                <span>-2026-DSP-</span>
+                <span id="codigoProyecto"></span>
+            </div>
+
         </div>
 
     </div>
@@ -38,203 +69,259 @@
     <!-- ================= FILA 2 ================= -->
     <div class="fila fila2">
 
-        <div class="f2-izq"></div>
+        <!-- LOGO -->
+        <div class="f2-logo">
+            <img src="/static/landing/Logotipo_ATU.svg" alt="ATU">
 
+            <div class="texto-entidad">
+                <div class="titulo-entidad">
+                    AUTORIDAD DE TRANSPORTE URBANO PARA LIMA Y CALLAO
+                </div>
+                <div class="subtitulo-entidad">
+                    DIRECCIÓN DE SUPERVISIÓN DE PROYECTOS
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTRO -->
         <div class="f2-centro">
             <select id="selectProyecto"></select>
-            <div id="nombreProyecto"></div>
         </div>
 
-        <div class="f2-der tabla-info">
+        <!-- DERECHA -->
+        <div class="f2-der">
 
-            <div>Fecha de actualización</div>
-            <div>
-                <input type="date" id="fechaCorte">
-            </div>
-
-            <div>Código de Identificación DSP:</div>
-            <div id="codigoDSP"></div>
-
-            <div>Dirección a cargo de la intervención</div>
-            <div>
-                <select id="selectDireccion"></select>
-            </div>
-
-            <div>Unidad Formuladora:</div>
-            <div id="unidad"></div>
-
-        </div>
-
-    </div>
-
-    <!-- ================= FILA 3 + 4 ================= -->
-    <div class="fila fila-datos">
-
-        <div class="datos-titulo">
-            DATOS GENERALES DEL PROYECTO
-        </div>
-
-        <div class="datos-contenido">
-
-            <!-- COLUMNA 1 -->
-            <div class="bloque">
-                <div class="fila-item">
-                    <span>Tipología del Proyecto</span>
-                    <span id="tipologia"></span>
-                </div>
-
-                <div class="fila-item">
-                    <span>Estado</span>
-                    <span id="estado"></span>
-                </div>
-
-                <div class="fila-item">
-                    <span>Modalidad de Transporte</span>
-                    <span id="modalidad"></span>
-                </div>
-            </div>
-
-            <!-- COLUMNA 2 -->
-            <div class="bloque">
-                <div class="fila-item">
-                    <span>Entidad Ejecutora</span>
-                    <span id="entidad"></span>
-                </div>
-
-                <div class="fila-item">
-                    <span>Presupuesto Aprobado</span>
-                    <span id="presupuestoA"></span>
-                </div>
-
-                <div class="fila-item">
-                    <span>Presupuesto Ejecutado</span>
-                    <span id="presupuestoE"></span>
-                </div>
-            </div>
-
-            <!-- COLUMNA 3 -->
-            <div class="bloque">
-                <div class="fila-item">
-                    <span>Fecha de Inicio programado</span>
-                    <span id="inicio"></span>
-                </div>
-
-                <div class="fila-item">
-                    <span>Fecha de Término programado</span>
-                    <span id="fin"></span>
-                </div>
-
-                <div class="fila-item">
-                    <span>Código Único de Inversión (CUI)</span>
-                    <span id="cui"></span>
-                </div>
-            </div>
-
-        </div>
-
-    </div>
-
-    <!-- ================= FILA 5 ================= -->
-    <div class="fila fila5-timeline">
-
-        <div class="timeline-label">
-            LINEA DE TIEMPO
-        </div>
-
-        <div class="timeline-container">
-            <div id="timeline"></div>
-        </div>
-
-    </div>
-
-    <!-- ================= FILA 6 ================= -->
-    <div class="fila fila6">
-
-        <!-- TABLA -->
-        <div class="tabla-cronograma">
-
-            <div class="header-tabla">
-                <div>Código</div>
-                <div>Descripción</div>
-                <div>Dirección Responsable</div>
-                <div>Programado Inicio</div>
-                <div>Programado Fin</div>
-                <div>Ejecutado Inicio</div>
-                <div>Ejecutado Fin</div>
-                <div>% Avance</div>
-            </div>
-
-            <div id="tablaBody"></div>
-
-        </div>
-
-        <!-- GANTT -->
-        <div class="gantt-cronograma">
-            <div id="ganttHeader"></div>
-            <div id="ganttGrid"></div>
-        </div>
-
-    </div>
-
-    <!-- ================= FILA 7 ================= -->
-    <div class="fila fila7-leyenda">
-
-        <div class="leyenda-colores">
-
+            <!-- 🔥 FILTRO → SE QUEDA INPUT -->
             <div class="item">
-                <div class="color programado"></div>
-                <span>Programado</span>
+                <span>Fecha de actualización:</span>
+                <input 
+                    type="text" 
+                    id="fechaCorte" 
+                    class="fechaInput"
+                    placeholder="dd / mm / aaaa"
+                >
             </div>
 
+            <!-- 🔥 TEXTO → TEXTAREA -->
             <div class="item">
-                <div class="color ejecutado"></div>
-                <span>Ejecutado</span>
+                <span>Código de Identificación DSP:</span>
+                <textarea class="box" id="codigoDSP" readonly></textarea>
+            </div>
+
+            <!-- 🔥 FILTRO → SE QUEDA SELECT -->
+            <div class="item">
+                <span>Dirección a cargo de la intervención:</span>
+                <select id="selectDireccion" class="select">
+                    <option value="">Seleccione dirección</option>
+                </select>
+            </div>
+
+            <!-- 🔥 TEXTO → TEXTAREA -->
+            <div class="item">
+                <span>Unidad Formuladora:</span>
+                <textarea class="box" id="unidad" readonly></textarea>
             </div>
 
         </div>
 
-        <div class="leyenda-texto">
+    </div>
+
+<!-- ================= FILA 4 ================= -->
+<div class="fila fila4">
+
+    <!-- COLUMNA 1 -->
+    <div class="col">
+        <div class="campo">
+            <label>Tipología del Proyecto</label>
+            <textarea class="box" id="tipologia" readonly></textarea>
+        </div>
+
+        <div class="campo">
+            <label>Estado</label>
+            <textarea class="box" id="estado"></textarea>
+        </div>
+
+        <div class="campo">
+            <label>Modalidad de Transporte</label>
+            <textarea class="box" id="modalidadTransporte"></textarea>
+        </div>
+    </div>
+
+    <!-- COLUMNA 2 -->
+    <div class="col">
+        <div class="campo">
+            <label>Entidad Ejecutora</label>
+            <textarea class="box" id="entidad"></textarea>
+        </div>
+
+        <div class="campo">
+            <label>Presupuesto Aprobado</label>
+            <textarea class="box" id="presupuestoAprobado"></textarea>
+        </div>
+
+        <div class="campo">
+            <label>Presupuesto Ejecutado</label>
+            <textarea class="box" id="presupuestoEjecutado"></textarea>
+        </div>
+    </div>
+
+    <!-- COLUMNA 3 -->
+    <div class="col">
+        <div class="campo">
+            <label>Fecha de Inicio programado</label>
+            <textarea class="box" id="inicio"></textarea>
+        </div>
+
+        <div class="campo">
+            <label>Fecha de Término programado</label>
+            <textarea class="box" id="fin"></textarea>
+        </div>
+
+        <div class="campo">
+            <label>Código Único de Inversión (CUI)</label>
+            <textarea class="box" id="cui"></textarea>
+        </div>
+    </div>
+
+</div>
+
+<!-- ================= FILA 5 - LÍNEA DE TIEMPO ================= -->
+<div class="linea-tiempo">
+
+    <div class="titulo-linea">LÍNEA DE TIEMPO</div>
+
+    <!-- 🔥 AQUÍ SE INYECTAN LOS ARC DESDE JS -->
+    <div id="contenedorARC" class="arc-container"></div>
+
+</div>
+
+<!-- ================= FILA 6 ================= -->
+<div class="bloque-cronograma">
+
+    <div id="cronogramaContainer"></div>
+</div>
+
+<!-- ================= LEYENDA CRONOGRAMA ================= -->
+<div class="leyenda-cronograma">
+
+    <div class="leyenda-der">
             <b>ARC (Action Result Cluster):</b> Conjunto articulado de acciones orientadas a la obtención de un resultado verificable.
+    </div>
+
+</div>
+
+<!-- ================= FILA FIRMAS ================= -->
+<div class="fila-firmas">
+
+    <!-- FIRMA 1 -->
+    <div class="firma-box">
+        
+        <div class="firma-img-container" onclick="clickFirma(1)">
+            <img id="imgFirma1" src="" />
+            <span class="firma-plus">+</span>
+            <input type="file" id="fileFirma1" accept="image/*" style="display:none">
         </div>
+
+        <div class="linea-firma"></div>
+
+        <textarea class="input-texto" id="cargo1" placeholder="Cargo"></textarea>
+        <textarea class="input-texto" id="nombre1" placeholder="Nombre"></textarea>
 
     </div>
 
-    <!-- ================= FILA 8 ================= -->
-    <div class="fila fila8-firmas">
-
-        <!-- FIRMA 1 -->
-        <div class="firma">
-            <input type="file" accept="image/*" onchange="previewFirma(event, 0)">
-            <img id="imgFirma0" class="imgFirma"/>
-            <div class="linea-firma"></div>
-            <input class="input-texto" placeholder="Cargo">
-            <input class="input-texto" placeholder="Nombre">
+    <!-- FIRMA 2 -->
+    <div class="firma-box">
+        
+        <div class="firma-img-container" onclick="clickFirma(2)">
+            <img id="imgFirma2" src="" />
+            <span class="firma-plus">+</span>
+            <input type="file" id="fileFirma2" accept="image/*" style="display:none">
         </div>
 
-        <!-- FIRMA 2 -->
-        <div class="firma">
-            <input type="file" accept="image/*" onchange="previewFirma(event, 1)">
-            <img id="imgFirma1" class="imgFirma"/>
-            <div class="linea-firma"></div>
-            <input class="input-texto" placeholder="Cargo">
-            <input class="input-texto" placeholder="Nombre">
+        <div class="linea-firma"></div>
+
+        <textarea class="input-texto" id="cargo2" placeholder="Cargo"></textarea>
+        <textarea class="input-texto" id="nombre2" placeholder="Nombre"></textarea>
+
+    </div>
+
+    <!-- FIRMA 3 -->
+    <div class="firma-box">
+        
+        <div class="firma-img-container" onclick="clickFirma(3)">
+            <img id="imgFirma3" src="" />
+            <span class="firma-plus">+</span>
+            <input type="file" id="fileFirma3" accept="image/*" style="display:none">
         </div>
 
-        <!-- FIRMA 3 -->
-        <div class="firma">
-            <input type="file" accept="image/*" onchange="previewFirma(event, 2)">
-            <img id="imgFirma2" class="imgFirma"/>
-            <div class="linea-firma"></div>
-            <input class="input-texto" placeholder="Cargo">
-            <input class="input-texto" placeholder="Nombre">
-        </div>
+        <div class="linea-firma"></div>
+
+        <textarea class="input-texto" id="cargo3" placeholder="Cargo"></textarea>
+        <textarea class="input-texto" id="nombre3" placeholder="Nombre"></textarea>
 
     </div>
 
 </div>
 
-<!-- ================= JS ================= -->
-<script src="/static/reportes/reporteE.js"></script>
+<!-- ================= JS PRINCIPAL ================= -->
 
+<script>
+    console.log("HTML CARGADO");
+</script>
+
+<!-- 🔥 PRIMERO cargas tu JS -->
+<script src="/static/reportes/reporteE.js?v=12345"></script>
+
+<!-- 🔥 FUNCIÓN PDF -->
+<script>
+async function generarPDF(){
+
+    const element = document.querySelector(".container");
+
+    // 🔥 FORZAR ALTURA COMPLETA
+    const originalHeight = element.style.height;
+    element.style.height = element.scrollHeight + "px";
+
+    const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight
+    });
+
+    // 🔄 RESTAURAR
+    element.style.height = originalHeight;
+
+    const imgData = canvas.toDataURL("image/png");
+
+    const { jsPDF } = window.jspdf;
+
+    const pdf = new jsPDF("landscape", "mm", "a4");
+
+    const pageWidth = 297;
+    const pageHeight = 210;
+
+    const imgWidth = pageWidth;
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    // 🔥 PRIMERA PÁGINA
+    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    // 🔥 MULTIPÁGINA REAL
+    while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+    }
+
+    pdf.save("reporteE.pdf");
+}
+</script>
+</div>
 </body>
 </html>
