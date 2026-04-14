@@ -20,6 +20,7 @@ from jose import jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy import text
+from fastapi.responses import FileResponse
 
 from backend.database import engine
 
@@ -160,6 +161,19 @@ def ver_reporte(tipo: str):
 def landing_reportes():
     ruta = os.path.join(FRONTEND_DIR, "reportes/reportes.html")
     return FileResponse(ruta)
+
+# =====================================================
+# TABLERO - FLUJOGRAMA
+# =====================================================
+
+import os
+from fastapi.responses import FileResponse
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+@app.get("/tablero")
+def tablero():
+    return FileResponse(os.path.join(BASE_DIR, "frontend/tablero/tablero.html"))
 
 # =====================================================
 # CREAR ADMIN AUTOMÁTICO
@@ -2843,6 +2857,67 @@ app.include_router(router)
 
 # PUNTOS EN EL CALENDARIO
 
+import json
+
+@app.get("/api/tablero/fechas")
+def fechas_tablero():
+
+    with engine.connect() as conn:
+
+        fechas = conn.execute(text("""
+            SELECT fecha
+            FROM tablero
+            WHERE data IS NOT NULL
+            AND data != '{}'::jsonb
+            AND jsonb_array_length(data->'filas') > 0
+            ORDER BY fecha DESC
+        """)).fetchall()
+
+    return [f[0].strftime("%Y-%m-%d") for f in fechas if f[0]]
+
+@app.get("/api/tablero/{fecha}")
+def obtener_tablero(fecha: str):
+
+    with engine.connect() as conn:
+
+        result = conn.execute(text("""
+            SELECT data
+            FROM tablero
+            WHERE fecha = :fecha
+        """), {
+            "fecha": fecha
+        }).fetchone()
+
+        if not result:
+            return {"data": None}
+
+        return {"data": result[0]}
+
+@app.post("/api/tablero/guardar")
+def guardar_tablero(payload: dict):
+
+    fecha = payload.get("fecha")
+    data = payload.get("data")
+
+    if not fecha or data is None:
+        raise HTTPException(status_code=400, detail="Faltan datos")
+
+    with engine.connect() as conn:
+
+        conn.execute(text("""
+            INSERT INTO tablero (fecha, data)
+            VALUES (:fecha, :data)
+            ON CONFLICT (fecha)
+            DO UPDATE SET data = EXCLUDED.data
+        """), {
+            "fecha": fecha,
+            "data": json.dumps(data)
+        })
+
+        conn.commit()
+
+    return {"ok": True}
+
 @app.get("/api/fechas-con-data/{proyecto_id}")
 def fechas_con_data(proyecto_id: int):
 
@@ -2863,3 +2938,28 @@ def fechas_con_data(proyecto_id: int):
         }).fetchall()
 
     return [r[0].strftime("%Y-%m-%d") for r in rows if r[0]]
+
+@app.get("/api/tablero/ultima")
+def ultima_fecha():
+
+    with engine.connect() as conn:
+
+        result = conn.execute(text("""
+            SELECT fecha
+            FROM tablero
+            WHERE EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements(data->'filas') fila,
+                     jsonb_array_elements(fila) celda,
+                     jsonb_array_elements(celda) nodo
+                WHERE nodo->>'texto' IS NOT NULL
+                AND nodo->>'texto' != ''
+            )
+            ORDER BY fecha DESC
+            LIMIT 1
+        """)).fetchone()
+
+    if not result:
+        return {"fecha": None}
+
+    return {"fecha": result[0].strftime("%Y-%m-%d")}

@@ -1,0 +1,1189 @@
+/* ================= BASE ================= */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial;
+    margin: 0;
+    overflow-x: auto;
+}
+
+/* ================= HEADER ================= */
+.header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center; /* 🔥 FIX */
+    padding: 12px;
+    width: 100%;
+    border-bottom: 2px solid black;
+    gap: 10px;
+}
+
+.header > #titulo {
+    align-self: start;
+}
+
+#titulo {
+    width: 100%;
+    min-height: 30px;
+    font-size: 20px;
+    text-align: center;
+    outline: none;
+    border: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+.right {
+    display: flex;
+    gap: 8px;
+    align-items: center; /* 🔥 CLAVE */
+}
+
+/* ================= TABLA ================= */
+.tabla {
+    width: 100%;
+    min-width: 100%;
+}
+
+/* ================= BASE ================= */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial;
+    margin: 0;
+    overflow-x: auto;
+}
+
+/* ================= HEADER ================= */
+.header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center; /* 🔥 FIX */
+    padding: 12px;
+    width: 100%;
+    border-bottom: 2px solid black;
+    gap: 10px;
+}
+
+.header > #titulo {
+    align-self: start;
+}
+
+#titulo {
+    width: 100%;
+    min-height: 30px;
+    font-size: 20px;
+    text-align: center;
+    outline: none;
+    border: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+.right {
+    display: flex;
+    gap: 8px;
+    align-items: center; /* 🔥 CLAVE */
+}
+
+/* ================= TABLA ================= */
+.tabla {
+    width: 100%;
+    min-width: 100%;
+}
+
+/* ================= BASE ================= */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial;
+    margin: 0;
+    overflow-x: auto;
+}
+
+/* ================= HEADER ================= */
+.header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center; /* 🔥 FIX */
+    padding: 12px;
+    width: 100%;
+    border-bottom: 2px solid black;
+    gap: 10px;
+}
+
+.header > #titulo {
+    align-self: start;
+}
+
+#titulo {
+    width: 100%;
+    min-height: 30px;
+    font-size: 20px;
+    text-align: center;
+    outline: none;
+    border: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+.right {
+    display: flex;
+    gap: 8px;
+    align-items: center; /* 🔥 CLAVE */
+}
+
+/* ================= TABLA ================= */
+.tabla {
+    width: 100%;
+    min-width: 100%;
+}
+
+/* CONTENEDOR GENERAL */
+#tablero-container {
+    overflow-x: auto;
+    width: 100%;
+}
+
+/* FILA */
+.fila {
+    display: grid;
+    grid-template-columns: 60px repeat(var(--cols), minmax(250px, 1fr)) 60px;
+    gap: 12px;
+    width: max-content; /* 🔥 clave */
+    min-width: 100%;
+}
+
+.numero {
+    min-width: 50px;
+    max-width: 50px;
+    background: #f5f5f5;
+    font-weight: bold;
+    justify-content: center;
+}
+
+/* ================= HEADER COLUMNAS ================= */
+.columna {
+    min-width: 150px;
+}
+
+.header-col {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.header-col input {
+    border: none;
+    outline: none;
+    text-align: center;
+    font-weight: bold;
+    background: transparent;
+}
+
+.filtro {
+    height: 20px;
+    border-top: 1px solid black;
+}
+
+/* ================= NODOS ================= */
+
+/* 🔥 botón + limpio */
+.nodo {
+    width: 22px;
+    height: 22px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    background: transparent;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+}
+
+.nodo:hover {
+    background: #eee;
+    border-radius: 6px;
+}
+
+/* ================= WRAPPER ================= */
+.nodo-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ================= PADRE ================= */
+.nodo-wrapper.padre > .nodo-input {
+    border: none !important;  /* 🔥 eliminar borde negro */
+    background: #eaeaea;
+    border-radius: 12px;
+    position: relative;
+}
+
+/* 🔥 punto de origen */
+.nodo-wrapper.padre > .nodo-input::after {
+    content: "";
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    background: #000;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+/* ================= CONTENEDOR ================= */
+.agregar-fila {
+    width: 100%;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 24px;
+    background: #fafafa;
+    border-top: 2px solid black;
+}
+
+.control-filas {
+    display: flex;
+    flex-direction: column;
+}
+
+.eliminar-fila {
+    width: 100%;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 22px;
+    background: #ffecec;
+    border-top: 1px solid #ccc;
+}
+
+.eliminar-columna {
+    min-width: 60px;
+    font-size: 20px;
+    cursor: pointer;
+    background: #ffecec;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ================= CONTROL COLUMNAS (FIX FINAL) ================= */
+.control-columnas {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    width: 60px;
+}
+
+/* 🔥 rompe el tamaño heredado */
+.control-columnas .celda {
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0;
+    border: 1px solid black;
+}
+
+/* 🔵 fondo columnas */
+.columna {
+    background: #e6eef5; /* azul acero suave */
+    border-radius: 6px;
+}
+
+/* 🔥 filas alternadas (fila completa, no solo celdas) */
+#filas .fila:nth-child(odd) {
+    background: #ffffff;
+}
+
+#filas .fila:nth-child(even) {
+    background: rgba(0, 0, 0, 0.03); /* más suave */
+}
+
+/* contenedor vertical */
+.nodo-controles {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* botón eliminar */
+.nodo.eliminar {
+    font-size: 12px;
+    color: #c62828;
+}
+
+.nodo.eliminar:hover {
+    background: #fdecea;
+}
+
+/* ================= FIX BOTONES FINAL ================= */
+
+.agregar-columna,
+.eliminar-columna {
+
+    min-width: unset !important;   /* 🔥 rompe el viejo */
+    width: 36px !important;
+    height: 24px !important;
+
+    font-size: 14px !important;
+    border-radius: 6px;
+    border: none;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+/* ➕ */
+.agregar-columna {
+    background: #e3f2fd !important;
+    color: #1565c0;
+}
+
+.agregar-columna:hover {
+    background: #bbdefb !important;
+    transform: scale(1.05);
+}
+
+/* ➖ */
+.eliminar-columna {
+    background: #fdecea !important;
+    color: #c62828;
+}
+
+.eliminar-columna:hover {
+    background: #f8c9c5 !important;
+    transform: scale(1.05);
+}
+
+.flatpickr-day.tiene-data::after {
+    content: "";
+    display: block;
+    margin: auto;
+    margin-top: 2px;
+    width: 6px;
+    height: 6px;
+    background: red;
+    border-radius: 50%;
+}
+
+/* ================= MODAL GUARDAR ================= */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal-box {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 320px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.modal-title {
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.modal-input {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 15px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-cancel {
+    background: #ddd;
+    border: none;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.btn-ok {
+    background: #2d7ef7;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 1024px) {
+    #titulo { font-size: 18px; }
+    .celda { min-height: 55px; }
+}
+
+@media (max-width: 768px) {
+
+    .header {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        text-align: center;
+    }
+
+    .right {
+        justify-content: center;
+        align-items: center;
+    }
+
+    #titulo { font-size: 16px; }
+
+    .celda {
+        min-height: 50px;
+        padding: 6px;
+    }
+
+    .agregar-columna {
+        min-width: 50px;
+    }
+}
+
+@media (max-width: 480px) {
+
+    .numero {
+        min-width: 40px;
+        max-width: 40px;
+    }
+}
+
+.numero {
+    min-width: 50px;
+    max-width: 50px;
+    background: #f5f5f5;
+    font-weight: bold;
+    justify-content: center;
+}
+
+/* ================= HEADER COLUMNAS ================= */
+.columna {
+    min-width: 150px;
+}
+
+.header-col {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.header-col input {
+    border: none;
+    outline: none;
+    text-align: center;
+    font-weight: bold;
+    background: transparent;
+}
+
+.filtro {
+    height: 20px;
+    border-top: 1px solid black;
+}
+
+/* ================= NODOS ================= */
+
+/* 🔥 botón + limpio */
+.nodo {
+    width: 22px;
+    height: 22px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    background: transparent;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+}
+
+.nodo:hover {
+    background: #eee;
+    border-radius: 6px;
+}
+
+/* ================= WRAPPER ================= */
+.nodo-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ================= PADRE ================= */
+.nodo-wrapper.padre > .nodo-input {
+    border: none !important;  /* 🔥 eliminar borde negro */
+    background: #eaeaea;
+    border-radius: 12px;
+    position: relative;
+}
+
+/* 🔥 punto de origen */
+.nodo-wrapper.padre > .nodo-input::after {
+    content: "";
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    background: #000;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+/* ================= CONTENEDOR ================= */
+.agregar-fila {
+    width: 100%;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 24px;
+    background: #fafafa;
+    border-top: 2px solid black;
+}
+
+.control-filas {
+    display: flex;
+    flex-direction: column;
+}
+
+.eliminar-fila {
+    width: 100%;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 22px;
+    background: #ffecec;
+    border-top: 1px solid #ccc;
+}
+
+.eliminar-columna {
+    min-width: 60px;
+    font-size: 20px;
+    cursor: pointer;
+    background: #ffecec;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ================= CONTROL COLUMNAS (FIX FINAL) ================= */
+.control-columnas {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    width: 60px; /* 🔥 CLAVE */
+}
+
+/* 🔥 rompe el tamaño heredado */
+.control-columnas .celda {
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0;
+    border: 1px solid black;
+}
+
+/* 🔵 fondo columnas */
+.columna {
+    background: #e6eef5; /* azul acero suave */
+    border-radius: 6px;
+}
+
+/* 🔥 filas alternadas (fila completa, no solo celdas) */
+#filas .fila:nth-child(odd) {
+    background: #ffffff;
+}
+
+#filas .fila:nth-child(even) {
+    background: rgba(0, 0, 0, 0.03); /* más suave */
+}
+
+/* contenedor vertical */
+.nodo-controles {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* botón eliminar */
+.nodo.eliminar {
+    font-size: 12px;
+    color: #c62828;
+}
+
+.nodo.eliminar:hover {
+    background: #fdecea;
+}
+
+/* ================= FIX BOTONES FINAL ================= */
+
+.agregar-columna,
+.eliminar-columna {
+
+    min-width: unset !important;   /* 🔥 rompe el viejo */
+    width: 36px !important;
+    height: 24px !important;
+
+    font-size: 14px !important;
+    border-radius: 6px;
+    border: none;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+/* ➕ */
+.agregar-columna {
+    background: #e3f2fd !important;
+    color: #1565c0;
+}
+
+.agregar-columna:hover {
+    background: #bbdefb !important;
+    transform: scale(1.05);
+}
+
+/* ➖ */
+.eliminar-columna {
+    background: #fdecea !important;
+    color: #c62828;
+}
+
+.eliminar-columna:hover {
+    background: #f8c9c5 !important;
+    transform: scale(1.05);
+}
+
+.flatpickr-day.tiene-data::after {
+    content: "";
+    display: block;
+    margin: auto;
+    margin-top: 2px;
+    width: 6px;
+    height: 6px;
+    background: red;
+    border-radius: 50%;
+}
+
+/* ================= MODAL GUARDAR ================= */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal-box {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 320px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.modal-title {
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.modal-input {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 15px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-cancel {
+    background: #ddd;
+    border: none;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.btn-ok {
+    background: #2d7ef7;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 1024px) {
+    #titulo { font-size: 18px; }
+    .celda { min-height: 55px; }
+}
+
+@media (max-width: 768px) {
+
+    .header {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        text-align: center;
+    }
+
+    .right {
+        justify-content: center;
+        align-items: center;
+    }
+
+    #titulo { font-size: 16px; }
+
+    .celda {
+        min-height: 50px;
+        padding: 6px;
+    }
+
+    .agregar-columna {
+        min-width: 50px;
+    }
+}
+
+@media (max-width: 480px) {
+
+    .numero {
+        min-width: 40px;
+        max-width: 40px;
+    }
+}
+
+/* ================= CELDAS ================= */
+.celda {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 10px;
+
+    width: 100%;
+    min-width: 0;
+}
+
+.numero {
+    min-width: 50px;
+    max-width: 50px;
+    background: #f5f5f5;
+    font-weight: bold;
+    justify-content: center;
+}
+
+/* ================= HEADER COLUMNAS ================= */
+.columna {
+    min-width: 150px;
+}
+
+.header-col {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.header-col input {
+    border: none;
+    outline: none;
+    text-align: center;
+    font-weight: bold;
+    background: transparent;
+}
+
+.filtro {
+    height: 20px;
+    border-top: 1px solid black;
+}
+
+/* ================= NODOS ================= */
+
+/* 🔥 botón + limpio */
+.nodo {
+    width: 22px;
+    height: 22px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    background: transparent;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+}
+
+.nodo:hover {
+    background: #eee;
+    border-radius: 6px;
+}
+
+/* ================= WRAPPER ================= */
+.nodo-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ================= PADRE ================= */
+.nodo-wrapper.padre > .nodo-input {
+    border: none !important;  /* 🔥 eliminar borde negro */
+    background: #eaeaea;
+    border-radius: 12px;
+    position: relative;
+}
+
+/* 🔥 punto de origen */
+.nodo-wrapper.padre > .nodo-input::after {
+    content: "";
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 6px;
+    background: #000;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+/* ================= CONTENEDOR ================= */
+.nodos-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    position: relative;
+    padding-left: 30px;
+
+    width: 100%;
+}
+
+/* ================= INPUT ================= */
+.nodo-input {
+    flex: 1;              /* 🔥 ocupa todo el ancho */
+    min-width: 0;         /* 🔥 evita desbordes */
+    max-width: 100%;
+
+    min-height: 40px;
+
+    border: none !important;
+    outline: none;
+
+    border-radius: 12px;
+
+    padding: 6px;
+    font-size: 12px;
+
+    resize: none;
+    overflow: hidden;
+
+    white-space: pre-wrap;
+    word-break: break-word;
+
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.agregar-fila {
+    width: 100%;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 24px;
+    background: #fafafa;
+    border-top: 2px solid black;
+}
+
+.control-filas {
+    display: flex;
+    flex-direction: column;
+}
+
+.eliminar-fila {
+    width: 100%;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 22px;
+    background: #ffecec;
+    border-top: 1px solid #ccc;
+}
+
+.eliminar-columna {
+    min-width: 60px;
+    font-size: 20px;
+    cursor: pointer;
+    background: #ffecec;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ================= CONTROL COLUMNAS (FIX FINAL) ================= */
+.control-columnas {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+
+    width: 60px; /* 🔥 CLAVE */
+}
+
+/* 🔥 rompe el tamaño heredado */
+.control-columnas .celda {
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0;
+    border: 1px solid black;
+}
+
+/* 🔵 fondo columnas */
+.columna {
+    background: #e6eef5; /* azul acero suave */
+    border-radius: 6px;
+}
+
+/* 🔥 filas alternadas (fila completa, no solo celdas) */
+#filas .fila:nth-child(odd) {
+    background: #ffffff;
+}
+
+#filas .fila:nth-child(even) {
+    background: rgba(0, 0, 0, 0.03); /* más suave */
+}
+
+/* contenedor vertical */
+.nodo-controles {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* botón eliminar */
+.nodo.eliminar {
+    font-size: 12px;
+    color: #c62828;
+}
+
+.nodo.eliminar:hover {
+    background: #fdecea;
+}
+
+/* ================= FIX BOTONES FINAL ================= */
+
+.agregar-columna,
+.eliminar-columna {
+
+    min-width: unset !important;   /* 🔥 rompe el viejo */
+    width: 36px !important;
+    height: 24px !important;
+
+    font-size: 14px !important;
+    border-radius: 6px;
+    border: none;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+/* ➕ */
+.agregar-columna {
+    background: #e3f2fd !important;
+    color: #1565c0;
+}
+
+.agregar-columna:hover {
+    background: #bbdefb !important;
+    transform: scale(1.05);
+}
+
+/* ➖ */
+.eliminar-columna {
+    background: #fdecea !important;
+    color: #c62828;
+}
+
+.eliminar-columna:hover {
+    background: #f8c9c5 !important;
+    transform: scale(1.05);
+}
+
+.flatpickr-day.tiene-data::after {
+    content: "";
+    display: block;
+    margin: auto;
+    margin-top: 2px;
+    width: 6px;
+    height: 6px;
+    background: red;
+    border-radius: 50%;
+}
+
+/* ================= MODAL GUARDAR ================= */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal-box {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 320px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.modal-title {
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.modal-input {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 15px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-cancel {
+    background: #ddd;
+    border: none;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.btn-ok {
+    background: #2d7ef7;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 1024px) {
+    #titulo { font-size: 18px; }
+    .celda { min-height: 55px; }
+}
+
+@media (max-width: 768px) {
+
+    .header {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        text-align: center;
+    }
+
+    .right {
+        justify-content: center;
+        align-items: center;
+    }
+
+    #titulo { font-size: 16px; }
+
+    .celda {
+        min-height: 50px;
+        padding: 6px;
+    }
+
+    .agregar-columna {
+        min-width: 50px;
+    }
+}
+
+@media (max-width: 480px) {
+
+    .numero {
+        min-width: 40px;
+        max-width: 40px;
+    }
+}

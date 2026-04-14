@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Tablero</title>
+
+<link rel="stylesheet" href="/static/tablero/tablero.css">
+
+<!-- 🔥 Flatpickr (calendario bonito) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
+</head>
+<body>
+
+<!-- 🔵 FILA 1 -->
+<div class="header">
+    <div id="titulo" contenteditable="true"></div>
+
+    <div class="right">
+        <input type="text" id="fecha"> <!-- 🔥 cambiado a text -->
+        <button id="guardar">Guardar</button>
+    </div>
+</div>
+
+<!-- 🔵 TABLA -->
+<div class="tabla">
+
+    <!-- FILA 2 (encabezados) -->
+    <div class="fila encabezado" id="encabezado">
+        <div class="celda numero">N°</div>
+
+        <div class="celda columna">
+            <div class="header-col">
+                <input class="titulo-col" placeholder="Campo A">
+                <input class="filtro-col" placeholder="Filtrar...">
+            </div>
+        </div>
+
+        <div class="control-columnas">
+            <div class="celda agregar-columna" id="addCol">+</div>
+            <div class="celda eliminar-columna" id="removeCol">-</div>
+        </div>
+    </div>
+
+    <!-- FILAS DINÁMICAS -->
+    <div id="filas"></div>
+
+    <div class="control-filas">
+        <div id="addFila" class="agregar-fila">+</div>
+        <div id="removeFila" class="eliminar-fila">-</div>
+    </div>
+
+</div>
+
+<!-- 🔥 1. LIBRERÍA (PRIMERO) -->
+<script src="https://cdn.jsdelivr.net/npm/leader-line"></script>
+
+<!-- 🔥 2. TU JS (DESPUÉS) -->
+<script src="/static/tablero/tablero.js"></script>
+
+<!-- 🔥 ACTIVAR CALENDARIO -->
+<script>
+flatpickr("#fecha", {
+    dateFormat: "d/m/Y",
+    locale: "es"
+});
+</script>
+
+</body>
+</html>
