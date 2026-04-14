@@ -28,6 +28,10 @@
 <!-- Idioma español -->
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
 
+<!-- 🔥 PDF LIBRERÍAS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 </head>
 
 <body>
@@ -51,7 +55,7 @@
                 <button class="btn-guardar" onclick="guardarReporte()">
                     Guardar
                 </button>
-                <button class="btn-pdf">PDF</button>
+                <button class="btn-pdf" onclick="generarPDF()">PDF</button>
             </div>
 
             <!-- 🔹 BLOQUE FICHA -->
@@ -336,7 +340,7 @@
             <label>Actividades que requieran atención inmediata</label>
             <textarea id="urgentes"></textarea>
         </div>
-
+    
     </div>
 
     <!-- ================= FILA FIRMAS ================= -->
@@ -389,6 +393,9 @@
             <input class="input-texto" id="nombre3" placeholder="Nombre">
 
         </div>
+
+    </div>
+
 
     </div>
 

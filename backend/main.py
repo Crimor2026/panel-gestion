@@ -1764,49 +1764,69 @@ def guardar_todo(data: dict):
             clear_fields = data.get("_clear_fields", [])
 
             # =====================================================
-            # 🔥 LIMPIEZA 
+            # 🔥 SNAPSHOT BASE (CLAVE REAL)
             # =====================================================
 
-            estado = reporte.get("estado") or None
+            base = conn.execute(text("""
+                SELECT *
+                FROM ficha_llenado
+                WHERE proyecto_id = :proyecto_id
+                AND fecha_corte <= :fecha
+                ORDER BY fecha_corte DESC
+                LIMIT 1
+            """), {
+                "proyecto_id": proyecto_id,
+                "fecha": fecha_corte
+            }).mappings().fetchone()
 
-            fecha_inicio_prog = limpiar_fecha(reporte.get("fecha_inicio_programado"))
-            fecha_inicio_ejec = limpiar_fecha(reporte.get("fecha_inicio_ejecutado"))
-            fecha_fin_prog = limpiar_fecha(reporte.get("fecha_fin_programado"))
-            fecha_conclusion_real = limpiar_fecha(reporte.get("fecha_conclusion_real"))
+            # =====================================================
+            # 🔥 LIMPIEZA (SNAPSHOT EN UNA SOLA LÍNEA)
+            # =====================================================
 
-            dependencias = reporte.get("dependencias_externas") or None
+            estado = None if "estado" in clear_fields else (reporte.get("estado") if reporte.get("estado") is not None else (base["estado"] if base else None))
 
-            presupuesto_prog = reporte.get("presupuesto_programado")
-            presupuesto_prog = float(presupuesto_prog) if presupuesto_prog not in [None, ""] else None
+            fecha_inicio_prog = None if "fecha_inicio_programado" in clear_fields else (limpiar_fecha(reporte.get("fecha_inicio_programado")) if reporte.get("fecha_inicio_programado") else (base["fecha_inicio_programado"] if base else None))
 
-            presupuesto_actualizado = reporte.get("presupuesto_actualizado")
-            presupuesto_actualizado = float(presupuesto_actualizado) if presupuesto_actualizado not in [None, ""] else None
+            fecha_inicio_ejec = None if "fecha_inicio_ejecutado" in clear_fields else (limpiar_fecha(reporte.get("fecha_inicio_ejecutado")) if reporte.get("fecha_inicio_ejecutado") else (base["fecha_inicio_ejecutado"] if base else None))
 
-            avance_prog = reporte.get("avance_programado")
-            avance_prog = float(avance_prog) if avance_prog not in [None, ""] else None
+            fecha_fin_prog = None if "fecha_fin_programado" in clear_fields else (limpiar_fecha(reporte.get("fecha_fin_programado")) if reporte.get("fecha_fin_programado") else (base["fecha_fin_programado"] if base else None))
 
-            avance_real = reporte.get("avance_fisico")
-            avance_real = float(avance_real) if avance_real not in [None, ""] else None
+            fecha_conclusion_real = None if "fecha_conclusion_real" in clear_fields else (limpiar_fecha(reporte.get("fecha_conclusion_real")) if reporte.get("fecha_conclusion_real") else (base["fecha_conclusion_real"] if base else None))
 
-            avance_fin_prog = reporte.get("avance_financiero_programado")
-            avance_fin_prog = float(avance_fin_prog) if avance_fin_prog not in [None, ""] else None
+            dependencias = None if "dependencias_externas" in clear_fields else (reporte.get("dependencias_externas") if reporte.get("dependencias_externas") is not None else (base["dependencias_externas"] if base else None))
 
-            avance_fin_real = reporte.get("avance_financiero_real")
-            avance_fin_real = float(avance_fin_real) if avance_fin_real not in [None, ""] else None
+            presupuesto_prog = None if "presupuesto_programado" in clear_fields else ((float(reporte.get("presupuesto_programado")) if reporte.get("presupuesto_programado") not in [None, ""] else None) if reporte.get("presupuesto_programado") is not None else (base["presupuesto_programado"] if base else None))
 
-            proyecto_inv = reporte.get("proyecto_inversion") or None
-            clasificacion_id = reporte.get("clasificacion_id") or None
-            direccion_id = reporte.get("direccion_id") or None
+            presupuesto_actualizado = None if "presupuesto_actualizado" in clear_fields else ((float(reporte.get("presupuesto_actualizado")) if reporte.get("presupuesto_actualizado") not in [None, ""] else None) if reporte.get("presupuesto_actualizado") is not None else (base["presupuesto_actualizado"] if base else None))
 
-            entidad = reporte.get("entidad_ejecutora") or None
-            coordinador = reporte.get("coordinador") or None
-            correo = reporte.get("correo") or None
-            celular = reporte.get("celular") or None
+            avance_prog = None if "avance_programado" in clear_fields else ((float(reporte.get("avance_programado")) if reporte.get("avance_programado") not in [None, ""] else None) if reporte.get("avance_programado") is not None else (base["avance_programado"] if base else None))
 
-            subdireccion = reporte.get("subdireccion") or None
-            modalidad = reporte.get("modalidad") or None
-            cui = reporte.get("cui") or None
+            avance_real = None if "avance_fisico" in clear_fields else ((float(reporte.get("avance_fisico")) if reporte.get("avance_fisico") not in [None, ""] else None) if reporte.get("avance_fisico") is not None else (base["avance_fisico"] if base else None))
 
+            avance_fin_prog = None if "avance_financiero_programado" in clear_fields else ((float(reporte.get("avance_financiero_programado")) if reporte.get("avance_financiero_programado") not in [None, ""] else None) if reporte.get("avance_financiero_programado") is not None else (base["avance_financiero_programado"] if base else None))
+
+            avance_fin_real = None if "avance_financiero_real" in clear_fields else ((float(reporte.get("avance_financiero_real")) if reporte.get("avance_financiero_real") not in [None, ""] else None) if reporte.get("avance_financiero_real") is not None else (base["avance_financiero_real"] if base else None))
+
+            proyecto_inv = None if "proyecto_inversion" in clear_fields else (reporte.get("proyecto_inversion") if reporte.get("proyecto_inversion") is not None else (base["proyecto_inversion"] if base else None))
+
+            clasificacion_id = None if "clasificacion_id" in clear_fields else (reporte.get("clasificacion_id") if reporte.get("clasificacion_id") is not None else (base["clasificacion_id"] if base else None))
+
+            direccion_id = None if "direccion_id" in clear_fields else (reporte.get("direccion_id") if reporte.get("direccion_id") is not None else (base["direccion_id"] if base else None))
+
+            entidad = None if "entidad_ejecutora" in clear_fields else (reporte.get("entidad_ejecutora") if reporte.get("entidad_ejecutora") is not None else (base["entidad_ejecutora"] if base else None))
+
+            coordinador = None if "coordinador" in clear_fields else (reporte.get("coordinador") if reporte.get("coordinador") is not None else (base["coordinador"] if base else None))
+
+            correo = None if "correo" in clear_fields else (reporte.get("correo") if reporte.get("correo") is not None else (base["correo"] if base else None))
+
+            celular = None if "celular" in clear_fields else (reporte.get("celular") if reporte.get("celular") is not None else (base["celular"] if base else None))
+
+            subdireccion = None if "subdireccion" in clear_fields else (reporte.get("subdireccion") if reporte.get("subdireccion") is not None else (base["subdireccion"] if base else None))
+
+            modalidad = None if "modalidad" in clear_fields else (reporte.get("modalidad") if reporte.get("modalidad") is not None else (base["modalidad"] if base else None))
+
+            cui = None if "cui" in clear_fields else (reporte.get("cui") if reporte.get("cui") is not None else (base["cui"] if base else None))
+                    
             # =====================================================
             # 🔥 INSERT / UPDATE (CON BORRADO CONTROLADO)
             # =====================================================
@@ -1926,7 +1946,7 @@ def guardar_todo(data: dict):
             })
 
         except Exception as e:
-            print("🔥 ERROR GUARDAR REPORTE:", e)
+            print("ERROR GUARDAR REPORTE:", e)
             raise HTTPException(status_code=500, detail=str(e))
 
         # =====================================================
@@ -1957,8 +1977,21 @@ def guardar_todo(data: dict):
 
                 codigo_arc = arc.get("codigo_arc") or arc.get("codigo")
 
+                # ================= BASE ARC (SNAPSHOT) =================
+                base_arc = conn.execute(text("""
+                    SELECT *
+                    FROM proyecto_arc
+                    WHERE proyecto_id = :proyecto_id
+                    AND codigo_arc = :codigo_arc
+                    AND fecha_corte = :fecha
+                    LIMIT 1
+                """), {
+                    "proyecto_id": proyecto_id,
+                    "codigo_arc": codigo_arc,
+                    "fecha": fecha_corte
+                }).mappings().fetchone()
+
                 # ================= LIMPIEZA =================
-                
                 inicio = limpiar_fecha(arc.get("inicio_programado") or arc.get("inicio"))
                 fin = limpiar_fecha(arc.get("fin_programado") or arc.get("fin"))
                 inicio_ejec = limpiar_fecha(arc.get("inicio_ejecutado") or arc.get("inicio_ejec"))
@@ -1973,6 +2006,7 @@ def guardar_todo(data: dict):
                 except:
                     avance = 0
 
+
                 # ================= CAMPOS =================
                 nueva_fecha_fin = limpiar_fecha(arc.get("nueva_fecha_fin"))
                 riesgo = arc.get("riesgo")
@@ -1984,24 +2018,35 @@ def guardar_todo(data: dict):
 
                 # ================= FIX FINAL REAL 🔥 =================
 
-                if descripcion == "-":
-                    descripcion = None
+                def limpiar(v, campo):
 
-                if inicio == "-":
-                    inicio = None
+                    if isinstance(v, str):
+                        v = v.strip()
 
-                if fin == "-":
-                    fin = None
+                    if v == "-":   # 🔥 solo si es EXACTO
+                        clear_fields.append(campo)
+                        return None
 
-                if descripcion is None:
-                    descripcion = obtener_valor_actual(conn, proyecto_id, fecha_corte, codigo_arc, "descripcion")
+                    if v in ("", "null", None):
+                        return None
 
-                if inicio is None:
-                    inicio = obtener_valor_actual(conn, proyecto_id, fecha_corte, codigo_arc, "inicio_programado")
+                    return v
 
-                if fin is None:
-                    fin = obtener_valor_actual(conn, proyecto_id, fecha_corte, codigo_arc, "fin_programado")
+                descripcion = limpiar(arc.get("descripcion"), "descripcion")
+                inicio = limpiar(arc.get("inicio_programado"), "inicio_programado")
+                fin = limpiar(arc.get("fin_programado"), "fin_programado")
+                inicio_ejec = limpiar(arc.get("inicio_ejecutado"), "inicio_ejecutado")
+                fin_ejec = limpiar(arc.get("fin_ejecutado"), "fin_ejecutado")
+                nueva_fecha_fin = limpiar(arc.get("nueva_fecha_fin"), "nueva_fecha_fin")
+                riesgo = limpiar(arc.get("riesgo"), "riesgo")
+                actividad = limpiar(arc.get("actividades_mes"), "actividades_mes")
+                estado_arc = limpiar(arc.get("estado_arc"), "estado_arc")
 
+                try:
+                    avance = float(arc.get("avance_percent") or 0)
+                except:
+                    avance = 0
+                
                 # ================= INSERT / UPDATE =================
                 conn.execute(text("""
                     INSERT INTO proyecto_arc (
@@ -2041,12 +2086,26 @@ def guardar_todo(data: dict):
                     ON CONFLICT (proyecto_id, fecha_corte, codigo_arc)
                     DO UPDATE SET
 
-                        descripcion = COALESCE(EXCLUDED.descripcion, proyecto_arc.descripcion),
-                        inicio_programado = COALESCE(EXCLUDED.inicio_programado, proyecto_arc.inicio_programado),
-                        fin_programado = COALESCE(EXCLUDED.fin_programado, proyecto_arc.fin_programado),
-                        inicio_ejecutado = COALESCE(EXCLUDED.inicio_ejecutado, proyecto_arc.inicio_ejecutado),
-                        fin_ejecutado = COALESCE(EXCLUDED.fin_ejecutado, proyecto_arc.fin_ejecutado),
-                        avance_percent = COALESCE(EXCLUDED.avance_percent, proyecto_arc.avance_percent),
+                        descripcion =
+                            CASE 
+                                WHEN 'descripcion' = ANY(:clear_fields) THEN NULL
+                                ELSE COALESCE(EXCLUDED.descripcion, proyecto_arc.descripcion)
+                            END,
+
+                        inicio_programado =
+                            COALESCE(EXCLUDED.inicio_programado, proyecto_arc.inicio_programado),
+
+                        fin_programado =
+                            COALESCE(EXCLUDED.fin_programado, proyecto_arc.fin_programado),
+
+                        inicio_ejecutado =
+                            COALESCE(EXCLUDED.inicio_ejecutado, proyecto_arc.inicio_ejecutado),
+
+                        fin_ejecutado =
+                            COALESCE(EXCLUDED.fin_ejecutado, proyecto_arc.fin_ejecutado),
+
+                        avance_percent =
+                            COALESCE(EXCLUDED.avance_percent, proyecto_arc.avance_percent),
 
                         actividades_mes =
                             CASE 
@@ -2054,8 +2113,11 @@ def guardar_todo(data: dict):
                                 ELSE COALESCE(EXCLUDED.actividades_mes, proyecto_arc.actividades_mes)
                             END,
 
-                        no_realizado = EXCLUDED.no_realizado,
-                        proximo_mes = EXCLUDED.proximo_mes,
+                        no_realizado =
+                            COALESCE(EXCLUDED.no_realizado, proyecto_arc.no_realizado),
+
+                        proximo_mes =
+                            COALESCE(EXCLUDED.proximo_mes, proyecto_arc.proximo_mes),
 
                         nueva_fecha_fin =
                             CASE 
@@ -2094,7 +2156,7 @@ def guardar_todo(data: dict):
                 })
 
         except Exception as e:
-            print("🔥 ERROR GUARDAR ARC:", e)
+            print("ERROR GUARDAR ARC:", e)
             raise HTTPException(status_code=500, detail=str(e))
 
         # =====================================================
@@ -2135,19 +2197,19 @@ def guardar_todo(data: dict):
                     acuerdos =
                         CASE
                             WHEN 'acuerdos' = ANY(:clear_fields) THEN NULL
-                            ELSE COALESCE(:acuerdos, acuerdos)
+                            ELSE COALESCE(NULLIF(:acuerdos, ''), acuerdos)
                         END,
 
                     otros =
                         CASE
                             WHEN 'otros' = ANY(:clear_fields) THEN NULL
-                            ELSE COALESCE(:otros, otros)
+                            ELSE COALESCE(NULLIF(:otros, ''), otros)
                         END,
 
                     urgentes =
                         CASE
                             WHEN 'urgentes' = ANY(:clear_fields) THEN NULL
-                            ELSE COALESCE(:urgentes, urgentes)
+                            ELSE COALESCE(NULLIF(:urgentes, ''), urgentes)
                         END
 
                 WHERE proyecto_id = :proyecto_id
@@ -2155,9 +2217,9 @@ def guardar_todo(data: dict):
             """), {
                 "proyecto_id": proyecto_id,
                 "fecha": fecha,
-                "acuerdos": data.get("acuerdos"),
-                "otros": data.get("otros"),
-                "urgentes": data.get("urgentes"),
+                "acuerdos": finales.get("acuerdos"),
+                "otros": finales.get("otros"),
+                "urgentes": finales.get("urgentes"),
                 "clear_fields": clear_fields
             })
 
@@ -2168,7 +2230,6 @@ def guardar_todo(data: dict):
         # =====================================================
         # 🔥 FIRMAS - GUARDAR SOLO TEXTOS (FIX REAL FINAL)
         # =====================================================
-
         try:
 
             from datetime import datetime
@@ -2176,14 +2237,21 @@ def guardar_todo(data: dict):
             proyecto_id = data.get("proyecto_id")
             fecha_str = data.get("fecha_corte")
 
+            firmas = data.get("firmas", {})
+            print("FIRMAS RECIBIDAS:", firmas)
+
             if not proyecto_id or not fecha_str:
                 raise HTTPException(status_code=400, detail="Faltan datos")
 
             fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
 
-            # 🔥 YA NO VA with engine.begin() AQUÍ
+            def limpiar(valor):
+                if valor in ["", "-"]:
+                    return None
+                return valor
 
-            # 🔥 ASEGURA FILA
+            # 🔥 USAR MISMA CONEXIÓN (SIN NUEVO engine.begin)
+
             conn.execute(text("""
                 INSERT INTO firmas (proyecto_id, fecha_corte)
                 VALUES (:proyecto_id, :fecha)
@@ -2193,44 +2261,52 @@ def guardar_todo(data: dict):
                 "fecha": fecha
             })
 
-            # =====================================================
-            # 🔥 NORMALIZACIÓN (CLAVE 🔥)
-            # =====================================================
-            def limpiar(valor):
-                if valor in ["", "-"]:
-                    return None
-                return valor
-
-            # =====================================================
-            # 🔥 UPDATE TEXTOS
-            # =====================================================
             conn.execute(text("""
-                UPDATE firmas
-                SET
-                    cargo1 = :cargo1,
-                    nombre1 = :nombre1,
-                    cargo2 = :cargo2,
-                    nombre2 = :nombre2,
-                    cargo3 = :cargo3,
-                    nombre3 = :nombre3
+                INSERT INTO firmas (
+                    proyecto_id, fecha_corte,
+                    cargo1, nombre1,
+                    cargo2, nombre2,
+                    cargo3, nombre3
+                )
+                VALUES (
+                    :proyecto_id, :fecha,
+                    :cargo1, :nombre1,
+                    :cargo2, :nombre2,
+                    :cargo3, :nombre3
+                )
+                ON CONFLICT (proyecto_id, fecha_corte)
+                DO UPDATE SET
+                    cargo1 = EXCLUDED.cargo1,
+                    nombre1 = EXCLUDED.nombre1,
+                    cargo2 = EXCLUDED.cargo2,
+                    nombre2 = EXCLUDED.nombre2,
+                    cargo3 = EXCLUDED.cargo3,
+                    nombre3 = EXCLUDED.nombre3
+            """), {
+                "proyecto_id": proyecto_id,
+                "fecha": fecha,
+                "cargo1": limpiar(firmas.get("cargo1")),
+                "nombre1": limpiar(firmas.get("nombre1")),
+                "cargo2": limpiar(firmas.get("cargo2")),
+                "nombre2": limpiar(firmas.get("nombre2")),
+                "cargo3": limpiar(firmas.get("cargo3")),
+                "nombre3": limpiar(firmas.get("nombre3")),
+            })
+
+            result = conn.execute(text("""
+                SELECT *
+                FROM firmas
                 WHERE proyecto_id = :proyecto_id
                 AND fecha_corte = :fecha
             """), {
                 "proyecto_id": proyecto_id,
-                "fecha": fecha,
+                "fecha": fecha
+            }).mappings().fetchone()
 
-                "cargo1": limpiar(data.get("cargo1")),
-                "nombre1": limpiar(data.get("nombre1")),
-
-                "cargo2": limpiar(data.get("cargo2")),
-                "nombre2": limpiar(data.get("nombre2")),
-
-                "cargo3": limpiar(data.get("cargo3")),
-                "nombre3": limpiar(data.get("nombre3")),
-            })
+            return dict(result) if result else {}
 
         except Exception as e:
-            print("🔥 ERROR FIRMAS:", e)
+            print("ERROR FIRMAS:", e)
             raise HTTPException(status_code=500, detail=str(e))
 
 # =====================================================
@@ -2242,7 +2318,7 @@ def obtener_arc(proyecto_id: int, fecha: str = None):
 
     import math
     from datetime import datetime
-
+    
     with engine.connect() as conn:
 
         query = """
@@ -2599,7 +2675,7 @@ async def subir_firma(
     return {"url": url}
 
 # =====================================================
-# 🔥 OBTENER FIRMAS (CARGA AUTOMÁTICA)
+# 🔥 OBTENER FIRMAS (CARGA AUTOMÁTICA) - FIX 🔥
 # =====================================================
 @app.get("/api/firmas/{proyecto_id}")
 def obtener_firmas(proyecto_id: int, fecha: str):
@@ -2623,7 +2699,34 @@ def obtener_firmas(proyecto_id: int, fecha: str):
             "fecha": fecha
         }).mappings().fetchone()
 
-    return dict(row) if row else {}
+    # =====================================================
+    # 🔥 FIX URL FIRMAS (CLAVE 🔥)
+    # =====================================================
+    if not row:
+        return {}
+
+    data = dict(row)
+
+    def fix_url(u):
+        if not u:
+            return None
+
+        # ✔ ya está bien
+        if u.startswith("/static/firmas"):
+            return u
+
+        # ✔ solo nombre archivo
+        if "firma_" in u:
+            return f"/static/firmas/{u.split('/')[-1]}"
+
+        # ❌ basura tipo /reportes/D
+        return None
+
+    data["firma1"] = fix_url(data.get("firma1"))
+    data["firma2"] = fix_url(data.get("firma2"))
+    data["firma3"] = fix_url(data.get("firma3"))
+
+    return data
 
 # =====================================================
 # RUTA FIRMAS (FIX REAL 🔥)
@@ -2727,7 +2830,7 @@ def generar_pdf(proyecto_id: int, fecha: str):
         )
 
     except Exception as e:
-        print("❌ ERROR PDF:", e)
+        print("ERROR PDF:", e)
         return Response(
             content=f"Error generando PDF: {str(e)}",
             media_type="text/plain",
@@ -2737,3 +2840,26 @@ def generar_pdf(proyecto_id: int, fecha: str):
 
 # ================= ROUTER =================
 app.include_router(router)
+
+# PUNTOS EN EL CALENDARIO
+
+@app.get("/api/fechas-con-data/{proyecto_id}")
+def fechas_con_data(proyecto_id: int):
+
+    with engine.connect() as conn:
+
+        rows = conn.execute(text("""
+            SELECT DISTINCT fecha_corte
+            FROM proyecto_arc
+            WHERE proyecto_id = :proyecto_id
+
+            UNION
+
+            SELECT DISTINCT fecha_corte
+            FROM firmas
+            WHERE proyecto_id = :proyecto_id
+        """), {
+            "proyecto_id": proyecto_id
+        }).fetchall()
+
+    return [r[0].strftime("%Y-%m-%d") for r in rows if r[0]]

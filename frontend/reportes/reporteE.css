@@ -353,6 +353,64 @@
     }
 }
 
+/* 🔥 FIX FINAL REAL (NO RECORTA, EMPUJA TODO) */
+
+@media (max-width:768px){
+
+    #selectProyecto + .select2-container .select2-selection__rendered{
+
+        white-space: normal !important;
+        word-break: break-word;
+        overflow-wrap: break-word;
+
+        line-height: 1.3;
+
+        display: block;
+        height: auto !important;     /* 🔥 CLAVE */
+        max-height: none !important; /* 🔥 CLAVE */
+        overflow: visible !important;/* 🔥 CLAVE */
+
+        text-align: center;
+        padding: 0 10px;
+    }
+
+    /* 🔥 ESTO EMPUJA TODO HACIA ABAJO */
+    .fila2{
+        align-items: start !important;
+    }
+
+}
+
+/* 🔥 FIX DEFINITIVO FORMATO E MÓVIL */
+
+@media (max-width:768px){
+
+    /* 🔥 EL CONTENEDOR CENTRAL DEJA CRECER */
+    .f2-centro{
+        display:block !important;
+        text-align:center;
+    }
+
+    /* 🔥 EL TEXTO PUEDE CRECER LIBRE */
+    #selectProyecto + .select2-container{
+        height:auto !important;
+    }
+
+    #selectProyecto + .select2-container .select2-selection--single{
+        height:auto !important;
+    }
+
+    #selectProyecto + .select2-container .select2-selection__rendered{
+        height:auto !important;
+    }
+
+    /* 🔥 EMPUJA TODO HACIA ABAJO */
+    .fila2{
+        align-items:start !important;
+    }
+
+}
+
 /* ================= FILA 4 ================= */
 
 .fila4{
@@ -899,4 +957,20 @@
 /* 🔥 EVITA QUE NADA ROMPA EL ANCHO */
 .modo-pdf *{
     max-width: 100% !important;
+}
+
+.flatpickr-day{
+    position: relative;
+}
+
+.flatpickr-day .dot-data{
+    position:absolute;
+    bottom:3px;
+    left:50%;
+    transform:translateX(-50%);
+    width:6px;
+    height:6px;
+    background:#ff0000;
+    border-radius:50%;
+    pointer-events:none;
 }

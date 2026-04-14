@@ -23,8 +23,8 @@ pytz==2024.1
 
 email-validator
 orjson
+pydantic
 
 # opcional
 alembic
 weasyprint
-groq

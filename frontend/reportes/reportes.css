@@ -166,3 +166,24 @@ font-size:14px;
 grid-column: 2 / 3;
 }
 
+/* 🔥 FIX MÓVIL GRID REPORTES */
+
+@media(max-width:768px){
+
+    .container{
+        justify-content:flex-start; /* 🔥 CLAVE */
+        padding-top:40px;
+        padding-bottom:40px;
+    }
+
+}
+
+/* 🔥 FIX REAL MÓVIL (ANULA CENTRADO) */
+
+@media(max-width:768px){
+
+    .grid-reportes > .card:last-child:nth-child(3n+1){
+        grid-column: auto !important; /* 🔥 CLAVE */
+    }
+
+}

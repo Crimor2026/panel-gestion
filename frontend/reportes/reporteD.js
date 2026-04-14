@@ -5,6 +5,19 @@ let data = []; // 🔥 DATA GLOBAL (SIEMPRE ESTA SE USA)
 let fechaGlobal = null;
 
 // =====================================================
+// 🔥 FUNCIÓN GLOBAL FECHA (FIX TOTAL)
+// =====================================================
+function getFecha(){
+    let fecha = fechaGlobal || document.getElementById("fechaCorte")?.value;
+
+    if(fecha){
+        fecha = fecha.split("T")[0];
+    }
+
+    return fecha;
+}
+
+// =====================================================
 // INIT (VERSIÓN FINAL CORRECTA)
 // =====================================================
 document.addEventListener("DOMContentLoaded", async () => {
@@ -15,12 +28,49 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("selectDireccion")
         ?.addEventListener("change", cargarProyectos);
 
+    // 🔥 NUEVO: función para traer fechas con data
+    async function cargarFechasConData(proyecto_id){
+        try{
+            const res = await fetch(`/api/fechas-con-data/${proyecto_id}`);
+            const data = await res.json();
+
+            window.fechasConData = data;
+
+            console.log("Fechas con data:", data);
+
+            // 🔥 refrescar calendario
+            const fp = document.querySelector("#fechaCorte")?._flatpickr;
+            if(fp) fp.redraw();
+
+        }catch(e){
+            console.error("Error fechas:", e);
+            window.fechasConData = [];
+        }
+    }
+
     // 🔥 CALENDARIO
     flatpickr("#fechaCorte", {
         dateFormat: "Y-m-d",
         locale: flatpickr.l10ns.es,
         maxDate: "today",
+
+        // 🔥 PUNTITO ROJO (FINAL)
+        onDayCreate: function(dObj, dStr, fp, dayElem){
+
+            const fecha = dayElem.dateObj.toISOString().slice(0,10);
+            const fechasConData = window.fechasConData || [];
+
+            if(fechasConData.includes(fecha)){
+
+                const dot = document.createElement("span");
+                dot.className = "dot-data";
+
+                dayElem.appendChild(dot);
+            }
+        },
+
         onChange: function(selectedDates, dateStr) {
+            fechaGlobal = dateStr;
             cargarDatos();
         }
     });
@@ -39,13 +89,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    // 🔥 RESET SELECT PROYECTO (SIN ROMPER EVENTOS)
+    // 🔥 RESET SELECT PROYECTO
     const selectProyecto = document.getElementById("selectProyecto");
     if(selectProyecto){
-        $('#selectProyecto').val(null).trigger('change.select2'); // 👈 FIX
+        $('#selectProyecto').val(null).trigger('change.select2');
     }
 
-    // 🔹 PROYECTO (Select2 compatible)
+    // 🔹 PROYECTO
     $('#selectProyecto').on('change', function () {
 
         const proyecto_id = this.value;
@@ -55,6 +105,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             limpiarARC();
             return;
         }
+
+        // 🔥 NUEVO: cargar fechas con data
+        cargarFechasConData(proyecto_id);
 
         cargarInfoProyecto();
         cargarDatos();
@@ -67,14 +120,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 // =====================================================
 async function cargarDatos(){
 
+    data = [];
+    limpiarARC();
+
+    limpiarFirmasUI(); // 👈 🔥 AQUÍ VA (JUSTO AQUÍ)
+
+    // 🔥 LIMPIAR CAMPOS FINALES (CLAVE)
+    renderCamposFinales({
+        acuerdos: "",
+        otros: "",
+        urgentes: ""
+    });
+
     const proyecto_id = document.getElementById("selectProyecto")?.value;
-    const fecha = document.getElementById("fechaCorte")?.value;
+    const fecha = getFecha("fechaCorte");
 
     // 🔒 VALIDACIÓN
     if (!proyecto_id || !fecha){
         console.warn("Faltan filtros: proyecto o fecha");
         limpiarCampos();
-        limpiarARC();
         return;
     }
 
@@ -107,23 +171,35 @@ async function cargarDatos(){
 
             data = [];
 
-            // 🔥 SOLO LIMPIA ARC (NO FORMULARIO)
-            limpiarARC();
+            // ❌ ya NO repetir limpiarARC aquí
 
         }else{
             data = arcData;
             renderAll();
         }
 
-    }catch(e){
-        console.error("Error cargando datos:", e);
+        // =====================================================
+        // 🔥 NUEVO: CARGAR CAMPOS FINALES (SIN ROMPER FLUJO)
+        // =====================================================
+        try{
 
-        limpiarCampos();
-        limpiarARC();
+            await cargarCamposFinales(proyecto_id, fecha);
+
+            // 🔥 AQUÍ VA (ESTE ES EL FIX)
+            await cargarFirmas();
+
+        }catch(e){
+            console.warn("Sin campos finales:", e);
+        }
+
+        }catch(e){
+            console.error("Error cargando datos:", e);
+
+            limpiarCampos();
+            limpiarARC();
     }
 
 }
-
 
 // =====================================================
 // 🧹 LIMPIAR CAMPOS (FORMULARIO)
@@ -157,10 +233,11 @@ function limpiarCampos(){
 
 
 // =====================================================
-// 🧹 LIMPIAR SOLO ARC (🔥 NUEVO - CLAVE)
+// 🧹 LIMPIAR TODO (ARC + ACTIVIDADES) 🔥 FIX REAL
 // =====================================================
 function limpiarARC(){
 
+    // 🔹 ARC
     const tabla = document.getElementById("tablaARC");
     const linea = document.getElementById("lineaARC");
     const gantt = document.getElementById("ganttGrid");
@@ -168,6 +245,15 @@ function limpiarARC(){
     if(tabla) tabla.innerHTML = "";
     if(linea) linea.innerHTML = "";
     if(gantt) gantt.innerHTML = "";
+
+    // 🔥 ACTIVIDADES (AQUÍ ESTABA EL BUG)
+    const tablaAct = document.getElementById("tablaActividades");
+    const tablaPasadas = document.getElementById("tablaActividadesPasadas");
+    const tablaFuturas = document.getElementById("tablaActividadesFuturas");
+
+    if(tablaAct) tablaAct.innerHTML = "";
+    if(tablaPasadas) tablaPasadas.innerHTML = "";
+    if(tablaFuturas) tablaFuturas.innerHTML = "";
 }
 
 // =====================================================
@@ -224,6 +310,25 @@ function renderAll(){
     }catch(e){
         console.error("Error en renderAll:", e);
     }
+
+}
+
+function limpiarFirmasUI(){
+
+    [1,2,3].forEach(i => {
+
+        const cargo = document.getElementById("cargo"+i);
+        const nombre = document.getElementById("nombre"+i);
+        const img = document.getElementById("imgFirma"+i);
+
+        if(cargo) cargo.value = "";
+        if(nombre) nombre.value = "";
+
+        if(img){
+            img.src = "about:blank";
+        }
+
+    });
 
 }
 
@@ -518,7 +623,7 @@ function renderActividadesAvanzadas(){
 async function guardarFila(index, fila){
 
     const proyecto_id = document.getElementById("selectProyecto")?.value;
-    const fecha = fechaGlobal || document.getElementById("fechaCorte")?.value;
+    const fecha = getFecha();
 
     if(!proyecto_id || !fecha){
         console.warn("Falta proyecto o fecha");
@@ -632,7 +737,7 @@ async function guardarFila(index, fila){
 async function guardarActividad(index, fila){
 
     const proyecto_id = document.getElementById("selectProyecto")?.value;
-    const fecha = fechaGlobal || document.getElementById("fechaCorte")?.value;
+    const fecha = fechaGlobal || getFecha("fechaCorte");
 
     if(!proyecto_id || !fecha) return;
 
@@ -896,15 +1001,17 @@ async function cargarProyectos(){
 async function cargarInfoProyecto(){
 
     const proyecto_id = document.getElementById("selectProyecto")?.value;
-    const fechaRaw = document.getElementById("fechaCorte")?.value;
+    let fecha = getFecha();;
 
     if(!proyecto_id){
         console.warn("No hay proyecto seleccionado");
         return;
     }
 
-    // 🔥 LIMPIAR FECHA (CLAVE REAL DEL BUG)
-    const fecha = fechaRaw ? fechaRaw.split("T")[0] : "";
+    // 🔥 LIMPIAR FECHA SOLO UNA VEZ
+    if(fecha){
+        fecha = fecha.split("T")[0];
+    }
 
     let url = `/api/proyecto/${proyecto_id}`;
     if(fecha){
@@ -1029,7 +1136,7 @@ function setFecha(id, fecha){
 }
 
 // 🔹 obtener fecha (UI → backend)
-function getFecha(id){
+function getFechaInput(id){
     const el = document.getElementById(id);
     if(!el) return null;
 
@@ -1201,6 +1308,7 @@ function procesarFecha(valor, campo, clear_fields){
     return valor; // respeta tu flujo actual
 }
 
+
 // =====================================================
 // 💾 GUARDAR REPORTE D (VERSIÓN FINAL REAL)
 // =====================================================
@@ -1232,11 +1340,14 @@ async function guardarReporte(){
         // 🔥 usar la nueva fecha elegida
         fecha = fechaElegida;
 
-        // 🔥🔥🔥 FIX CRÍTICO (SIN ESTO TODO FALLA)
-        document.getElementById("fechaCorte").value = fecha;
-
         // 🔥🔥🔥 NUEVO (NO ROMPE NADA - VARIABLE GLOBAL)
         fechaGlobal = fecha;
+
+        // 🔥 CANCELAR AUTOGUARDADOS (CLAVE REAL)
+        Object.values(timeoutFirmas).forEach(t => clearTimeout(t));
+
+        // 🔥 ACTIVAR BLOQUEO (AQUÍ SE QUEDA ACTIVO)
+        guardandoManual = true;
 
         // 🔥 NUEVO: lista de campos a borrar intencionalmente
         const clear_fields = [];
@@ -1245,16 +1356,16 @@ async function guardarReporte(){
         const finInput = document.getElementById("fin")?.value;
         const conclusionInput = document.getElementById("nuevaFecha")?.value;
 
-        const fInicio = getFecha("inicio");
-        const fFin = getFecha("fin");
-        const fConclusion = getFecha("nuevaFecha");
+        const fInicio = getFechaInput("inicio");
+        const fFin = getFechaInput("fin");
+        const fConclusion = getFechaInput("nuevaFecha");
 
         // 🔥 DETECCIÓN REAL (INPUT VACÍO)
         if(!inicioInput) clear_fields.push("fecha_inicio_programado");
         if(!finInput) clear_fields.push("fecha_fin_programado");
         if(!conclusionInput) clear_fields.push("fecha_conclusion_real");
 
-        const data = {
+        const reporte = {
             proyecto_id: parseInt(proyecto_id),
             fecha_corte: fecha,
 
@@ -1291,15 +1402,44 @@ async function guardarReporte(){
         // =====================================================
         // 🔥 ENVOLVER DATA (NUEVO ENDPOINT)
         // =====================================================
+
+        // 🔥 NUEVO: construir ARC desde UI (SIEMPRE CORRECTO)
+        let arcs = [];
+
+        const filasARC = document.querySelectorAll("#tablaARC tr");
+        const filasAct = document.querySelectorAll("#tablaActividades tr");
+
+        filasARC.forEach((fila, i) => {
+
+            const codigo = fila.querySelector(".codigo")?.value;
+            if(!codigo) return;
+
+            const actividad = filasAct[i]?.querySelector(".actividad")?.value || null;
+
+            arcs.push({
+                codigo_arc: codigo,
+                descripcion: fila.querySelector(".descripcion")?.value,
+                inicio_programado: fila.querySelector(".inicio")?.value || null,
+                fin_programado: fila.querySelector(".fin")?.value || null,
+                nueva_fecha_fin: fila.querySelector(".nueva_fecha")?.value || null,
+                riesgo: fila.querySelector(".riesgo")?.value || null,
+                actividades_mes: actividad   // 🔥 FIX CLAVE
+            });
+
+        });
+
+        // =====================================================
+        // PAYLOAD FINAL
+        // =====================================================
         const payload = {
-            proyecto_id: data.proyecto_id,
-            fecha_corte: data.fecha_corte,
-            reporte: data,
-            arcs: (data && data.length > 0) ? data : (window.data || []),
+            proyecto_id: reporte.proyecto_id,
+            fecha_corte: reporte.fecha_corte,
+            reporte: reporte,
+            arcs: arcs,
             campos_finales: {
-                acuerdos: document.getElementById("acuerdos")?.value,
-                otros: document.getElementById("otros")?.value,
-                urgentes: document.getElementById("urgentes")?.value
+                acuerdos: procesarCampoTexto(document.getElementById("acuerdos")?.value, "acuerdos", clear_fields),
+                otros: procesarCampoTexto(document.getElementById("otros")?.value, "otros", clear_fields),
+                urgentes: procesarCampoTexto(document.getElementById("urgentes")?.value, "urgentes", clear_fields)
             },
             firmas: {
                 cargo1: document.getElementById("cargo1")?.value,
@@ -1309,7 +1449,7 @@ async function guardarReporte(){
                 cargo3: document.getElementById("cargo3")?.value,
                 nombre3: document.getElementById("nombre3")?.value
             },
-            _clear_fields: data._clear_fields || []
+            _clear_fields: reporte._clear_fields || []
         };
 
         // =====================================================
@@ -1385,25 +1525,23 @@ function exportarPDF(){
 // =====================================================
 // 📅 OBTENER FECHA (VERSIÓN FINAL REAL)
 // =====================================================
-function getFecha(id){
+function getFechaInput(id){
     const el = document.getElementById(id);
     if(!el) return null;
 
     let val = el.value;
 
-    // 🔥 limpiar
     if(!val || val.trim() === ""){
         return null;
     }
 
     val = val.trim();
 
-    // 🔥 evitar fechas basura
     if(val === "0001-01-01" || val.startsWith("0001-01-01")){
         return null;
     }
 
-    return val; // formato YYYY-MM-DD
+    return val;
 }
 
 // =====================================================
@@ -1412,7 +1550,7 @@ function getFecha(id){
 async function guardarEstado(index, fila){
 
     const proyecto_id = document.getElementById("selectProyecto")?.value;
-    const fecha = fechaGlobal || document.getElementById("fechaCorte")?.value;
+    const fecha = getFecha();
 
     if(!proyecto_id || !fecha) return;
 
@@ -1451,7 +1589,7 @@ async function guardarEstado(index, fila){
 async function guardarCamposFinales(){
 
     const proyecto_id = document.getElementById("selectProyecto")?.value;
-    const fecha = document.getElementById("fechaCorte")?.value;
+    const fecha = getFecha();
 
     if(!proyecto_id || !fecha) return;
 
@@ -1520,7 +1658,7 @@ async function guardarCamposFinales(){
 async function cargarCamposFinales(){
 
     const proyecto_id = document.getElementById("selectProyecto")?.value;
-    const fecha = document.getElementById("fechaCorte")?.value;
+    const fecha = getFecha();
 
     if(!proyecto_id || !fecha) return;
 
@@ -1558,19 +1696,13 @@ function initCamposFinales(){
         const el = document.getElementById(id);
         if(!el) return;
 
-        let timeout;
-
-        el.addEventListener("input", ()=>{
-
-            clearTimeout(timeout);
-
-            timeout = setTimeout(()=>{
-                guardarCamposFinales();
-            }, 800);
-
-        });
+        // 🔥 SOLO LIMPIAR VALOR VISUAL (NO EVENTOS)
+        if(el.value === "-"){
+            el.value = "";
+        }
 
     });
+
 }
 
 // =====================================================
@@ -1663,7 +1795,7 @@ async function subirFirma(event, i){
 }
 
 // =====================================================
-// 🔥 GUARDAR SOLO TEXTOS (CLAVE 🔥)
+// 🔥 GUARDAR SOLO TEXTOS (FIX FINAL)
 // =====================================================
 async function guardarFirmasTexto(){
 
@@ -1676,14 +1808,17 @@ async function guardarFirmasTexto(){
         proyecto_id: parseInt(proyecto_id),
         fecha_corte: fecha,
 
-        cargo1: document.getElementById("cargo1")?.value || null,
-        nombre1: document.getElementById("nombre1")?.value || null,
+        // 🔥 CLAVE: enviar dentro de "firmas"
+        firmas: {
+            cargo1: document.getElementById("cargo1")?.value || null,
+            nombre1: document.getElementById("nombre1")?.value || null,
 
-        cargo2: document.getElementById("cargo2")?.value || null,
-        nombre2: document.getElementById("nombre2")?.value || null,
+            cargo2: document.getElementById("cargo2")?.value || null,
+            nombre2: document.getElementById("nombre2")?.value || null,
 
-        cargo3: document.getElementById("cargo3")?.value || null,
-        nombre3: document.getElementById("nombre3")?.value || null
+            cargo3: document.getElementById("cargo3")?.value || null,
+            nombre3: document.getElementById("nombre3")?.value || null
+        }
     };
 
     try{
@@ -1701,12 +1836,12 @@ async function guardarFirmasTexto(){
 }
 
 // =====================================================
-// 🔥 CARGAR FIRMAS (FINAL PRO)
+// 🔥 CARGAR FIRMAS (FIX FINAL REAL)
 // =====================================================
 async function cargarFirmas(){
 
     const proyecto_id = document.getElementById("selectProyecto")?.value;
-    const fecha = document.getElementById("fechaCorte")?.value;
+    const fecha = getFecha("fechaCorte");
 
     if(!proyecto_id || !fecha) return;
 
@@ -1730,13 +1865,27 @@ async function cargarFirmas(){
         for(let i=1;i<=3;i++){
 
             const img = document.getElementById("imgFirma"+i);
-
             if(!img) continue;
 
+            const container = img.closest(".firma-img-container");
+            const plus = container?.querySelector(".firma-plus");
+
             if(data["firma"+i]){
-                img.src = data["firma"+i] + "?t=" + new Date().getTime();
+
+                const url = window.location.origin + data["firma"+i];
+
+                img.src = url + "?t=" + new Date().getTime();
+
+                // 🔥 ocultar "+"
+                if(plus) plus.style.display = "none";
+
             }else{
-                img.src = "";
+
+                // 🔥 evitar /reportes/D
+                img.src = "about:blank";
+
+                // 🔥 mostrar "+"
+                if(plus) plus.style.display = "block";
             }
         }
 
@@ -1746,10 +1895,20 @@ async function cargarFirmas(){
 }
 
 // =====================================================
-// 🔥 FIX EVENTO INPUT FILE
+// 🔥 FIX EVENTO INPUT FILE + AUTOGUARDADO FIRMAS (FINAL PRO)
 // =====================================================
+
+// 🔥 CONTROL GLOBAL
+let guardandoManual = false;
+
+// 🔥 CONTROL DE TIMEOUTS (CLAVE REAL)
+let timeoutFirmas = {};
+
 document.addEventListener("DOMContentLoaded", () => {
 
+    // ==============================
+    // 📁 INPUT FILE (NO TOCAR)
+    // ==============================
     [1,2,3].forEach(i => {
 
         const input = document.getElementById("fileFirma"+i);
@@ -1758,26 +1917,264 @@ document.addEventListener("DOMContentLoaded", () => {
 
         input.addEventListener("change", (e) => {
 
-            console.log("🔥 CHANGE DETECTADO", i);
-
+            console.log("CHANGE DETECTADO", i);
             subirFirma(e, i);
+
         });
 
     });
-
-    // 🔥 AUTO GUARDADO DE TEXTOS (CLAVE 🔥)
-    ["cargo1","nombre1","cargo2","nombre2","cargo3","nombre3"].forEach(id=>{
-
-        const el = document.getElementById(id);
-        if(!el) return;
-
-        let t;
-
-        el.addEventListener("input", ()=>{
-            clearTimeout(t);
-            t = setTimeout(()=> guardarFirmasTexto(), 800);
-        });
-
-    });
-
 });
+
+// =====================================================
+// 📄 GENERAR PDF REPORTE D (FIX FIRMAS 🔥)
+// =====================================================
+async function generarPDF(){
+
+    const original = document.querySelector(".container");
+
+    if(!original){
+        alert("No se encontró el contenedor del reporte");
+        return;
+    }
+
+    window.scrollTo(0, 0);
+
+    // 🔥 CLON (CLAVE)
+    const clone = original.cloneNode(true);
+
+    clone.style.position = "absolute";
+    clone.style.top = "-9999px";
+    clone.style.left = "-9999px";
+
+    document.body.appendChild(clone);
+
+    // 🔥 FORZAR ALTURA REAL
+    const prevHeight = clone.style.height;
+    clone.style.height = clone.scrollHeight + "px";
+
+    // =====================================================
+    // 🔥 INPUT → TEXTAREA
+    // =====================================================
+    const reemplazos = [];
+
+    clone.querySelectorAll('input:not([type="file"])').forEach(el => {
+
+        const textarea = document.createElement("textarea");
+
+        textarea.value = el.value || "";
+        textarea.className = el.className;
+
+        textarea.style.width = "100%";
+        textarea.style.border = "none";
+        textarea.style.background = "#f1f3f5";
+        textarea.style.padding = "7px 10px";
+        textarea.style.borderRadius = "6px";
+        textarea.style.fontSize = "13px";
+        textarea.style.resize = "none";
+        textarea.style.overflow = "hidden";
+
+        textarea.style.height = "auto";
+        textarea.style.height = textarea.scrollHeight + "px";
+
+        reemplazos.push({original: el, nuevo: textarea});
+        el.parentNode.replaceChild(textarea, el);
+    });
+
+    // =====================================================
+    // 🔥 SELECT → TEXTO
+    // =====================================================
+    clone.querySelectorAll("select").forEach(el => {
+
+        const div = document.createElement("div");
+
+        let texto = "";
+        if(el.selectedIndex >= 0){
+            texto = el.options[el.selectedIndex].text;
+        }
+
+        div.innerText = texto;
+        div.className = el.className;
+
+        div.style.padding = "7px 10px";
+        div.style.background = "#f1f3f5";
+        div.style.borderRadius = "6px";
+
+        reemplazos.push({original: el, nuevo: div});
+        el.parentNode.replaceChild(div, el);
+    });
+
+    // =====================================================
+    // 🔥 TEXTAREAS
+    // =====================================================
+    clone.querySelectorAll("textarea").forEach(el=>{
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+    });
+
+    // =====================================================
+    // 🔥 OCULTAR BOTONES
+    // =====================================================
+    const botones = clone.querySelectorAll(".btn-pdf, .btn-guardar");
+    botones.forEach(btn => btn.style.display = "none");
+
+    // =====================================================
+    // 🔥 FORZAR VISIBILIDAD DE FIRMAS
+    // =====================================================
+    clone.querySelectorAll("#imgFirma1, #imgFirma2, #imgFirma3").forEach(el=>{
+        el.style.display = "block";
+        el.style.visibility = "visible";
+        el.style.opacity = "1";
+    });
+
+    // =====================================================
+    // 🔥 ESPERAR IMÁGENES (FIX FINAL REAL)
+    // =====================================================
+    async function esperarImagenes(container){
+
+        const imgs = container.querySelectorAll("img");
+
+        const promesas = [];
+
+        imgs.forEach(img => {
+
+            // 🔥 ignorar imágenes vacías o inválidas
+            if(!img.src || img.src.includes("reportes/D")) return;
+
+            promesas.push(new Promise(resolve => {
+
+                // 🔥 SOLO considerar cargada si realmente tiene contenido
+                if(img.complete && img.naturalWidth > 0){
+                    resolve();
+                }else{
+                    img.onload = resolve;
+                    img.onerror = resolve;
+                }
+
+            }));
+        });
+
+        await Promise.all(promesas);
+    }
+
+    // 🔥 NORMALIZAR URL DE FIRMAS (CLAVE)
+    clone.querySelectorAll("#imgFirma1, #imgFirma2, #imgFirma3").forEach(img=>{
+        if(img.src && !img.src.startsWith("http")){
+            img.src = window.location.origin + img.getAttribute("src");
+        }
+    });
+
+    // =====================================================
+    // 🔥 ELIMINAR IMÁGENES ROTAS (FIX FINAL)
+    // =====================================================
+    clone.querySelectorAll("img").forEach(img => {
+
+        const src = img.getAttribute("src");
+
+        if(!src || src === ""){
+            img.remove();
+        }
+
+    });
+
+    // =====================================================
+    // 🔥 ESPERA REAL DE IMÁGENES (FIX DEFINITIVO)
+    // =====================================================
+    async function esperarImagenesReales(container){
+
+        const imgs = container.querySelectorAll("img");
+
+        const promesas = [];
+
+        imgs.forEach(img => {
+
+            if(!img.src) return;
+
+            promesas.push(new Promise(resolve => {
+
+                const check = () => {
+                    if(img.complete && img.naturalWidth > 0){
+                        resolve();
+                    }else{
+                        setTimeout(check, 100);
+                    }
+                };
+
+                check();
+
+            }));
+        });
+
+        await Promise.all(promesas);
+    }
+
+    // 🔥 ESPERA REAL
+    await esperarImagenesReales(clone);
+
+    // =====================================================
+    // 🔥 CAPTURA (FIX FINAL REAL REAL 🔥)
+    // =====================================================
+
+    // 🔥 meter al DOM
+    clone.style.position = "absolute";
+    clone.style.top = "0";
+    clone.style.left = "0";
+    clone.style.zIndex = "-1";
+    clone.style.background = "#fff";
+
+    // 🔥 CLAVE: FORZAR ALTURA REAL
+    clone.style.height = "auto";
+    clone.style.minHeight = clone.scrollHeight + "px";
+
+    document.body.appendChild(clone);
+
+    // 🔥 render
+    const canvas = await html2canvas(clone, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        windowWidth: clone.scrollWidth,
+        windowHeight: clone.scrollHeight
+    });
+
+    // 🔥 limpiar
+    document.body.removeChild(clone);
+
+    // =====================================================
+    // 🔥 PDF (FIX FINAL FIRMAS + PAGINADO CORRECTO)
+    // =====================================================
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF("landscape", "mm", "a4");
+
+    const pageWidth = 297;
+    const pageHeight = 210;
+
+    const imgWidth = pageWidth;
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+
+    const imgData = canvas.toDataURL("image/png");
+
+    // 🔥 NUEVA LÓGICA CORRECTA
+    let position = 0;
+    let remainingHeight = imgHeight;
+
+    while (remainingHeight > 0){
+
+        pdf.addImage(
+            imgData,
+            "PNG",
+            0,
+            position,
+            imgWidth,
+            imgHeight
+        );
+
+        remainingHeight -= pageHeight;
+
+        if(remainingHeight > 0){
+            pdf.addPage();
+            position -= pageHeight;
+        }
+    }
+
+    pdf.save("reporteD.pdf");
+}

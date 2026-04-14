@@ -22,27 +22,65 @@ document.addEventListener("DOMContentLoaded", async () => {
     document.getElementById("selectDireccion")
         ?.addEventListener("change", async () => {
 
-            await cargarProyectos(); // carga proyectos filtrados
-            limpiarTodo();           // limpia pantalla
+            await cargarProyectos();
+            limpiarTodo();
         });
+
+    // 🔥 NUEVO: función fechas con data
+    async function cargarFechasConData(proyecto_id){
+        try{
+            const res = await fetch(`/api/fechas-con-data/${proyecto_id}`);
+            const data = await res.json();
+
+            window.fechasConData = data;
+
+            const fp = document.querySelector("#fechaCorte")?._flatpickr;
+            if(fp) fp.redraw();
+
+        }catch(e){
+            console.error("Error fechas:", e);
+            window.fechasConData = [];
+        }
+    }
 
     // 🔥 4. FECHA
     flatpickr("#fechaCorte", {
         dateFormat: "Y-m-d",
         locale: flatpickr.l10ns.es,
         maxDate: "today",
+
+        // 🔥 NUEVO (puntito)
+        onDayCreate: function(dObj, dStr, fp, dayElem){
+
+            const fecha = dayElem.dateObj.toISOString().slice(0,10);
+            const fechasConData = window.fechasConData || [];
+
+            if(fechasConData.includes(fecha)){
+                const dot = document.createElement("span");
+                dot.className = "dot-data";
+                dayElem.appendChild(dot);
+            }
+        },
+
         onChange: () => {
             cargarTodo();
         }
     });
 
     // 🔥 5. PROYECTO
-    $('#selectProyecto').on('change', () => {
+    $('#selectProyecto').on('change', function () {
+
+        const proyecto_id = this.value;
+
+        if(proyecto_id){
+            // 🔥 NUEVO
+            cargarFechasConData(proyecto_id);
+        }
+
         cargarTodo();
     });
 
 });
-
 
 // =====================================================
 // 🔄 CARGA GENERAL (OPTIMIZADA)

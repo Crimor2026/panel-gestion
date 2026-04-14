@@ -456,9 +456,9 @@ font-size:12px;
 /* ================= FILA 4 ================= */
 
 .fila4{
-    display:grid;
-    grid-template-columns: repeat(3, 1fr);
+    display:flex;
     gap:16px;
+    align-items:flex-start;
 
     padding:16px;
     background:#ffffff;
@@ -467,13 +467,21 @@ font-size:12px;
     box-shadow:0 2px 8px rgba(0,0,0,0.08);
 }
 
+/* columnas */
+.fila4 .col{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:18px; /* 🔥 FIX REAL: más separación entre campos */
+}
+
 
 /* ================= COLUMNAS ================= */
 
 .col{
     display:flex;
     flex-direction:column;
-    gap:12px;
+    gap:18px; /* 🔥 CONSISTENTE */
 }
 
 
@@ -482,7 +490,11 @@ font-size:12px;
 .campo{
     display:flex;
     flex-direction:column;
-    gap:4px;
+    justify-content:flex-start;
+    gap:6px;
+
+    height:70px;
+    margin-bottom:4px; /* 🔥 FIX FINAL: evita pegado */
 }
 
 
@@ -491,6 +503,8 @@ font-size:12px;
     font-size:12px;
     color:#555;
     font-weight:500;
+    line-height:1.2;
+    margin-bottom:2px; /* 🔥 separación adicional */
 }
 
 
@@ -501,12 +515,26 @@ font-size:12px;
     border:none;
 
     background:#f1f3f5;
-    padding:7px 10px;
+
+    padding:0 10px;
+    height:34px;
+    line-height:34px;
 
     border-radius:6px;
     font-size:13px;
 
     transition:all 0.2s ease;
+
+    margin-top:2px; /* 🔥 FIX FINAL: separa visualmente */
+}
+
+
+/* SELECT */
+select.box{
+    height:34px;
+    line-height:34px;
+    padding-top:0;
+    padding-bottom:0;
 }
 
 
@@ -516,7 +544,7 @@ font-size:12px;
 }
 
 
-/* FOCUS (EDITABLE) */
+/* FOCUS */
 .box:focus{
     outline:none;
     background:#ffffff;
@@ -530,9 +558,15 @@ font-size:12px;
     width:100%;
     border:none;
     background:#f1f3f5;
-    padding:7px 10px;
+
+    padding:0 10px;
+    height:34px;
+    line-height:34px;
+
     border-radius:6px;
     font-size:13px;
+
+    margin-top:2px; /* 🔥 MISMO FIX */
 }
 
 .campo-editable:focus{
@@ -546,20 +580,25 @@ font-size:12px;
 
 /* TABLET */
 @media (max-width:1024px){
-
     .fila4{
-        grid-template-columns: repeat(2, 1fr);
+        flex-wrap: wrap;
     }
 
+    .fila4 .col{
+        flex: 0 0 calc(50% - 8px);
+    }
 }
 
 /* MOBILE */
 @media (max-width:768px){
-
     .fila4{
-        grid-template-columns: 1fr;
+        flex-direction: column;
         gap:12px;
         padding:12px;
+    }
+
+    .fila4 .col{
+        flex: 1 1 100%;
     }
 
     .campo label{
@@ -568,9 +607,9 @@ font-size:12px;
 
     .box{
         font-size:12px;
-        padding:6px 8px;
+        height:32px;
+        line-height:32px;
     }
-
 }
 
 /* ================= FILA 5 ================= */
@@ -1121,11 +1160,6 @@ font-size:12px;
     transition:opacity 0.2s;
 }
 
-/* 🔥 OCULTAR "+" CUANDO HAY IMAGEN */
-.firma-img-container img[src]:not([src=""]) + .firma-plus{
-    opacity:0;
-}
-
 /* 🔥 LINEA DE FIRMA */
 .linea-firma{
     width:150px;
@@ -1164,4 +1198,54 @@ font-size:12px;
 /* 🔥 OPCIONAL: SI HACE CLICK, QUE VUELVA LA LÍNEA */
 .input-texto:not(:placeholder-shown):focus{
     border-bottom:1px solid #000;
+}
+
+table {
+    page-break-inside: auto;
+}
+
+/* ===================================================== */
+/* 🔥 FIX PDF FIRMAS (NO TOCAR UI) */
+/* ===================================================== */
+
+.pdf-mode .fila-firmas{
+    display:flex !important;
+    justify-content:space-between;
+    align-items:flex-start;
+}
+
+.pdf-mode .firma-box{
+    width:30%;
+}
+
+.pdf-mode .firma-img-container{
+    overflow:visible !important;
+}
+
+.pdf-mode .firma-img-container img{
+    object-fit:contain !important;
+}
+
+/* 🔥 evitar recortes generales */
+.pdf-mode{
+    overflow:visible !important;
+}
+
+/* 🔥 FIX PUNTOS EN CALENDARIO */
+.flatpickr-day{
+    position: relative;
+}
+
+.flatpickr-day .dot-data{
+    position:absolute;
+    bottom:3px;
+    left:50%;
+    transform:translateX(-50%);
+
+    width:6px;
+    height:6px;
+    background:#ff0000;
+    border-radius:50%;
+
+    pointer-events:none; /* 🔥 CLAVE */
 }
