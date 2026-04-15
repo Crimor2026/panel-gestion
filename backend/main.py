@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 
 import pandas as pd
+import pdfkit
 import pytz
 import requests
 
@@ -174,6 +175,19 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 @app.get("/tablero")
 def tablero():
     return FileResponse(os.path.join(FRONTEND_DIR, "tablero/tablero.html"))
+
+@app.get("/pdf-tablero")
+def generar_pdf_tablero():
+
+    ruta_html = os.path.join(FRONTEND_DIR, "tablero/tablero.html")
+
+    output_pdf = "tablero.pdf"
+
+    config = pdfkit.configuration(wkhtmltopdf="/usr/bin/wkhtmltopdf")
+
+    pdfkit.from_file(ruta_html, output_pdf, configuration=config)
+
+    return FileResponse(output_pdf, media_type="application/pdf", filename="tablero.pdf")
 
 # =====================================================
 # CREAR ADMIN AUTOMÁTICO

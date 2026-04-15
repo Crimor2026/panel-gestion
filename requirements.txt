@@ -24,3 +24,4 @@ pytz==2024.1
 email-validator
 orjson
 pydantic>=2.0
+pdfkit
