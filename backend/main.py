@@ -173,7 +173,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 @app.get("/tablero")
 def tablero():
-    return FileResponse(os.path.join(BASE_DIR, "frontend/tablero/tablero.html"))
+    return FileResponse(os.path.join(FRONTEND_DIR, "tablero/tablero.html"))
 
 # =====================================================
 # CREAR ADMIN AUTOMÁTICO
