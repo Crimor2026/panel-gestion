@@ -1,6 +1,5 @@
-fastapi
-uvicorn[standard]
-gunicorn
+fastapi>=0.110
+uvicorn
 
 sqlalchemy
 psycopg2-binary
@@ -24,4 +23,5 @@ pytz==2024.1
 email-validator
 orjson
 pydantic>=2.0
+
 pdfkit

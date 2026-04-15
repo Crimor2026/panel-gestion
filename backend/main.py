@@ -2771,7 +2771,6 @@ os.makedirs(FIRMAS_DIR, exist_ok=True)
 
 from fastapi import APIRouter
 from fastapi.responses import Response
-from weasyprint import HTML
 from sqlalchemy import text
 from jinja2 import Environment, FileSystemLoader
 import os
@@ -2789,12 +2788,16 @@ templates = Environment(
     loader=FileSystemLoader(templates_path)
 )
 
+import pdfkit
+import uuid
+import os
+from fastapi.responses import FileResponse
+
 @router.get("/api/reporteE/pdf")
 def generar_pdf(proyecto_id: int, fecha: str):
 
     try:
 
-        # ================= ARC =================
         with engine.connect() as conn:
 
             arc = conn.execute(text("""
@@ -2805,36 +2808,27 @@ def generar_pdf(proyecto_id: int, fecha: str):
                 "fecha": fecha
             }).mappings().all()
 
-            # 🔥 DATOS DEL PROYECTO (AJUSTA SEGÚN TU TABLA)
             proyecto_data = conn.execute(text("""
                 SELECT *
-                FROM proyecto
+                FROM proyectos
                 WHERE id = :id
                 LIMIT 1
             """), {
                 "id": proyecto_id
             }).mappings().first()
 
-        # ================= TEMPLATE =================
-        template = templates.get_template("reporteE_pdf.html")
+        template = templates.get_template("reporteE.html")
 
         html = template.render(
-            # básicos
             fecha=fecha,
             proyecto=proyecto_data["nombre"] if proyecto_data else "PROYECTO",
-
-            # ARC
             arc=arc,
-
-            # 🔥 FILA 4 (usa tus columnas reales)
             tipologia=proyecto_data.get("tipologia", "") if proyecto_data else "",
             entidad=proyecto_data.get("entidad", "") if proyecto_data else "",
             inicio=proyecto_data.get("inicio_programado", "") if proyecto_data else "",
             estado=proyecto_data.get("estado", "") if proyecto_data else "",
             presupuesto_aprobado=proyecto_data.get("presupuesto", "") if proyecto_data else "",
             fin=proyecto_data.get("fin_programado", "") if proyecto_data else "",
-
-            # firmas
             nombre1="",
             cargo1="",
             nombre2="",
@@ -2843,29 +2837,26 @@ def generar_pdf(proyecto_id: int, fecha: str):
             cargo3=""
         )
 
-        # ================= PDF =================
-        pdf = HTML(
-            string=html,
-            base_url=templates_path
-        ).write_pdf()
+        output_path = f"/tmp/reporteE_{proyecto_id}_{uuid.uuid4().hex}.pdf"
 
-        return Response(
-            content=pdf,
+        WKHTMLTOPDF_PATH = os.getenv("WKHTMLTOPDF_PATH", "/usr/bin/wkhtmltopdf")
+        config = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
+
+        options = {
+            "enable-local-file-access": ""
+        }
+
+        pdfkit.from_string(html, output_path, configuration=config, options=options)
+
+        return FileResponse(
+            output_path,
             media_type="application/pdf",
-            headers={
-                "Content-Disposition": f"inline; filename=reporteE_{proyecto_id}.pdf"
-            }
+            filename=f"reporteE_{proyecto_id}.pdf"
         )
 
     except Exception as e:
-        print("ERROR PDF:", e)
-        return Response(
-            content=f"Error generando PDF: {str(e)}",
-            media_type="text/plain",
-            status_code=500
-        )
-
-
+        return {"error": str(e)}
+    
 # ================= ROUTER =================
 app.include_router(router)
 
