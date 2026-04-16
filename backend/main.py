@@ -2256,6 +2256,29 @@ def guardar_todo(data: dict):
             raise HTTPException(status_code=500, detail=str(e))
 
         # =====================================================
+        # 🔥 GUARDAR TABLERO (LO QUE TE FALTA)
+        # =====================================================
+
+        try:
+
+            tablero_data = data.get("reporte", {})
+
+            conn.execute(text("""
+                INSERT INTO tablero (proyecto_id, fecha, data)
+                VALUES (:proyecto_id, :fecha, :data)
+                ON CONFLICT (proyecto_id, fecha)
+                DO UPDATE SET data = EXCLUDED.data
+            """), {
+                "proyecto_id": proyecto_id,
+                "fecha": fecha_corte,
+                "data": json.dumps(tablero_data)
+            })
+
+        except Exception as e:
+            print("ERROR TABLERO:", e)
+            raise HTTPException(status_code=500, detail=str(e))
+
+        # =====================================================
         # 🔥 FIRMAS - GUARDAR SOLO TEXTOS (FIX REAL FINAL)
         # =====================================================
         try:
@@ -2870,74 +2893,92 @@ def fechas_tablero():
     with engine.connect() as conn:
 
         fechas = conn.execute(text("""
-            SELECT fecha
+            SELECT DISTINCT fecha
             FROM tablero
-            WHERE data IS NOT NULL
-            AND data != '{}'::jsonb
-            AND jsonb_array_length(data->'filas') > 0
+            WHERE fecha IS NOT NULL
             ORDER BY fecha DESC
         """)).fetchall()
 
     return [f[0].strftime("%Y-%m-%d") for f in fechas if f[0]]
 
 @app.get("/api/tablero/{fecha}")
-def obtener_tablero(fecha: str):
+def obtener_tablero(fecha: str, proyecto_id: int = 1):
 
-    with engine.connect() as conn:
+    try:
+        with engine.connect() as conn:
 
-        result = conn.execute(text("""
-            SELECT data
-            FROM tablero
-            WHERE fecha = :fecha
-        """), {
-            "fecha": fecha
-        }).fetchone()
+            result = conn.execute(text("""
+                SELECT data
+                FROM tablero
+                WHERE fecha = CAST(:fecha AS DATE)
+                AND proyecto_id = :proyecto_id
+            """), {
+                "fecha": fecha,
+                "proyecto_id": proyecto_id
+            }).fetchone()
 
-        if not result:
-            return {"data": None}
+            if not result:
+                return {"data": None}
 
-        return {"data": result[0]}
+            data = result[0]
+
+            if isinstance(data, str):
+                data = json.loads(data)
+
+            return {"data": data}
+
+    except Exception as e:
+        print("ERROR:", e)
+        return {"data": None}
 
 @app.post("/api/tablero/guardar")
 def guardar_tablero(payload: dict):
 
     fecha = payload.get("fecha")
     data = payload.get("data")
+    proyecto_id = payload.get("proyecto_id", 1)
+
+    print("GUARDANDO FECHA:", fecha)
+    print("GUARDANDO DATA:", data is not None)
+    print("PROYECTO:", proyecto_id)
 
     if not fecha or data is None:
         raise HTTPException(status_code=400, detail="Faltan datos")
 
-    with engine.connect() as conn:
+    try:
+        with engine.connect() as conn:
 
-        conn.execute(text("""
-            INSERT INTO tablero (fecha, data)
-            VALUES (:fecha, :data)
-            ON CONFLICT (fecha)
-            DO UPDATE SET data = EXCLUDED.data
-        """), {
-            "fecha": fecha,
-            "data": json.dumps(data)
-        })
+            conn.execute(text("""
+                INSERT INTO tablero (fecha, data, proyecto_id)
+                VALUES (CAST(:fecha AS DATE), CAST(:data AS jsonb), :proyecto_id)
+                ON CONFLICT (fecha)
+                DO UPDATE SET 
+                    data = EXCLUDED.data,
+                    proyecto_id = EXCLUDED.proyecto_id
+            """), {
+                "fecha": fecha,
+                "data": json.dumps(data),
+                "proyecto_id": proyecto_id
+            })
 
-        conn.commit()
+            conn.commit()
 
-    return {"ok": True}
+        return {"ok": True}
 
-@app.get("/api/fechas-con-data/{proyecto_id}")
-def fechas_con_data(proyecto_id: int):
+    except Exception as e:
+        print("🔥 ERROR BACKEND REAL:", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/tablero/fechas/{proyecto_id}")
+def fechas_tablero_por_proyecto(proyecto_id: int):
 
     with engine.connect() as conn:
 
         rows = conn.execute(text("""
-            SELECT DISTINCT fecha_corte
-            FROM proyecto_arc
+            SELECT DISTINCT fecha
+            FROM tablero
             WHERE proyecto_id = :proyecto_id
-
-            UNION
-
-            SELECT DISTINCT fecha_corte
-            FROM firmas
-            WHERE proyecto_id = :proyecto_id
+            ORDER BY fecha DESC
         """), {
             "proyecto_id": proyecto_id
         }).fetchall()
@@ -2968,3 +3009,4 @@ def ultima_fecha():
         return {"fecha": None}
 
     return {"fecha": result[0].strftime("%Y-%m-%d")}
+

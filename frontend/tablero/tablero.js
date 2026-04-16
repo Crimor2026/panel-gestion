@@ -7,7 +7,29 @@ let filas = 0;
 let lineas = [];
 
 // 🔥 COLORES
-const colores = ["#3498db","#2ecc71","#e67e22","#9b59b6","#e74c3c","#1abc9c"];
+const colores = [
+    "#5499C7", // azul
+    "#45B39D", // verde agua
+    "#52BE80", // verde
+    "#EB984E", // naranja
+    "#A569BD", // morado
+    "#E74C3C", // rojo suave
+    "#73BFB8", // turquesa
+    "#F4D03F", // amarillo
+    "#7FB3D5", // celeste
+    "#A77DC2", // lila
+    "#EC7063", // rosado
+    "#6FA8DC", // azul gris
+
+    "#5D6D7E", // gris azulado
+    "#117A65", // verde oscuro elegante
+    "#148F77", // teal fuerte
+    "#B9770E", // naranja oscuro
+    "#7D3C98", // púrpura fuerte
+    "#922B21", // rojo vino
+    "#1F618D", // azul profundo
+    "#566573"  // gris moderno
+];
 let colorIndex = 0;
 
 function irTablero() {
@@ -20,6 +42,11 @@ function agregarFila() {
 
     const fila = document.createElement("div");
     fila.className = "fila";
+
+    // 🔥 HEREDAR ESTADO DE CARGA
+    if (filasContainer.dataset.cargando === "true") {
+        fila.dataset.cargando = "true";
+    }
 
     const num = document.createElement("div");
     num.className = "celda numero";
@@ -42,7 +69,7 @@ function crearCelda(colIndex, filaDOM) {
     const container = document.createElement("div");
     container.className = "nodos-container";
 
-    if (colIndex === 0) {
+   if (colIndex === 0) {
         container.appendChild(crearNodo(colIndex, filaDOM));
     }
 
@@ -53,6 +80,13 @@ function crearCelda(colIndex, filaDOM) {
 /* ================= CREAR NODO ================= */
 function crearNodo(colIndex, filaDOM) {
 
+    const filasContainer = document.getElementById("filas");
+
+    // 🔥 BLOQUEAR CREACIÓN AUTOMÁTICA EN CARGA
+    if (filasContainer.dataset.cargando === "true") {
+        // SOLO crear nodo base, sin lógica adicional
+    }
+        
     const wrapper = document.createElement("div");
     wrapper.className = "nodo-wrapper";
 
@@ -120,45 +154,63 @@ function crearNodo(colIndex, filaDOM) {
 
         containerDestino.classList.add("tiene-hijos");
 
-        // ✅ AGREGAR NORMAL
-        containerDestino.appendChild(nuevoNodo);
+        // 🔥 INSERTAR POR NIVEL (CLAVE)
+        const nivelNuevo = calcularNivel(nuevoNodo);
+        const parentIndex = Array.from(containerDestino.children)
+            .findIndex(n => n.dataset.id === wrapper.dataset.id);
 
-        // ✅ ORDEN GLOBAL POR COLOR
-        ordenarPorColor(containerDestino);
-
-        // 🔥 LINEA CON COLOR
-        setTimeout(() => {
-
-            const linea = new LeaderLine(
-                input,
-                nuevoNodo.querySelector(".nodo-input"),
-                {
-                    path: "grid",
-                    startSocket: "right",
-                    endSocket: "left",
-                    color: wrapper.dataset.color,
-                    size: 2,
-                    dash: { len: 4, gap: 4 }
-                }
+        if (parentIndex !== -1) {
+            containerDestino.insertBefore(
+                nuevoNodo,
+                containerDestino.children[parentIndex + 1] || null
             );
+        } else {
+            containerDestino.appendChild(nuevoNodo);
+        }
 
-            // 🔥 FIX: asociar línea a la fila
-            linea.fila = filaDOM;
+        // 🔥 ORDEN CORRECTO (FIX REAL)
+        requestAnimationFrame(() => {
 
-            linea.hide("none");
-            linea.show("draw");
+            alinearFilasGlobal();
 
-            lineas.push(linea);
+            requestAnimationFrame(() => {
 
-            setTimeout(() => {
-                lineas.forEach(l => l.position());
-            }, 100);
+                recalcularTodo();
 
-        }, 50);
+                // 🔥 LINEA CON COLOR (DESPUÉS de TODO)
+                const linea = new LeaderLine(
+                    input,
+                    nuevoNodo.querySelector(".nodo-input"),
+                    {
+                        path: "grid",
+                        startSocket: "right",
+                        endSocket: "left",
 
-        ajustarColumnas();
+                        startSocketGravity: [0, 0],
+                        endSocketGravity: [0, 0],
+
+                        color: padre.dataset.color,
+                        size: 2,
+                        dash: { len: 4, gap: 4 }
+                    }
+                );
+
+                linea.fila = filaDOM;
+
+                linea.hide("none");
+                linea.show("draw");
+
+                lineas.push(linea);
+
+                requestAnimationFrame(() => {
+                    lineas.forEach(l => l.position());
+                });
+
+            });
+
+        });
+
     };
-
     /* ================= REMOVE ================= */
     btnRemove.onclick = () => {
 
@@ -178,6 +230,7 @@ function crearNodo(colIndex, filaDOM) {
 
         // 🔥 eliminar nodo
         wrapper.remove();
+        recalcularTodo();
 
         // 🔥 reajustar líneas
         setTimeout(() => {
@@ -254,6 +307,11 @@ function ordenarPorColor(container) {
 /* ================= FILTRO ================= */
 function aplicarFiltro() {
 
+    // 🔥 resetear TODO antes de filtrar
+    document.querySelectorAll(".nodo-wrapper").forEach(n => {
+        n.style.display = "flex";
+    });
+    
     const filtros = document.querySelectorAll(".filtro-col");
     const filas = document.querySelectorAll("#filas .fila");
 
@@ -270,10 +328,8 @@ function aplicarFiltro() {
 
             const nodos = celda.querySelectorAll(".nodo-wrapper");
 
-            // 🔥 sin filtro → mostrar todo
             if (textoFiltro === "") {
-                nodos.forEach(n => n.style.display = "flex");
-                return;
+                return; // 🔥 NO tocar visibilidad aquí
             }
 
             let matchEnColumna = false;
@@ -281,6 +337,12 @@ function aplicarFiltro() {
             nodos.forEach(nodo => {
 
                 const input = nodo.querySelector(".nodo-input");
+
+                if (!input) {
+                    nodo.style.display = "none"; // 🔥 o "flex" si quieres ignorarlo
+                    return;
+                }
+
                 const texto = input.value.toLowerCase();
 
                 if (texto.includes(textoFiltro)) {
@@ -338,13 +400,18 @@ removeFilaBtn.onclick = () => {
 
     const ultimaFila = filasDOM[filasDOM.length - 1];
 
-    // 🔥 eliminar líneas asociadas
+    // 🔥 eliminar líneas actuales
     lineas.forEach(l => l.remove());
     lineas = [];
 
+    // 🔥 eliminar fila
     ultimaFila.remove();
     filas--;
 
+    // 🔥 🔥 CLAVE: reconstruir layout + líneas
+    setTimeout(() => {
+        recalcularTodo();
+    }, 80);
 };
 
 const removeColBtn = document.getElementById("removeCol");
@@ -408,12 +475,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (fechas && fechas.length > 0) {
 
-                    const ultima = fechas[0];
+                    const ultima = fechas.sort((a, b) => new Date(b) - new Date(a))[0];
 
                     console.log("USANDO:", ultima);
 
-                    // 🔥 CLAVE: usar instance (flatpickr ya listo)
-                    instance.setDate(ultima, true);
+                    if (ultima) {
+                        instance.setDate(ultima, true);
+                    } else {
+                        agregarFila();
+                    }
 
                 } else {
                     agregarFila();
@@ -460,31 +530,32 @@ function guardarTablero(fecha) {
         columnas: [],
         filas: []
     };
-
-    // 🔥 columnas
+    console.log("NODOS:", document.querySelectorAll(".nodo-wrapper").length);
+    // 🔥 COLUMNAS
     document.querySelectorAll(".titulo-col").forEach(col => {
         data.columnas.push(col.value);
     });
 
-    // 🔥 filas
+    // 🔥 FILAS
     document.querySelectorAll("#filas .fila").forEach(fila => {
 
         const filaData = [];
-
         const celdas = fila.querySelectorAll(".celda");
 
         celdas.forEach((celda, i) => {
             if (i === 0) return;
 
-            const nodos = celda.querySelectorAll(".nodo-wrapper");
+            const nodos = Array.from(celda.querySelectorAll(".nodo-wrapper"))
+                .filter(n => !n.classList.contains("invisible"));
 
             const nodosData = [];
 
             nodos.forEach(nodo => {
+
                 const input = nodo.querySelector(".nodo-input");
 
                 nodosData.push({
-                    texto: input.value,
+                    texto: input ? input.value : "",
                     color: nodo.dataset.color,
                     parentId: nodo.dataset.parentId || null,
                     id: nodo.dataset.id
@@ -496,26 +567,37 @@ function guardarTablero(fecha) {
 
         data.filas.push(filaData);
     });
+    console.log("GUARDADO JSON LIMPIO:");
+    console.log(JSON.stringify(data, null, 2));
+    console.log("FECHA:", fecha);
+    console.log("ENVIANDO:", data);
 
-    fetch("/api/tablero/guardar", {
+    return fetch("/api/tablero/guardar", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            fecha: fecha,
-            data: data
+            fecha: fecha,   // 🔥 CORRECTO
+            data: data      // 🔥 CORRECTO
         })
     })
-    .then(res => res.json())
+    .then(async res => {
+        if (!res.ok) {
+            const text = await res.text();
+            console.error("ERROR BACK:", text);
+            throw new Error("Error al guardar");
+        }
+        return res.json();
+    })
     .then(() => {
-
-        // 🔥 IMPORTANTE: refrescar puntitos
+        console.log("GUARDADO OK");
         actualizarFechasConData();
-
+    })
+    .catch(err => {
+        console.error("ERROR GUARDANDO:", err);
     });
 }
-
 
 /* ================= MARCAR FECHAS ================= */
 function actualizarFechasConData() {
@@ -559,150 +641,205 @@ function actualizarFechasConData() {
 /* ================= BOTÓN GUARDAR ================= */
 document.getElementById("guardar").onclick = async () => {
 
-    const fecha = await pedirFecha();
-    if (!fecha) return;
+    try {
 
-    await guardarTablero(fecha);
+        const fecha = await pedirFecha();
+        if (!fecha) return;
 
-    // 🔥 CLAVE 1: recargar tablero con la fecha guardada
-    cargarTablero(fecha);
+        // 🔥 SOLO bloquear durante guardado
+        modoCarga = true;
 
-    // 🔥 CLAVE 2: actualizar el calendario visual
-    const fp = document.getElementById("fecha")._flatpickr;
-    if (fp) {
-        fp.setDate(fecha, true);
+        await guardarTablero(fecha);
+
+        modoCarga = false; // 🔥 liberar antes de cargar
+
+        console.log("✔ Guardado correcto");
+
+        const fp = document.getElementById("fecha")._flatpickr;
+        if (fp) {
+            fp.setDate(fecha, false);
+        }
+
+        await cargarTablero(fecha);
+        await actualizarFechasConData();
+
+    } catch (e) {
+        console.error("❌ Error en guardar:", e);
+        modoCarga = false;
     }
-
-    // 🔥 CLAVE 3: refrescar puntos del calendario
-    actualizarFechasConData();
 };
 
+let cargandoTablero = false;
+let modoCarga = false;
 
 /* ================= CARGAR TABLERO ================= */
-function cargarTablero(fecha) {
+async function cargarTablero(fecha) {
 
-    fetch(`/api/tablero/${fecha}`)
-        .then(res => res.json())
-        .then(resp => {
+    // 🔥 EVITAR LLAMADAS DUPLICADAS
+    if (cargandoTablero) return;
+    cargandoTablero = true;
 
-            const data = resp.data;
+    modoCarga = true;
 
-            // 🔥 LIMPIAR SIEMPRE
-            document.getElementById("filas").innerHTML = "";
-            lineas.forEach(l => l.remove());
-            lineas = [];
-            filas = 0;
+    try {
 
-            if (!data) {
-                agregarFila();
+        const res = await fetch(`/api/tablero/${fecha}?proyecto_id=1`);
+
+        console.log("STATUS:", res.status);
+
+        if (!res.ok) {
+            throw new Error("Error HTTP: " + res.status);
+        }
+
+        const text = await res.text();
+        console.log("RESPUESTA BACK (RAW):", text);
+
+        let resp;
+
+        try {
+            resp = JSON.parse(text);
+        } catch (e) {
+            console.error("ERROR PARSEANDO JSON:", e);
+            return;
+        }
+
+        console.log("RESPUESTA BACK:", resp);
+
+        let data = resp.data;
+        const filasContainer = document.getElementById("filas");
+
+        // 🔥 NO BORRAR SI VIENE VACÍO
+        if (!data) {
+            console.warn("DATA VACÍA IGNORADA");
+
+            if (document.querySelectorAll(".nodo-wrapper").length > 0) {
                 return;
             }
 
-            const parsed = typeof data === "string" ? JSON.parse(data) : data;
+            filasContainer.innerHTML = "";
+            filas = 0;
+            columnas = 1;
 
-            // 🔥 asegurar columnas
-            const columnasGuardadas = parsed.columnas.length;
+            agregarFila();
+            return;
+        }
 
-            while (document.querySelectorAll(".columna").length < columnasGuardadas) {
-                addColBtn.click();
+        // 🔥 parse seguro
+        try {
+            if (typeof data === "string") {
+                data = JSON.parse(data);
             }
+            if (typeof data === "string") {
+                data = JSON.parse(data);
+            }
+        } catch (e) {
+            console.error("❌ ERROR PARSEANDO DATA:", e);
+            return;
+        }
 
-            parsed.filas.forEach(filaData => {
+        console.log("DATA FINAL:", data);
+        console.log("CARGADO JSON LIMPIO:");
+        console.log(JSON.stringify(data, null, 2));
 
-                agregarFila();
+        /* ================= LIMPIAR ================= */
+        filasContainer.innerHTML = "";
+        lineas.forEach(l => l.remove());
+        lineas = [];
+        filas = 0;
 
-                const filaDOM = document.querySelectorAll("#filas .fila")[filas - 1];
+        /* ================= COLUMNAS ================= */
+        columnas = (data.columnas && data.columnas.length > 0)
+            ? data.columnas.length
+            : document.querySelectorAll(".columna").length;
 
-                filaData.forEach((celdaData, colIndex) => {
+        const columnasGuardadas = columnas;
 
-                    const celda = filaDOM.children[colIndex + 1];
-                    if (!celda) return;
+        while (document.querySelectorAll(".columna").length > columnasGuardadas) {
+            const cols = document.querySelectorAll(".columna");
+            if (cols.length <= 1) break;
+            cols[cols.length - 1].remove();
+        }
 
-                    const container = celda.querySelector(".nodos-container");
-                    if (!container) return;
+        while (document.querySelectorAll(".columna").length < columnasGuardadas) {
+            addColBtn.click();
+        }
 
-                    celdaData.forEach(nodoData => {
+        document.querySelectorAll(".titulo-col").forEach((input, i) => {
+            input.value = data.columnas[i] || `Campo ${i + 1}`;
+        });
 
-                        const nodo = crearNodo(colIndex, filaDOM);
+        /* ================= FILAS ================= */
+        console.log("FILAS A RENDERIZAR:", data.filas);
+        data.filas.forEach(filaData => {
 
-                        nodo.dataset.id = nodoData.id;
-                        nodo.dataset.color = nodoData.color;
+            agregarFila();
+
+            const filaDOM = document.querySelectorAll("#filas .fila")[filas - 1];
+
+            filaData.forEach((celdaData, colIndex) => {
+
+                const celda = filaDOM.children[colIndex + 1];
+                if (!celda) return;
+
+                const container = celda.querySelector(".nodos-container");
+                if (!container) return;
+
+                container.innerHTML = "";
+
+                if (!celdaData || celdaData.length === 0) {
+                    return; // ❌ NO crear nada
+                }
+                celdaData.forEach(nodoData => {
+
+                    if (!nodoData.id) {
+                        console.error("❌ NODO SIN ID:", nodoData);
+                    }
+
+                    if (nodoData.parentId && typeof nodoData.parentId !== "string") {
+                        console.error("❌ parentId inválido:", nodoData);
+                    }
+
+                    console.log("NODO:", nodoData);
+
+                    const nodo = document.createElement("div");
+                    nodo.className = "nodo-wrapper";
+                    nodo.style.height = "40px";
+
+                    const input = document.createElement("textarea");
+                    input.className = "nodo-input";
+                    input.value = nodoData.texto || "";
+
+                    nodo.appendChild(input);
+
+                    nodo.dataset.id = nodoData.id;
+                    nodo.dataset.color = nodoData.color;
+                    if (nodoData.parentId) {
                         nodo.dataset.parentId = nodoData.parentId;
+                    } else {
+                        delete nodo.dataset.parentId; // 🔥 CLAVE
+                    }
 
-                        const input = nodo.querySelector(".nodo-input");
-                        input.value = nodoData.texto;
+                    aplicarColor(nodo, input);
 
-                        aplicarColor(nodo, input);
-
-                        container.appendChild(nodo);
-                    });
-
+                    container.appendChild(nodo); // 🔥 SOLO UNA VEZ
                 });
 
             });
 
-            // 🔥 🔥 🔥 ORDEN CORRECTO (CLAVE REAL)
-
-            // 1️⃣ Primero deja que el layout se acomode
-            setTimeout(() => {
-
-                actualizarColumnasGrid();
-
-                // 2️⃣ Luego crear líneas
-                const todosLosNodos = document.querySelectorAll(".nodo-wrapper");
-
-                todosLosNodos.forEach(nodo => {
-
-                    const parentId = nodo.dataset.parentId;
-                    if (!parentId) return;
-
-                    const padre = document.querySelector(`[data-id="${parentId}"]`);
-                    if (!padre) return;
-
-                    const linea = new LeaderLine(
-                        padre.querySelector(".nodo-input"),
-                        nodo.querySelector(".nodo-input"),
-                        {
-                            path: "grid",
-                            startSocket: "right",
-                            endSocket: "left",
-                            color: padre.dataset.color,
-                            size: 2,
-                            dash: { len: 4, gap: 4 }
-                        }
-                    );
-
-                    linea.fila = nodo.closest(".fila");
-
-                    linea.hide("none");
-                    linea.show("draw");
-
-                    lineas.push(linea);
-
-                });
-
-                // 3️⃣ 🔥 REAJUSTE FINAL (EL FIX REAL)
-                setTimeout(() => {
-                    lineas.forEach(l => l.position());
-                }, 150);
-
-            }, 120);
-
+            alinearFilasGlobal();
         });
+
+        setTimeout(() => {
+            recalcularTodo();
+        }, 150);
+
+    } catch (err) {
+        console.error("🔥 ERROR EN CARGA:", err);
+    } finally {
+        modoCarga = false;
+        cargandoTablero = false;
+    }
 }
-
-/* ================= CUANDO CAMBIA FECHA ================= */
-document.getElementById("fecha").addEventListener("change", () => {
-
-    const inputFecha = document.getElementById("fecha");
-
-    if (!inputFecha.value) return;
-
-    const fecha = flatpickr.parseDate(inputFecha.value, "d/m/Y");
-    const fechaKey = fecha.toISOString().split("T")[0];
-
-    cargarTablero(fechaKey);
-});
 
 /* ================= PEDIR FECHA ================= */
 function pedirFecha() {
@@ -769,11 +906,8 @@ function recalcularTodo() {
     lineas.forEach(l => l.remove());
     lineas = [];
 
-    // 🔥 recalcular grid
-    actualizarColumnasGrid();
-
     // 🔥 reconstruir líneas
-    setTimeout(() => {
+    requestAnimationFrame(() => {
 
         const nodos = document.querySelectorAll(".nodo-wrapper");
 
@@ -792,6 +926,10 @@ function recalcularTodo() {
                     path: "grid",
                     startSocket: "right",
                     endSocket: "left",
+
+                    startSocketGravity: [0, 0],
+                    endSocketGravity: [0, 0],
+
                     color: padre.dataset.color,
                     size: 2,
                     dash: { len: 4, gap: 4 }
@@ -803,11 +941,12 @@ function recalcularTodo() {
 
         });
 
+        // 🔥 reajuste final de líneas (IMPORTANTE)
         setTimeout(() => {
             lineas.forEach(l => l.position());
         }, 100);
 
-    }, 120);
+    });
 }
 
 /* ================= CARGAR LO ULTIMO ================= */
@@ -834,6 +973,162 @@ function cargarUltimaFecha() {
         .catch(err => console.error("Error cargando fechas:", err));
 }
 
+function calcularNivel(nodo) {
+    let nivel = 0;
+    let actual = nodo;
+
+    while (actual.dataset.parentId) {
+        const padre = document.querySelector(`[data-id="${actual.dataset.parentId}"]`);
+        if (!padre) break;
+        nivel++;
+        actual = padre;
+    }
+
+    return nivel;
+}
+
+function obtenerFilaPadre(nodo) {
+
+    if (!nodo.dataset.parentId) return null;
+
+    const padre = document.querySelector(
+        `[data-id="${nodo.dataset.parentId}"]`
+    );
+
+    return padre;
+}
+
+function construirFilas(fila) {
+
+    const todos = Array.from(fila.querySelectorAll(".nodo-wrapper"))
+        .filter(n => n.dataset.id);
+
+    console.log("TODOS LOS NODOS:");
+    console.table(todos.map(n => ({
+        id: n.dataset.id,
+        parentId: n.dataset.parentId
+    })));
+
+    const mapa = new Map();
+
+    let filaIndex = 0;
+
+    function recorrer(nodo) {
+
+        if (!nodo) return;
+
+        if (mapa.has(nodo.dataset.id)) return;
+
+        mapa.set(nodo.dataset.id, filaIndex++);
+
+        const hijos = todos.filter(n => n.dataset.parentId === nodo.dataset.id);
+
+        hijos.forEach(h => recorrer(h));
+    }
+
+    const raices = todos.filter(n => !n.dataset.parentId);
+
+    if (raices.length === 0) {
+        console.error("NO HAY RAICES → TODO SE VA A ROMPER");
+    }
+
+    raices.forEach(r => recorrer(r));
+
+    console.log("MAPA FINAL:", mapa);
+
+    return mapa;
+}
+
+function alinearFilasGlobal() {
+
+    document.querySelectorAll(".fila").forEach(fila => {
+
+        const columnas = fila.querySelectorAll(".nodos-container");
+
+        // limpiar
+        columnas.forEach(col => {
+            col.querySelectorAll(".invisible").forEach(e => e.remove());
+        });
+
+        const mapa = construirFilas(fila);
+        if (mapa.size === 0) {
+            console.warn("mapa vacío, no alineo");
+            return;
+        }
+
+        const maxFilas = Math.max(...mapa.values()) + 1;
+
+        columnas.forEach(col => {
+
+            const nuevaLista = new Array(maxFilas).fill(null);
+
+            Array.from(col.children).forEach(nodo => {
+                const index = mapa.get(nodo.dataset.id);
+                if (index !== undefined) {
+                    nuevaLista[index] = nodo;
+                }
+            });
+
+            // llenar vacíos
+            for (let i = 0; i < maxFilas; i++) {
+                if (!nuevaLista[i]) {
+                    const spacer = document.createElement("div");
+                    spacer.className = "nodo-wrapper invisible";
+                    nuevaLista[i] = spacer;
+                }
+            }
+
+            col.innerHTML = "";
+            nuevaLista.forEach(n => col.appendChild(n));
+        });
+
+    });
+}
+
+function layoutDagre() {
+
+    const g = new dagre.graphlib.Graph();
+
+    g.setGraph({
+        rankdir: "LR", // izquierda → derecha
+        nodesep: 50,
+        ranksep: 120
+    });
+
+    g.setDefaultEdgeLabel(() => ({}));
+
+    const nodos = Array.from(document.querySelectorAll(".nodo-wrapper"))
+        .filter(n => n.dataset.id);
+
+    // 🔥 registrar nodos
+    nodos.forEach(n => {
+        g.setNode(n.dataset.id, {
+            width: 220,
+            height: 70
+        });
+    });
+
+    // 🔥 registrar relaciones
+    nodos.forEach(n => {
+        if (n.dataset.parentId) {
+            g.setEdge(n.dataset.parentId, n.dataset.id);
+        }
+    });
+
+    dagre.layout(g);
+
+    // 🔥 aplicar posiciones
+    nodos.forEach(n => {
+
+        const pos = g.node(n.dataset.id);
+
+        n.style.left = (pos.x - 110) + "px"; // centro
+        n.style.top = (pos.y - 35) + "px";
+
+    });
+
+}
+
 /* ================= INIT ================= */
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -841,10 +1136,14 @@ document.addEventListener("DOMContentLoaded", () => {
     actualizarFechasConData();
 
     // 🔥 inicial tablero
-    agregarFila();
     activarFiltros();
 
     // 🔥 layout columnas
     actualizarColumnasGrid();
+
+    // 🔥 🔥 REDIBUJAR LÍNEAS (IMPORTANTE)
+    setTimeout(() => {
+        recalcularTodo();
+    }, 150);
 
 });

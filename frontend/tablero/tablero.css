@@ -42,10 +42,48 @@ body {
     align-items: center; /* 🔥 CLAVE */
 }
 
-/* ================= TABLA ================= */
-.tabla {
+/* ================= BASE ================= */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial;
+    margin: 0;
+    overflow-x: auto;
+}
+
+/* ================= HEADER ================= */
+.header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center; /* 🔥 FIX */
+    padding: 12px;
     width: 100%;
-    min-width: 100%;
+    border-bottom: 2px solid black;
+    gap: 10px;
+}
+
+.header > #titulo {
+    align-self: start;
+}
+
+#titulo {
+    width: 100%;
+    min-height: 30px;
+    font-size: 20px;
+    text-align: center;
+    outline: none;
+    border: none;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.4;
+}
+
+.right {
+    display: flex;
+    gap: 8px;
+    align-items: center; /* 🔥 CLAVE */
 }
 
 /* ================= BASE ================= */
@@ -94,60 +132,16 @@ body {
 
 /* ================= TABLA ================= */
 .tabla {
-    width: 100%;
-    min-width: 100%;
-}
-
-/* ================= BASE ================= */
-* {
-    box-sizing: border-box;
-}
-
-body {
-    font-family: Arial;
-    margin: 0;
-    overflow-x: auto;
-}
-
-/* ================= HEADER ================= */
-.header {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center; /* 🔥 FIX */
-    padding: 12px;
-    width: 100%;
-    border-bottom: 2px solid black;
-    gap: 10px;
-}
-
-.header > #titulo {
-    align-self: start;
-}
-
-#titulo {
-    width: 100%;
-    min-height: 30px;
-    font-size: 20px;
-    text-align: center;
-    outline: none;
-    border: none;
-    white-space: pre-wrap;
-    word-break: break-word;
-    line-height: 1.4;
-}
-
-.right {
     display: flex;
-    gap: 8px;
-    align-items: center; /* 🔥 CLAVE */
-}
-
-/* ================= TABLA ================= */
-.tabla {
+    flex-direction: column;
     width: 100%;
-    min-width: 100%;
 }
 
+/* 🔥 AQUÍ */
+#filas {
+    display: flex;
+    flex-direction: column;
+}
 /* CONTENEDOR GENERAL */
 #tablero-container {
     overflow-x: auto;
@@ -156,19 +150,12 @@ body {
 
 /* FILA */
 .fila {
-    display: grid;
+    display: flex;
+    align-items: flex-start; /* 🔥 CLAVE */
     grid-template-columns: 60px repeat(var(--cols), minmax(250px, 1fr)) 60px;
     gap: 12px;
     width: max-content; /* 🔥 clave */
     min-width: 100%;
-}
-
-.numero {
-    min-width: 50px;
-    max-width: 50px;
-    background: #f5f5f5;
-    font-weight: bold;
-    justify-content: center;
 }
 
 /* ================= HEADER COLUMNAS ================= */
@@ -220,10 +207,12 @@ body {
 
 /* ================= WRAPPER ================= */
 .nodo-wrapper {
-    position: relative;
+    position: relative;  /* 🔥 ESTE ES EL CORRECTO */
     display: flex;
+    margin-bottom: 10px; /* controla separación real */
     align-items: center;
     gap: 6px;
+    min-height: 60px; 
 }
 
 /* ================= PADRE ================= */
@@ -259,11 +248,6 @@ body {
     font-size: 24px;
     background: #fafafa;
     border-top: 2px solid black;
-}
-
-.control-filas {
-    display: flex;
-    flex-direction: column;
 }
 
 .eliminar-fila {
@@ -489,14 +473,6 @@ body {
     }
 }
 
-.numero {
-    min-width: 50px;
-    max-width: 50px;
-    background: #f5f5f5;
-    font-weight: bold;
-    justify-content: center;
-}
-
 /* ================= HEADER COLUMNAS ================= */
 .columna {
     min-width: 150px;
@@ -544,13 +520,6 @@ body {
     border-radius: 6px;
 }
 
-/* ================= WRAPPER ================= */
-.nodo-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
 
 /* ================= PADRE ================= */
 .nodo-wrapper.padre > .nodo-input {
@@ -585,11 +554,6 @@ body {
     font-size: 24px;
     background: #fafafa;
     border-top: 2px solid black;
-}
-
-.control-filas {
-    display: flex;
-    flex-direction: column;
 }
 
 .eliminar-fila {
@@ -819,6 +783,7 @@ body {
 .celda {
     display: flex;
     align-items: flex-start;
+    flex-direction: column;
     justify-content: flex-start;
     gap: 10px;
 
@@ -827,11 +792,15 @@ body {
 }
 
 .numero {
-    min-width: 50px;
-    max-width: 50px;
-    background: #f5f5f5;
-    font-weight: bold;
+    width: 40px;        /* 🔥 ancho fijo pequeño */
+    min-width: 40px;
+    max-width: 40px;
+
+    display: flex;
+    align-items: center;
     justify-content: center;
+
+    padding: 0;         /* 🔥 quita relleno extra */
 }
 
 /* ================= HEADER COLUMNAS ================= */
@@ -881,14 +850,6 @@ body {
     border-radius: 6px;
 }
 
-/* ================= WRAPPER ================= */
-.nodo-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
 /* ================= PADRE ================= */
 .nodo-wrapper.padre > .nodo-input {
     border: none !important;  /* 🔥 eliminar borde negro */
@@ -913,19 +874,19 @@ body {
 
 /* ================= CONTENEDOR ================= */
 .nodos-container {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
     position: relative;
-    padding-left: 30px;
+
+    display: flex;              /* 🔥 IMPORTANTE */
+    flex-direction: column;     /* 🔥 CLAVE */
 
     width: 100%;
+    min-height: 80px;
 }
 
 /* ================= INPUT ================= */
 .nodo-input {
-    flex: 1;              /* 🔥 ocupa todo el ancho */
-    min-width: 0;         /* 🔥 evita desbordes */
+    flex: 1;
+    min-width: 0;
     max-width: 100%;
 
     min-height: 40px;
@@ -946,6 +907,11 @@ body {
 
     width: 100%;
     box-sizing: border-box;
+
+    /* 🔥 NUEVO (IMPORTANTE) */
+    background: #f8f9fa;
+    border-left: 5px solid transparent;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
 .agregar-fila {
@@ -963,6 +929,7 @@ body {
 .control-filas {
     display: flex;
     flex-direction: column;
+    align-items: center;
 }
 
 .eliminar-fila {
@@ -1147,6 +1114,11 @@ body {
     cursor: pointer;
     border-radius: 6px;
 }
+
+.invisible {
+    visibility: hidden;
+}
+
 
 /* ================= RESPONSIVE ================= */
 
