@@ -1112,7 +1112,9 @@ def upload_excel(file: UploadFile = File(...)):
                     # 🔥 si pasa, ya es válido
                     direccion_id = direccion_row.id
 
-                    # ================= PROYECTO (MATCH FLEXIBLE) =================
+                    # ================= PROYECTO (MATCH POR SIMILITUD) =================
+
+                    import difflib
 
                     proyectos = conn.execute(text("""
                         SELECT id, nombre
@@ -1123,13 +1125,22 @@ def upload_excel(file: UploadFile = File(...)):
                     }).fetchall()
 
                     proyecto = None
+                    mejor_score = 0
 
                     for p in proyectos:
                         nombre_bd = normalizar_texto(p.nombre)
 
-                        if nombre_bd in nombre_normalizado or nombre_normalizado in nombre_bd:
+                        score = difflib.SequenceMatcher(None, nombre_bd, nombre_normalizado).ratio()
+
+                        if score > mejor_score:
+                            mejor_score = score
                             proyecto = p
-                            break
+
+                    # 🔥 UMBRAL DE SEGURIDAD
+                    if mejor_score > 0.85:
+                        proyecto_id = proyecto.id
+                    else:
+                        proyecto = None
 
                     if proyecto:
 
@@ -1524,7 +1535,9 @@ def upload_arc(file: UploadFile = File(...)):
                 direccion_id = direccion_row.id
 
 
-                # ================= BUSCAR PROYECTO (MATCH FLEXIBLE) =================
+                # ================= BUSCAR PROYECTO (MATCH POR SIMILITUD) =================
+
+                import difflib
 
                 proyectos = conn.execute(text("""
                     SELECT id, nombre
@@ -1534,21 +1547,25 @@ def upload_arc(file: UploadFile = File(...)):
                     "direccion_id": direccion_id
                 }).fetchall()
 
-                proyecto = None
+                mejor_match = None
+                mejor_score = 0
 
                 for p in proyectos:
                     nombre_bd = normalizar_texto(p.nombre)
 
-                    if nombre_bd in nombre_normalizado or nombre_normalizado in nombre_bd:
-                        proyecto = p
-                        break
+                    score = difflib.SequenceMatcher(None, nombre_bd, nombre_normalizado).ratio()
 
-                if not proyecto:
+                    if score > mejor_score:
+                        mejor_score = score
+                        mejor_match = p
 
-                    print(f"Proyecto no encontrado: {nombre_original}")
+                # 🔥 VALIDACIÓN FINAL
+                if mejor_score > 0.85:
+                    proyecto = mejor_match
+                    proyecto_id = proyecto.id
+                else:
+                    print(f"❌ Proyecto no encontrado: {nombre_original} | score={mejor_score}")
                     continue
-
-                proyecto_id = proyecto.id
 
 
                 # ================= FECHA =================
