@@ -482,7 +482,7 @@ def dashboard_por_direccion(direccion_id: int, fecha: Optional[str] = None):
             # ================= CLASIFICACIÓN =================
             clasificacion = conn.execute(text("""
                 SELECT 
-                    c.nombre AS clasificacion,
+                    COALESCE(c.nombre, 'SIN CLASIFICACION') AS clasificacion,
                     COUNT(*) as cantidad
                 FROM proyectos p
 
@@ -495,13 +495,14 @@ def dashboard_por_direccion(direccion_id: int, fecha: Optional[str] = None):
                     LIMIT 1
                 ) fl ON true
 
-                JOIN clasificaciones c
+                -- 🔥 CAMBIO CLAVE: LEFT JOIN (no perder registros)
+                LEFT JOIN clasificaciones c
                     ON c.id = fl.clasificacion_id
 
-                WHERE fl.direccion_id = :direccion_id
+                WHERE COALESCE(fl.direccion_id, p.direccion_id) = :direccion_id
 
-                GROUP BY c.nombre
-                ORDER BY c.nombre
+                GROUP BY COALESCE(c.nombre, 'SIN CLASIFICACION')
+                ORDER BY clasificacion
             """), {
                 "direccion_id": direccion_id,
                 "fecha": fecha_corte
@@ -994,19 +995,30 @@ def upload_excel(file: UploadFile = File(...)):
 
             try:
 
-                # ================= CAMPOS BÁSICOS =================
+                # ================= NOMBRE =================
 
-                nombre_original = " ".join(str(row.get("nombre")).strip().split()) if row.get("nombre") else None
+                nombre_original = " ".join(str(row.get("nombre")).strip().split())
+
+                if not nombre_original:
+                    print("Fila ignorada (sin nombre)")
+                    continue
+
                 nombre_normalizado = normalizar_texto(nombre_original)
 
-                # ================= DIRECCIÓN =================
-                try:
-                    direccion_id = int(row.get("direccion_id")) if row.get("direccion_id") else None
-                except:
-                    direccion_id = None
 
-                if not direccion_id:
-                    print(f"Fila ignorada (sin direccion_id): {nombre_original}")
+                # ================= DIRECCIÓN =================
+
+                raw_dir = row.get("direccion_id")
+
+                # 🔥 detectar vacío real (incluye NaN)
+                if pd.isna(raw_dir) or str(raw_dir).strip() == "":
+                    print(f"Fila ignorada (direccion_id vacío): {nombre_original}")
+                    continue
+
+                try:
+                    direccion_id = int(float(raw_dir))  # 🔥 convierte 11.0 → 11
+                except:
+                    print(f"ERROR direccion_id inválido: {raw_dir} - {nombre_original}")
                     continue
 
                 # ================= FECHA =================
@@ -1053,82 +1065,128 @@ def upload_excel(file: UploadFile = File(...)):
 
                 clasificacion_id = None
 
-                if row.get("clasificacion"):
+                valor_clas = row.get("clasificacion")
+
+                if valor_clas:
+
+                    valor_clas = " ".join(str(valor_clas).strip().split())
+                    valor_normalizado = normalizar_texto(valor_clas)
 
                     clasificacion_id = conn.execute(text("""
                         SELECT id
                         FROM clasificaciones
-                        WHERE LOWER(TRIM(nombre)) = LOWER(TRIM(:nombre))
+                        WHERE LOWER(TRIM(unaccent(nombre))) = :nombre
                     """), {
-                        "nombre": row.get("clasificacion")
+                        "nombre": valor_normalizado
                     }).scalar()
 
+                    # 🔥 SI NO EXISTE → CREAR
                     if not clasificacion_id:
-                        print(f"Clasificación no encontrada: {row.get('clasificacion')}")
-                        clasificacion_id = None
 
+                        print(f"⚠️ Creando clasificación nueva: {valor_clas}")
+
+                        nueva = conn.execute(text("""
+                            INSERT INTO clasificaciones (nombre)
+                            VALUES (:nombre)
+                            RETURNING id
+                        """), {
+                            "nombre": valor_clas
+                        }).fetchone()
+
+                        clasificacion_id = nueva.id
 
                 # ================= DIRECCIÓN =================
 
-                direccion_row = conn.execute(text("""
-                    SELECT id
-                    FROM direcciones
-                    WHERE id = :direccion_id
-                """), {
-                    "direccion_id": direccion_id
-                }).fetchone()
-
-                if not direccion_row:
-
-                    print(f"Dirección no existe: {direccion_id}")
-
-                    # no detener carga
-                    direccion_id = None
-
-                else:
-
-                    direccion_id = direccion_row.id
-
-
-                    # ================= PROYECTO =================
-
-                    proyecto = conn.execute(text("""
+                    direccion_row = conn.execute(text("""
                         SELECT id
-                        FROM proyectos
-                        WHERE LOWER(TRIM(unaccent(nombre))) = :nombre
-                        AND direccion_id = :direccion_id
+                        FROM direcciones
+                        WHERE id = :direccion_id
                     """), {
-                        "nombre": nombre_normalizado,
                         "direccion_id": direccion_id
                     }).fetchone()
+
+                    if not direccion_row:
+                        print(f"Dirección no existe: {direccion_id} - {nombre_original}")
+                        continue  # 🔥 CORTA AQUÍ
+
+                    # 🔥 si pasa, ya es válido
+                    direccion_id = direccion_row.id
+
+                    # ================= PROYECTO (MATCH FLEXIBLE) =================
+
+                    proyectos = conn.execute(text("""
+                        SELECT id, nombre
+                        FROM proyectos
+                        WHERE direccion_id = :direccion_id
+                    """), {
+                        "direccion_id": direccion_id
+                    }).fetchall()
+
+                    proyecto = None
+
+                    for p in proyectos:
+                        nombre_bd = normalizar_texto(p.nombre)
+
+                        if nombre_bd in nombre_normalizado or nombre_normalizado in nombre_bd:
+                            proyecto = p
+                            break
 
                     if proyecto:
 
                         proyecto_id = proyecto.id
 
-                        conn.execute(text("""
-                            UPDATE proyectos
-                            SET
-                                cui = :cui,
-                                codigo_dsp = :codigo_dsp,
-                                ubicacion = :ubicacion,
-                                tipologia = :tipologia,
-                                entidad_formuladora = :entidad_formuladora
-                            WHERE id = :id
-                        """), {
-                            "id": proyecto_id,
-                            "cui": cui,
-                            "codigo_dsp": codigo_dsp,
-                            "ubicacion": ubicacion,
-                            "tipologia": tipologia,
-                            "entidad_formuladora": entidad_formuladora
-                        })
+                        # 🔥 VALIDAR CUI (NO DUPLICAR)
+                        if cui:
+                            existe = conn.execute(text("""
+                                SELECT id FROM proyectos WHERE cui = :cui
+                            """), {"cui": cui}).fetchone()
+
+                            if not existe or existe.id == proyecto_id:
+                                conn.execute(text("""
+                                    UPDATE proyectos
+                                    SET
+                                        cui = :cui,
+                                        codigo_dsp = :codigo_dsp,
+                                        ubicacion = :ubicacion,
+                                        tipologia = :tipologia,
+                                        entidad_formuladora = :entidad_formuladora
+                                    WHERE id = :id
+                                """), {
+                                    "id": proyecto_id,
+                                    "cui": cui,
+                                    "codigo_dsp": codigo_dsp,
+                                    "ubicacion": ubicacion,
+                                    "tipologia": tipologia,
+                                    "entidad_formuladora": entidad_formuladora
+                                })
+                            else:
+                                print(f"CUI duplicado ignorado: {cui}")
+
+                        else:
+                            # 🔥 SI NO HAY CUI, IGUAL ACTUALIZA LO DEMÁS
+                            conn.execute(text("""
+                                UPDATE proyectos
+                                SET
+                                    codigo_dsp = :codigo_dsp,
+                                    ubicacion = :ubicacion,
+                                    tipologia = :tipologia,
+                                    entidad_formuladora = :entidad_formuladora
+                                WHERE id = :id
+                            """), {
+                                "id": proyecto_id,
+                                "codigo_dsp": codigo_dsp,
+                                "ubicacion": ubicacion,
+                                "tipologia": tipologia,
+                                "entidad_formuladora": entidad_formuladora
+                            })
 
                     else:
 
                         nuevo = conn.execute(text("""
                             INSERT INTO proyectos (nombre, direccion_id)
                             VALUES (:nombre, :direccion_id)
+                            ON CONFLICT (nombre, direccion_id)
+                            DO UPDATE SET nombre = EXCLUDED.nombre
                             RETURNING id
                         """), {
                             "nombre": nombre_original,
@@ -1137,6 +1195,21 @@ def upload_excel(file: UploadFile = File(...)):
 
                         proyecto_id = nuevo.id
 
+                        # 🔥 INSERTAR CUI SOLO SI NO EXISTE EN OTRO
+                        if cui:
+                            existe = conn.execute(text("""
+                                SELECT id FROM proyectos WHERE cui = :cui
+                            """), {"cui": cui}).fetchone()
+
+                            if not existe or existe.id == proyecto_id:
+                                conn.execute(text("""
+                                    UPDATE proyectos SET cui = :cui WHERE id = :id
+                                """), {
+                                    "cui": cui,
+                                    "id": proyecto_id
+                                })
+                            else:
+                                print(f"CUI duplicado ignorado en insert: {cui}")
 
                     # ================= VERSION (AHORA FICHA_LLENAdo 🔥) =================
 
@@ -1365,8 +1438,9 @@ def upload_excel(file: UploadFile = File(...)):
                     conn.commit()
 
             except Exception as e:
-                print(f"Error en fila {row.get('nombre')} -> {e}")
-                continue
+                print(f"ERROR REAL EN FILA:", row.to_dict())
+                print(f"DETALLE:", e)
+                raise e
 
         return {
             "mensaje": "Excel cargado correctamente",
@@ -1409,14 +1483,28 @@ def upload_arc(file: UploadFile = File(...)):
                 # ================= NOMBRE =================
 
                 nombre_original = " ".join(str(row.get("nombre")).strip().split())
-                nombre_normalizado = normalizar_texto(nombre_original)
 
-                direccion_id = int(row.get("direccion_id")) if row.get("direccion_id") else None
-
-                if not direccion_id:
-                    print(f"Fila ignorada (sin direccion_id): {nombre_original}")
+                if not nombre_original:
+                    print("Fila ignorada (sin nombre)")
                     continue
 
+                nombre_normalizado = normalizar_texto(nombre_original)
+
+
+                # ================= DIRECCIÓN =================
+
+                raw_dir = row.get("direccion_id")
+
+                # 🔥 detectar vacío real (incluye NaN)
+                if pd.isna(raw_dir) or str(raw_dir).strip() == "":
+                    print(f"Fila ignorada (direccion_id vacío): {nombre_original}")
+                    continue
+
+                try:
+                    direccion_id = int(float(raw_dir))  # 🔥 convierte 11.0 → 11
+                except:
+                    print(f"ERROR direccion_id inválido: {raw_dir} - {nombre_original}")
+                    continue
 
                 # ================= VALIDAR DIRECCION =================
 
@@ -1436,17 +1524,24 @@ def upload_arc(file: UploadFile = File(...)):
                 direccion_id = direccion_row.id
 
 
-                # ================= BUSCAR PROYECTO =================
+                # ================= BUSCAR PROYECTO (MATCH FLEXIBLE) =================
 
-                proyecto = conn.execute(text("""
-                    SELECT id
+                proyectos = conn.execute(text("""
+                    SELECT id, nombre
                     FROM proyectos
-                    WHERE LOWER(TRIM(unaccent(nombre))) = :nombre
-                    AND direccion_id = :direccion_id
+                    WHERE direccion_id = :direccion_id
                 """), {
-                    "nombre": nombre_normalizado,
                     "direccion_id": direccion_id
-                }).fetchone()
+                }).fetchall()
+
+                proyecto = None
+
+                for p in proyectos:
+                    nombre_bd = normalizar_texto(p.nombre)
+
+                    if nombre_bd in nombre_normalizado or nombre_normalizado in nombre_bd:
+                        proyecto = p
+                        break
 
                 if not proyecto:
 

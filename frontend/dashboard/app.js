@@ -421,20 +421,21 @@ async function cargarDashboardDireccion(direccionId) {
 
         // 🔥 VALIDACIÓN
         if (total === 0) {
+
             document.getElementById("graficoEstadosFiltro").innerHTML = `
                 <div class="text-gray-500 text-center">
-                    No hay datos para esta dirección
+                    No hay datos de estado
                 </div>
             `;
-            return;
-        }
 
-        // 🔥 RECIÉN dibujas
-        crearGraficoEstadosEjecutivo(
-            "graficoEstadosFiltro",
-            ORDEN_ESTADOS,
-            cantidadesEstados
-        );
+        } else {
+
+            crearGraficoEstadosEjecutivo(
+                "graficoEstadosFiltro",
+                ORDEN_ESTADOS,
+                cantidadesEstados
+            );
+        }
 
         // ================= DEPENDENCIAS INTERNAS =================
         const canvas = document.getElementById("graficoDependenciasFiltro");
