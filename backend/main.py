@@ -1137,7 +1137,7 @@ def upload_excel(file: UploadFile = File(...)):
                             proyecto = p
 
                     # 🔥 UMBRAL DE SEGURIDAD
-                    if mejor_score > 0.85:
+                    if mejor_score > 0.75:
                         proyecto_id = proyecto.id
                     else:
                         proyecto = None
@@ -1560,7 +1560,7 @@ def upload_arc(file: UploadFile = File(...)):
                         mejor_match = p
 
                 # 🔥 VALIDACIÓN FINAL
-                if mejor_score > 0.85:
+                if mejor_score > 0.75:
                     proyecto = mejor_match
                     proyecto_id = proyecto.id
                 else:
