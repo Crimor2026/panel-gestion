@@ -287,19 +287,22 @@ def dashboard_global(fecha: Optional[str] = None):
             kpis = conn.execute(text("""
                 SELECT 
                     COUNT(*) AS total,
+
                     COUNT(*) FILTER (WHERE LOWER(fl.estado) LIKE '%ejec%') AS en_ejecucion,
                     COUNT(*) FILTER (WHERE LOWER(fl.estado) LIKE '%paraliz%') AS paralizado,
                     COUNT(*) FILTER (WHERE LOWER(fl.estado) LIKE '%sin%') AS sin_iniciar,
                     COUNT(*) FILTER (WHERE LOWER(fl.estado) LIKE '%conclu%') AS concluido
-                FROM proyectos p
-                LEFT JOIN LATERAL (
-                    SELECT *
-                    FROM ficha_llenado fl2
-                    WHERE fl2.proyecto_id = p.id
-                    AND (:fecha IS NULL OR fl2.fecha_corte = :fecha)
-                    ORDER BY fl2.fecha_corte DESC
-                    LIMIT 1
-                ) fl ON true
+
+                FROM (
+
+                    SELECT DISTINCT ON (proyecto_id)
+                        proyecto_id,
+                        estado
+                    FROM ficha_llenado
+                    WHERE (:fecha IS NULL OR fecha_corte = :fecha)
+                    ORDER BY proyecto_id, fecha_corte DESC
+
+                ) fl;
             """), {"fecha": fecha_corte}).fetchone()
 
 
@@ -328,8 +331,11 @@ def dashboard_global(fecha: Optional[str] = None):
                         THEN 'SIN DEPENDENCIA'
                         ELSE UPPER(TRIM(fl.dependencias_externas))
                     END AS dependencia,
-                    COUNT(*) as cantidad
+
+                    COUNT(fl.id) as cantidad
+
                 FROM proyectos p
+
                 LEFT JOIN LATERAL (
                     SELECT *
                     FROM ficha_llenado fl2
@@ -340,6 +346,10 @@ def dashboard_global(fecha: Optional[str] = None):
                     ORDER BY fl2.fecha_corte DESC
                     LIMIT 1
                 ) fl ON true
+
+                -- 🔥 CLAVE
+                WHERE fl.id IS NOT NULL
+
                 GROUP BY dependencia
             """), {"fecha": fecha_corte}).fetchall()
 
@@ -423,59 +433,46 @@ def dashboard_por_direccion(direccion_id: int, fecha: Optional[str] = None):
 
             # ================= ESTADOS =================
             estados = conn.execute(text("""
-                SELECT fl.estado, COUNT(*) as cantidad
-                FROM proyectos p
-
-                LEFT JOIN LATERAL (
-                    SELECT *
-                    FROM ficha_llenado fl2
-                    WHERE fl2.proyecto_id = p.id
-                    AND (:fecha IS NULL OR fl2.fecha_corte = :fecha)
-                    ORDER BY fl2.fecha_corte DESC
-                    LIMIT 1
-                ) fl ON true
-
-                WHERE COALESCE(fl.direccion_id, p.direccion_id) = :direccion_id
-
-                GROUP BY fl.estado
+                SELECT estado, COUNT(*) as cantidad
+                FROM (
+                    SELECT DISTINCT ON (proyecto_id)
+                        proyecto_id,
+                        estado
+                    FROM ficha_llenado
+                    WHERE fecha_corte = :fecha
+                    AND direccion_id = :direccion_id
+                    ORDER BY proyecto_id, fecha_corte DESC
+                ) t
+                GROUP BY estado
             """), {
                 "direccion_id": direccion_id,
                 "fecha": fecha_corte
             }).fetchall()
 
-
             # ================= DEPENDENCIAS INTERNAS =================
-            # 🔥 VERSION LIMPIA (SIN TABLA ANTIGUA)
             dependencias = conn.execute(text("""
                 SELECT 
                     CASE 
-                        WHEN fl.dependencias_externas IS NULL 
-                            OR TRIM(fl.dependencias_externas) = '' 
+                        WHEN dependencias_externas IS NULL 
+                            OR TRIM(dependencias_externas) = '' 
                         THEN 'SIN DEPENDENCIA'
-                        ELSE UPPER(TRIM(fl.dependencias_externas))
+                        ELSE UPPER(TRIM(dependencias_externas))
                     END AS dependencia,
                     COUNT(*) as cantidad
-                FROM proyectos p
-
-                LEFT JOIN LATERAL (
-                    SELECT *
-                    FROM ficha_llenado fl2
-                    WHERE fl2.proyecto_id = p.id
-                    AND (
-                        fl2.fecha_corte <= :fecha
-                        OR :fecha IS NULL
-                    )
-                    ORDER BY fl2.fecha_corte DESC
-                    LIMIT 1
-                ) fl ON true
-
-                WHERE COALESCE(fl.direccion_id, p.direccion_id) = :direccion_id
-
+                FROM (
+                    SELECT DISTINCT ON (proyecto_id)
+                        proyecto_id,
+                        dependencias_externas
+                    FROM ficha_llenado
+                    WHERE fecha_corte = :fecha
+                    AND direccion_id = :direccion_id
+                    ORDER BY proyecto_id, fecha_corte DESC
+                ) t
                 GROUP BY dependencia
                 ORDER BY cantidad DESC
             """), {
-                "fecha": fecha_corte,
-                "direccion_id": direccion_id
+                "direccion_id": direccion_id,
+                "fecha": fecha_corte
             }).fetchall()
 
 
@@ -484,30 +481,25 @@ def dashboard_por_direccion(direccion_id: int, fecha: Optional[str] = None):
                 SELECT 
                     COALESCE(c.nombre, 'SIN CLASIFICACION') AS clasificacion,
                     COUNT(*) as cantidad
-                FROM proyectos p
+                FROM (
+                    SELECT DISTINCT ON (proyecto_id)
+                        proyecto_id,
+                        clasificacion_id
+                    FROM ficha_llenado
+                    WHERE fecha_corte = :fecha
+                    AND direccion_id = :direccion_id
+                    ORDER BY proyecto_id, fecha_corte DESC
+                ) fl
 
-                LEFT JOIN LATERAL (
-                    SELECT *
-                    FROM ficha_llenado fl2
-                    WHERE fl2.proyecto_id = p.id
-                    AND (:fecha IS NULL OR fl2.fecha_corte = :fecha)
-                    ORDER BY fl2.fecha_corte DESC
-                    LIMIT 1
-                ) fl ON true
-
-                -- 🔥 CAMBIO CLAVE: LEFT JOIN (no perder registros)
                 LEFT JOIN clasificaciones c
                     ON c.id = fl.clasificacion_id
 
-                WHERE COALESCE(fl.direccion_id, p.direccion_id) = :direccion_id
-
-                GROUP BY COALESCE(c.nombre, 'SIN CLASIFICACION')
+                GROUP BY clasificacion
                 ORDER BY clasificacion
             """), {
                 "direccion_id": direccion_id,
                 "fecha": fecha_corte
             }).fetchall()
-
 
             return {
                 "estados": [dict(r._mapping) for r in estados],
