@@ -10,32 +10,6 @@ body {
 }
 
 /* ================= HEADER ================= */
-.header {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center; /* 🔥 FIX */
-    padding: 12px;
-    width: 100%;
-    border-bottom: 2px solid black;
-    gap: 10px;
-}
-
-.header > #titulo {
-    align-self: start;
-}
-
-#titulo {
-    width: 100%;
-    min-height: 30px;
-    font-size: 20px;
-    text-align: center;
-    outline: none;
-    border: none;
-    white-space: pre-wrap;
-    word-break: break-word;
-    line-height: 1.4;
-}
-
 .right {
     display: flex;
     gap: 8px;
@@ -54,32 +28,6 @@ body {
 }
 
 /* ================= HEADER ================= */
-.header {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center; /* 🔥 FIX */
-    padding: 12px;
-    width: 100%;
-    border-bottom: 2px solid black;
-    gap: 10px;
-}
-
-.header > #titulo {
-    align-self: start;
-}
-
-#titulo {
-    width: 100%;
-    min-height: 30px;
-    font-size: 20px;
-    text-align: center;
-    outline: none;
-    border: none;
-    white-space: pre-wrap;
-    word-break: break-word;
-    line-height: 1.4;
-}
-
 .right {
     display: flex;
     gap: 8px;
@@ -137,10 +85,8 @@ body {
     width: 100%;
 }
 
-/* 🔥 AQUÍ */
 #filas {
-    display: flex;
-    flex-direction: column;
+    display: block;
 }
 /* CONTENEDOR GENERAL */
 #tablero-container {
@@ -148,21 +94,15 @@ body {
     width: 100%;
 }
 
-/* FILA */
 .fila {
-    display: flex;
-    align-items: flex-start; /* 🔥 CLAVE */
-    grid-template-columns: 60px repeat(var(--cols), minmax(250px, 1fr)) 60px;
+    display: grid;
+    grid-template-columns: 40px repeat(var(--cols), minmax(150px, 1fr)) 60px;
     gap: 12px;
-    width: max-content; /* 🔥 clave */
-    min-width: 100%;
+    padding-top: 0;
+    width: 100%;
 }
 
 /* ================= HEADER COLUMNAS ================= */
-.columna {
-    min-width: 150px;
-}
-
 .header-col {
     display: flex;
     flex-direction: column;
@@ -210,31 +150,9 @@ body {
     position: relative;  /* 🔥 ESTE ES EL CORRECTO */
     display: flex;
     margin-bottom: 10px; /* controla separación real */
-    align-items: center;
+    align-items: flex-start;
     gap: 6px;
     min-height: 60px; 
-}
-
-/* ================= PADRE ================= */
-.nodo-wrapper.padre > .nodo-input {
-    border: none !important;  /* 🔥 eliminar borde negro */
-    background: #eaeaea;
-    border-radius: 12px;
-    position: relative;
-}
-
-/* 🔥 punto de origen */
-.nodo-wrapper.padre > .nodo-input::after {
-    content: "";
-    position: absolute;
-    right: -6px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 6px;
-    height: 6px;
-    background: #000;
-    border-radius: 50%;
-    z-index: 2;
 }
 
 /* ================= CONTENEDOR ================= */
@@ -291,12 +209,6 @@ body {
     border: 1px solid black;
 }
 
-/* 🔵 fondo columnas */
-.columna {
-    background: #e6eef5; /* azul acero suave */
-    border-radius: 6px;
-}
-
 /* 🔥 filas alternadas (fila completa, no solo celdas) */
 #filas .fila:nth-child(odd) {
     background: #ffffff;
@@ -310,7 +222,10 @@ body {
 .nodo-controles {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    justify-content: flex-start; /* 🔥 clave */
+    align-items: center;
+    flex-shrink: 0;
+    margin-top: 2px; /* 🔥 ajuste fino visual */
 }
 
 /* botón eliminar */
@@ -474,23 +389,6 @@ body {
 }
 
 /* ================= HEADER COLUMNAS ================= */
-.columna {
-    min-width: 150px;
-}
-
-.header-col {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-}
-
-.header-col input {
-    border: none;
-    outline: none;
-    text-align: center;
-    font-weight: bold;
-    background: transparent;
-}
 
 .filtro {
     height: 20px;
@@ -518,29 +416,6 @@ body {
 .nodo:hover {
     background: #eee;
     border-radius: 6px;
-}
-
-
-/* ================= PADRE ================= */
-.nodo-wrapper.padre > .nodo-input {
-    border: none !important;  /* 🔥 eliminar borde negro */
-    background: #eaeaea;
-    border-radius: 12px;
-    position: relative;
-}
-
-/* 🔥 punto de origen */
-.nodo-wrapper.padre > .nodo-input::after {
-    content: "";
-    position: absolute;
-    right: -6px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 6px;
-    height: 6px;
-    background: #000;
-    border-radius: 50%;
-    z-index: 2;
 }
 
 /* ================= CONTENEDOR ================= */
@@ -579,15 +454,6 @@ body {
 }
 
 /* ================= CONTROL COLUMNAS (FIX FINAL) ================= */
-.control-columnas {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-
-    width: 60px; /* 🔥 CLAVE */
-}
 
 /* 🔥 rompe el tamaño heredado */
 .control-columnas .celda {
@@ -597,12 +463,6 @@ body {
     border: 1px solid black;
 }
 
-/* 🔵 fondo columnas */
-.columna {
-    background: #e6eef5; /* azul acero suave */
-    border-radius: 6px;
-}
-
 /* 🔥 filas alternadas (fila completa, no solo celdas) */
 #filas .fila:nth-child(odd) {
     background: #ffffff;
@@ -610,13 +470,6 @@ body {
 
 #filas .fila:nth-child(even) {
     background: rgba(0, 0, 0, 0.03); /* más suave */
-}
-
-/* contenedor vertical */
-.nodo-controles {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
 }
 
 /* botón eliminar */
@@ -783,12 +636,9 @@ body {
 .celda {
     display: flex;
     align-items: flex-start;
-    flex-direction: column;
+    flex-direction: column;   /* 🔥 ESTE */
     justify-content: flex-start;
     gap: 10px;
-
-    width: 100%;
-    min-width: 0;
 }
 
 .numero {
@@ -804,23 +654,6 @@ body {
 }
 
 /* ================= HEADER COLUMNAS ================= */
-.columna {
-    min-width: 150px;
-}
-
-.header-col {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-}
-
-.header-col input {
-    border: none;
-    outline: none;
-    text-align: center;
-    font-weight: bold;
-    background: transparent;
-}
 
 .filtro {
     height: 20px;
@@ -872,6 +705,13 @@ body {
     z-index: 2;
 }
 
+.nodo-wrapper.invisible {
+    visibility: hidden;
+    height: 0;
+    margin: 0;
+    padding: 0;
+}
+
 /* ================= CONTENEDOR ================= */
 .nodos-container {
     position: relative;
@@ -880,7 +720,7 @@ body {
     flex-direction: column;     /* 🔥 CLAVE */
 
     width: 100%;
-    min-height: 80px;
+    min-height: auto;
 }
 
 /* ================= INPUT ================= */
@@ -955,16 +795,6 @@ body {
 }
 
 /* ================= CONTROL COLUMNAS (FIX FINAL) ================= */
-.control-columnas {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-
-    width: 60px; /* 🔥 CLAVE */
-}
-
 /* 🔥 rompe el tamaño heredado */
 .control-columnas .celda {
     min-height: 0 !important;
@@ -975,8 +805,9 @@ body {
 
 /* 🔵 fondo columnas */
 .columna {
-    background: #e6eef5; /* azul acero suave */
-    border-radius: 6px;
+    background: #e6eef5;
+    border-radius: 12px;     /* 🔥 más redondo */
+    padding: 4px;        /* 🔥 menos alto */
 }
 
 /* 🔥 filas alternadas (fila completa, no solo celdas) */
@@ -986,13 +817,6 @@ body {
 
 #filas .fila:nth-child(even) {
     background: rgba(0, 0, 0, 0.03); /* más suave */
-}
-
-/* contenedor vertical */
-.nodo-controles {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
 }
 
 /* botón eliminar */
@@ -1119,6 +943,82 @@ body {
     visibility: hidden;
 }
 
+#encabezado {
+    margin-bottom: 14px;
+}
+
+/* ================= PESTAÑAS ================= */
+
+.tabs-bar {
+
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 8px 12px;
+
+    border-bottom: 1px solid #ddd;
+
+    background: #fafafa;
+
+    overflow-x: auto;
+}
+
+.tabs-container {
+    display: flex;
+    gap: 6px;
+}
+
+.tab {
+
+    padding: 8px 16px;
+
+    background: #e9ecef;
+
+    border-radius: 10px 10px 0 0;
+
+    cursor: pointer;
+
+    font-size: 13px;
+
+    user-select: none;
+
+    white-space: nowrap;
+
+    transition: 0.2s;
+}
+
+.tab:hover {
+    background: #dfe6ec;
+}
+
+.tab.activo {
+
+    background: white;
+
+    border: 1px solid #ddd;
+    border-bottom: 1px solid white;
+
+    font-weight: bold;
+}
+
+.add-tab-btn {
+
+    width: 28px;
+    height: 28px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    background: #e3f2fd;
+
+    color: #1565c0;
+
+    font-size: 18px;
+}
 
 /* ================= RESPONSIVE ================= */
 
@@ -1159,3 +1059,4 @@ body {
         max-width: 40px;
     }
 }
+

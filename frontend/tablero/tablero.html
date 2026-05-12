@@ -6,67 +6,165 @@
 
 <link rel="stylesheet" href="/static/tablero/tablero.css">
 
-<!-- 🔥 Flatpickr (calendario bonito) -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+<!-- 🔥 Flatpickr -->
+<link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
+<!-- 🔥 Dagre -->
 <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
 
 </head>
+
 <body>
 
-<!-- 🔵 FILA 1 -->
+<!-- ================================================= -->
+<!-- HEADER -->
+<!-- ================================================= -->
+
 <div class="header">
+
     <div id="titulo" contenteditable="true"></div>
 
     <div class="right">
-        <input type="text" id="fecha"> <!-- 🔥 cambiado a text -->
-        <button id="guardar">Guardar</button>
+
+        <input type="text" id="fecha">
+
+        <button id="guardar">
+            Guardar
+        </button>
+        <button id="reporte">
+            Reporte
+        </button>
+
     </div>
+
 </div>
 
-<!-- 🔵 TABLA -->
-<div class="tabla">
+<!-- ================================================= -->
+<!-- PESTAÑAS -->
+<!-- ================================================= -->
 
-    <!-- FILA 2 (encabezados) -->
-    <div class="fila encabezado" id="encabezado">
-        <div class="celda numero">N°</div>
+<div class="tabs-bar">
 
-        <div class="celda columna">
-            <div class="header-col">
-                <input class="titulo-col" placeholder="Campo A">
-                <input class="filtro-col" placeholder="Filtrar...">
+    <div id="tabsContainer" class="tabs-container">
+
+        <div
+            class="tab activo"
+            data-tab="principal">
+
+            Principal
+
+        </div>
+
+    </div>
+
+    <button id="addTab" class="add-tab-btn">
+        +
+    </button>
+
+</div>
+
+<!-- ================================================= -->
+<!-- CONTENEDOR REAL DE TODAS LAS PESTAÑAS -->
+<!-- ================================================= -->
+
+<div id="tabsContent">
+
+    <!-- ============================================= -->
+    <!-- TAB PRINCIPAL -->
+    <!-- ============================================= -->
+
+    <div
+        class="tab-panel activo"
+        data-tab="principal">
+
+        <div class="tabla">
+
+            <!-- ENCABEZADO -->
+            <div class="fila encabezado">
+
+                <div class="celda numero">
+                    N°
+                </div>
+
+                <div class="celda columna">
+
+                    <div class="header-col">
+
+                        <input
+                            class="titulo-col"
+                            placeholder="Campo A">
+
+                        <input
+                            class="filtro-col"
+                            placeholder="Filtrar...">
+
+                    </div>
+
+                </div>
+
+                <div class="celda control-columnas">
+
+                    <div class="agregar-columna addCol">
+                        +
+                    </div>
+
+                    <div class="eliminar-columna removeCol">
+                        -
+                    </div>
+
+                </div>
+
             </div>
+
+            <!-- FILAS -->
+            <div class="filas"></div>
+
+            <!-- CONTROLES -->
+            <div class="control-filas">
+
+                <div class="agregar-fila addFila">
+                    +
+                </div>
+
+                <div class="eliminar-fila removeFila">
+                    -
+                </div>
+
+            </div>
+
         </div>
 
-        <div class="control-columnas">
-            <div class="celda agregar-columna" id="addCol">+</div>
-            <div class="celda eliminar-columna" id="removeCol">-</div>
-        </div>
-    </div>
-
-    <!-- FILAS DINÁMICAS -->
-    <div id="filas"></div>
-
-    <div class="control-filas">
-        <div id="addFila" class="agregar-fila">+</div>
-        <div id="removeFila" class="eliminar-fila">-</div>
     </div>
 
 </div>
 
-<!-- 🔥 1. LIBRERÍA (PRIMERO) -->
+<!-- ================================================= -->
+<!-- LIBRERÍAS -->
+<!-- ================================================= -->
+
 <script src="https://cdn.jsdelivr.net/npm/leader-line"></script>
 
-<!-- 🔥 2. TU JS (DESPUÉS) -->
+<!-- ================================================= -->
+<!-- JS -->
+<!-- ================================================= -->
+
 <script src="/static/tablero/tablero.js"></script>
 
-<!-- 🔥 ACTIVAR CALENDARIO -->
+<!-- ================================================= -->
+<!-- FLATPICKR -->
+<!-- ================================================= -->
+
 <script>
+
 flatpickr("#fecha", {
     dateFormat: "d/m/Y",
     locale: "es"
 });
+
 </script>
 
 </body>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>Informe Temático</title>
+
+<link
+rel="stylesheet"
+href="/frontend/reportextema/reportextema.css">
+
+<!-- FLATPICKR -->
+
+<link
+rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+<link
+rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
+
+</head>
+
+<body>
+
+<div class="contenedor">
+
+    <!-- ================= HEADER ================= -->
+
+    <div class="header">
+
+        <!-- LOGO -->
+        <div class="logo-box">
+
+            <img
+                src="/static/landing/Logotipo_ATU.svg"
+                alt="ATU">
+
+            <div class="texto-entidad">
+
+                <div class="titulo-entidad">
+                    AUTORIDAD DE TRANSPORTE URBANO
+                    PARA LIMA Y CALLAO
+                </div>
+
+                <div class="subtitulo-entidad">
+                    DIRECCIÓN DE SUPERVISIÓN
+                    DE PROYECTOS
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- TITULO -->
+        <div class="titulo-reporte">
+
+            INFORME TEMÁTICO
+
+        </div>
+
+        <!-- FECHA -->
+        <div class="fecha-box">
+
+            <input
+                type="text"
+                id="fecha">
+
+        </div>
+
+    </div>
+
+    <!-- ================= FILTRO ================= -->
+
+    <div class="bloque">
+
+        <div class="label">
+            Tema
+        </div>
+
+        <select id="tema">
+
+            <option value="">
+                Seleccionar tema
+            </option>
+
+        </select>
+
+    </div>
+
+    <!-- ================= DESCRIPCION ================= -->
+
+    <div class="bloque">
+
+        <div class="label">
+            Descripción
+        </div>
+
+        <textarea
+            id="descripcion"
+            rows="6"></textarea>
+
+    </div>
+
+    <!-- ================= DIRECCIONES ================= -->
+
+    <div class="fila-grid">
+
+        <!-- ENCARGADAS -->
+        <div class="bloque">
+
+            <div class="label">
+                Direcciones Encargadas
+            </div>
+
+            <textarea
+                id="encargadas"
+                rows="8"></textarea>
+
+        </div>
+
+        <!-- APOYO -->
+        <div class="bloque">
+
+            <div class="label">
+                Direcciones de Apoyo
+            </div>
+
+            <textarea
+                id="apoyo"
+                rows="8"></textarea>
+
+        </div>
+
+    </div>
+
+    <!-- ================= ESTADO ================= -->
+
+    <div class="bloque">
+
+        <div class="label">
+            Estado Situacional
+        </div>
+
+        <textarea
+            id="estado"
+            rows="6"></textarea>
+
+    </div>
+
+    <!-- ================= PROYECTOS ================= -->
+
+    <div class="bloque">
+
+        <div class="label">
+            Listado de Proyectos
+        </div>
+
+        <textarea
+            id="proyectos"
+            rows="6"></textarea>
+
+    </div>
+
+    <!-- ================= DECISIONES ================= -->
+
+    <div class="bloque">
+
+        <div class="label">
+            Toma de Decisiones
+        </div>
+
+        <textarea
+            id="decisiones"
+            rows="6"></textarea>
+
+    </div>
+
+    <!-- ================= BOTONES ================= -->
+
+    <div class="acciones">
+
+        <input
+            type="file"
+            id="excelFile"
+            accept=".xlsx,.xls,.csv"
+            hidden>
+
+        <button id="cargarData">
+            Cargar Data
+        </button>
+        
+        <button id="guardar">
+            Guardar
+        </button>
+
+        <button id="volver">
+            Volver
+        </button>
+
+    </div>
+
+</div>
+
+<script src="/frontend/reportextema/reportextema.js"></script>
+
+</body>
+
+</html>

@@ -128,6 +128,12 @@ app.mount(
     name="static"
 )
 
+app.mount(
+    "/frontend",
+    StaticFiles(directory="frontend"),
+    name="frontend"
+)
+
 # =====================================================
 # REPORTES (DINÁMICO)
 # =====================================================
@@ -162,6 +168,20 @@ def ver_reporte(tipo: str):
 def landing_reportes():
     ruta = os.path.join(FRONTEND_DIR, "reportes/reportes.html")
     return FileResponse(ruta)
+
+# =====================================================
+# INFORME TEMÁTICO
+# =====================================================
+
+@app.get("/reportextema")
+def reportextema():
+
+    return FileResponse(
+        os.path.join(
+            FRONTEND_DIR,
+            "reportextema/reportextema.html"
+        )
+    )
 
 # =====================================================
 # TABLERO - FLUJOGRAMA
@@ -637,18 +657,19 @@ def obtener_historico(proyecto_id: int, fecha: str):
         # ================= ARC =================
 
         arc_rows = conn.execute(text("""
-        SELECT
-            codigo_arc,
-            descripcion,
-            inicio_programado,
-            fin_programado,
-            inicio_ejecutado,
-            fin_ejecutado,
-            avance_percent
-        FROM proyecto_arc
-        WHERE proyecto_id = :id
-        AND fecha_corte = :fecha
-        ORDER BY codigo_arc
+            SELECT DISTINCT ON (codigo_arc)
+                codigo_arc,
+                descripcion,
+                inicio_programado,
+                fin_programado,
+                inicio_ejecutado,
+                fin_ejecutado,
+                avance_percent,
+                fecha_corte
+            FROM proyecto_arc
+            WHERE proyecto_id = :id
+            AND fecha_corte <= :fecha
+            ORDER BY codigo_arc, fecha_corte DESC
         """), {
             "id": proyecto_id,
             "fecha": fecha_corte
@@ -1794,6 +1815,27 @@ Responde claro, breve y profesional:
             "respuesta": f"Error IA: {str(e)}"
         }
 
+# =====================================================
+# MODELO REPORTEXTEMA
+# =====================================================
+
+class ReporteTema(BaseModel):
+
+    tema_id: str
+
+    fecha: str
+
+    descripcion: str
+
+    encargadas: str
+
+    apoyo: str
+
+    estado: str
+
+    proyectos: str
+
+    decisiones: str
 
 # =====================================================
 # ACTIVAR RUTER IA
@@ -3005,8 +3047,47 @@ def fechas_tablero():
 
     return [f[0].strftime("%Y-%m-%d") for f in fechas if f[0]]
 
+@app.get("/api/tablero/tabs")
+def obtener_tabs():
+
+    try:
+
+        with engine.connect() as conn:
+
+            result = conn.execute(text("""
+
+                SELECT DISTINCT tab
+                FROM tablero
+                WHERE tab IS NOT NULL
+                ORDER BY tab
+
+            """))
+
+            tabs = [
+                row[0]
+                for row in result.fetchall()
+                if row[0]
+            ]
+
+            print("📂 TABS EN BD:", tabs)
+
+            return tabs
+
+    except Exception as e:
+
+        print("🔥 ERROR TABS:", e)
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
 @app.get("/api/tablero/{fecha}")
-def obtener_tablero(fecha: str, proyecto_id: int = 1):
+def obtener_tablero(
+    fecha: str,
+    proyecto_id: int = 1,
+    tab: str = "principal"
+):
 
     try:
         with engine.connect() as conn:
@@ -3016,9 +3097,11 @@ def obtener_tablero(fecha: str, proyecto_id: int = 1):
                 FROM tablero
                 WHERE fecha = CAST(:fecha AS DATE)
                 AND proyecto_id = :proyecto_id
+                AND tab = :tab
             """), {
                 "fecha": fecha,
-                "proyecto_id": proyecto_id
+                "proyecto_id": proyecto_id,
+                "tab": tab
             }).fetchone()
 
             if not result:
@@ -3035,43 +3118,139 @@ def obtener_tablero(fecha: str, proyecto_id: int = 1):
         print("ERROR:", e)
         return {"data": None}
 
+
 @app.post("/api/tablero/guardar")
 def guardar_tablero(payload: dict):
 
-    fecha = payload.get("fecha")
-    data = payload.get("data")
-    proyecto_id = payload.get("proyecto_id", 1)
-
-    print("GUARDANDO FECHA:", fecha)
-    print("GUARDANDO DATA:", data is not None)
-    print("PROYECTO:", proyecto_id)
-
-    if not fecha or data is None:
-        raise HTTPException(status_code=400, detail="Faltan datos")
-
     try:
-        with engine.connect() as conn:
 
-            conn.execute(text("""
-                INSERT INTO tablero (fecha, data, proyecto_id)
-                VALUES (CAST(:fecha AS DATE), CAST(:data AS jsonb), :proyecto_id)
-                ON CONFLICT (fecha)
-                DO UPDATE SET 
-                    data = EXCLUDED.data,
-                    proyecto_id = EXCLUDED.proyecto_id
+        print("\n==============================")
+        print("🔥 PAYLOAD COMPLETO")
+        print(payload)
+        print("==============================\n")
+
+        fecha = payload.get("fecha")
+        data = payload.get("data")
+        proyecto_id = payload.get("proyecto_id", 1)
+
+        # 🔥 TAB
+        tab = payload.get("tab", "principal")
+
+        print("📅 FECHA:", fecha)
+        print("📁 TAB:", tab)
+        print("📦 DATA EXISTS:", data is not None)
+
+        if not fecha or data is None:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Faltan datos"
+            )
+
+        # 🔥 DEBUG JSON
+        json_data = json.dumps(data)
+
+        print("📄 JSON SIZE:", len(json_data))
+
+        with engine.begin() as conn:
+
+            # 🔥 VER SI YA EXISTE
+            existe = conn.execute(text("""
+
+                SELECT id, fecha, tab
+
+                FROM tablero
+
+                WHERE fecha = CAST(:fecha AS DATE)
+                AND proyecto_id = :proyecto_id
+                AND tab = :tab
+
             """), {
                 "fecha": fecha,
-                "data": json.dumps(data),
-                "proyecto_id": proyecto_id
+                "proyecto_id": proyecto_id,
+                "tab": tab
+            }).fetchone()
+
+            print("🔎 EXISTE:", existe)
+
+            conn.execute(text("""
+
+                INSERT INTO tablero (
+                    fecha,
+                    data,
+                    proyecto_id,
+                    tab
+                )
+                VALUES (
+                    CAST(:fecha AS DATE),
+                    CAST(:data AS jsonb),
+                    :proyecto_id,
+                    :tab
+                )
+
+                ON CONFLICT (
+                    proyecto_id,
+                    fecha,
+                    tab
+                )
+
+                DO UPDATE SET
+
+                    data = EXCLUDED.data,
+                    proyecto_id = EXCLUDED.proyecto_id,
+                    tab = EXCLUDED.tab
+
+            """), {
+
+                "fecha": fecha,
+                "data": json_data,
+                "proyecto_id": proyecto_id,
+                "tab": tab
+
             })
 
-            conn.commit()
+            print("✅ INSERT/UPDATE OK")
 
-        return {"ok": True}
+            # 🔥 VERIFICAR GUARDADO REAL
+            verif = conn.execute(text("""
+
+                SELECT
+                    id,
+                    fecha,
+                    proyecto_id,
+                    tab
+
+                FROM tablero
+
+                WHERE fecha = CAST(:fecha AS DATE)
+                AND proyecto_id = :proyecto_id
+                AND tab = :tab
+
+            """), {
+                "fecha": fecha,
+                "proyecto_id": proyecto_id,
+                "tab": tab
+            }).fetchall()
+
+            print("📦 REGISTROS EN BD:")
+            print(verif)
+
+        return {
+            "ok": True
+        }
 
     except Exception as e:
+
+        import traceback
+
+        traceback.print_exc()
+
         print("🔥 ERROR BACKEND REAL:", e)
-        raise HTTPException(status_code=500, detail=str(e))
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 @app.get("/api/tablero/fechas/{proyecto_id}")
 def fechas_tablero_por_proyecto(proyecto_id: int):
@@ -3114,3 +3293,505 @@ def ultima_fecha():
 
     return {"fecha": result[0].strftime("%Y-%m-%d")}
 
+@app.post("/api/tablero/tab")
+def guardar_tab(payload: dict):
+
+    try:
+
+        tab_id = payload.get("id")
+        nombre = payload.get("nombre")
+        proyecto_id = payload.get("proyecto_id", 1)
+
+        if not tab_id or not nombre:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Faltan datos tab"
+            )
+
+        with engine.begin() as conn:
+
+            conn.execute(text("""
+
+                INSERT INTO tabs (
+                    id,
+                    nombre,
+                    proyecto_id
+                )
+
+                VALUES (
+                    :id,
+                    :nombre,
+                    :proyecto_id
+                )
+
+                ON CONFLICT (id)
+
+                DO UPDATE SET
+                    nombre = EXCLUDED.nombre
+
+            """), {
+
+                "id": tab_id,
+                "nombre": nombre,
+                "proyecto_id": proyecto_id
+
+            })
+
+        return {
+            "ok": True
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+
+@app.get("/api/tablero/tabs")
+def obtener_tabs():
+
+    with engine.connect() as conn:
+
+        rows = conn.execute(text("""
+
+            SELECT
+                id,
+                nombre
+
+            FROM tabs
+
+            ORDER BY nombre
+
+        """)).fetchall()
+
+    return [
+        {
+            "id": r.id,
+            "nombre": r.nombre
+        }
+        for r in rows
+    ]
+
+# =====================================================
+# TEMAS REPORTEXTEMA
+# =====================================================
+
+@app.get("/api/reportextema/temas")
+def obtener_temas():
+
+    with engine.connect() as conn:
+
+        rows = conn.execute(text("""
+
+            SELECT
+
+                id,
+                nombre
+
+            FROM temas
+
+            ORDER BY nombre
+
+        """)).mappings().fetchall()
+
+        return rows
+    
+# =====================================================
+# GUARDAR REPORTEXTEMA
+# =====================================================
+
+@app.post("/api/reportextema/guardar")
+def guardar_reportextema(
+    data: ReporteTema
+):
+
+    with engine.begin() as conn:
+
+        conn.execute(text("""
+
+            INSERT INTO reportes_tema(
+
+                tema_id,
+
+                fecha,
+
+                descripcion,
+
+                encargadas,
+
+                apoyo,
+
+                estado,
+
+                proyectos,
+
+                decisiones
+
+            )
+
+            VALUES(
+
+                :tema_id,
+
+                :fecha,
+
+                :descripcion,
+
+                :encargadas,
+
+                :apoyo,
+
+                :estado,
+
+                :proyectos,
+
+                :decisiones
+
+            )
+
+        """), {
+
+            "tema_id":
+                data.tema_id,
+
+            "fecha":
+                data.fecha,
+
+            "descripcion":
+                data.descripcion,
+
+            "encargadas":
+                data.encargadas,
+
+            "apoyo":
+                data.apoyo,
+
+            "estado":
+                data.estado,
+
+            "proyectos":
+                data.proyectos,
+
+            "decisiones":
+                data.decisiones
+        })
+
+    return {
+        "ok": True
+    }
+
+# =====================================================
+# SUBIR EXCEL reportextema/
+# =====================================================
+
+@app.post("/api/reportextema/subir-excel")
+async def subir_excel(
+    file: UploadFile = File(...)
+):
+
+    try:
+
+        # =============================================
+        # LEER EXCEL
+        # =============================================
+
+        df = pd.read_excel(file.file)
+
+        # =============================================
+        # LIMPIAR COLUMNAS
+        # =============================================
+
+        df.columns = (
+            df.columns
+            .str.strip()
+            .str.lower()
+        )
+
+        print("COLUMNAS:", df.columns)
+
+        print(df)
+
+        # =============================================
+        # INSERTAR
+        # =============================================
+
+        with engine.begin() as conn:
+
+            for _, row in df.iterrows():
+
+                print("ROW:", row)
+
+                tema_id = int(
+                    float(row["tema_id"])
+                )
+
+                fecha = str(
+                    row["fecha"]
+                ).strip()
+
+                descripcion = str(
+                    row["descripcion"]
+                ).strip()
+
+                encargadas = str(
+                    row["encargadas"]
+                ).strip()
+
+                apoyo = str(
+                    row["apoyo"]
+                ).strip()
+
+                estado = str(
+                    row["estado"]
+                ).strip()
+
+                proyectos = str(
+                    row["proyectos"]
+                ).strip()
+
+                decisiones = str(
+                    row["decisiones"]
+                ).strip()
+
+                print(
+                    "INSERTANDO:",
+                    tema_id,
+                    fecha
+                )
+
+                conn.execute(text("""
+
+                    INSERT INTO reportes_tema(
+
+                        tema_id,
+
+                        fecha,
+
+                        descripcion,
+
+                        encargadas,
+
+                        apoyo,
+
+                        estado,
+
+                        proyectos,
+
+                        decisiones
+
+                    )
+
+                    VALUES(
+
+                        :tema_id,
+
+                        :fecha,
+
+                        :descripcion,
+
+                        :encargadas,
+
+                        :apoyo,
+
+                        :estado,
+
+                        :proyectos,
+
+                        :decisiones
+                    )
+
+                """), {
+
+                    "tema_id":
+                        tema_id,
+
+                    "fecha":
+                        fecha,
+
+                    "descripcion":
+                        descripcion,
+
+                    "encargadas":
+                        encargadas,
+
+                    "apoyo":
+                        apoyo,
+
+                    "estado":
+                        estado,
+
+                    "proyectos":
+                        proyectos,
+
+                    "decisiones":
+                        decisiones
+                })
+
+        return {
+
+            "ok": True,
+
+            "mensaje":
+                "Excel cargado correctamente"
+        }
+
+    except Exception as e:
+
+        print("ERROR:", e)
+
+        return {
+
+            "ok": False,
+
+            "mensaje":
+                str(e)
+        }
+
+# =====================================================
+# SUBIR EXCEL TEMAS
+# =====================================================
+
+@app.post("/api/reportextema/subir-temas")
+async def subir_temas(
+    file: UploadFile = File(...)
+):
+
+    try:
+
+        df = pd.read_excel(file.file)
+
+        df.columns = (
+            df.columns
+            .str.strip()
+            .str.lower()
+        )
+
+        with engine.begin() as conn:
+
+            for _, row in df.iterrows():
+
+                nombre = str(
+                    row["nombre"]
+                ).strip()
+
+                # EVITAR DUPLICADOS
+                existe = conn.execute(text("""
+
+                    SELECT id
+
+                    FROM temas
+
+                    WHERE LOWER(nombre)
+                    = LOWER(:nombre)
+
+                """), {
+
+                    "nombre": nombre
+
+                }).fetchone()
+
+                if existe:
+                    continue
+
+                conn.execute(text("""
+
+                    INSERT INTO temas(
+                        nombre
+                    )
+
+                    VALUES(
+                        :nombre
+                    )
+
+                """), {
+
+                    "nombre": nombre
+                })
+
+        return {
+
+            "ok": True,
+            "mensaje":
+                "Temas cargados correctamente"
+        }
+
+    except Exception as e:
+
+        print(e)
+
+        return {
+
+            "ok": False,
+            "mensaje": str(e)
+        }
+    
+# =====================================================
+# OBTENER REPORTE
+# =====================================================
+
+@app.get("/api/reportextema/detalle")
+def obtener_detalle(
+    fecha:str,
+    tema_id:int
+):
+
+    print("FECHA:", fecha)
+    print("TEMA:", tema_id)
+
+    fecha = fecha.strip()
+
+    with engine.connect() as conn:
+
+        row = conn.execute(text("""
+
+            SELECT *
+
+            FROM reportes_tema
+
+            WHERE TRIM(fecha) = :fecha
+            AND tema_id = :tema_id
+
+            ORDER BY id DESC
+
+            LIMIT 1
+
+        """), {
+
+            "fecha": fecha,
+            "tema_id": tema_id
+
+        }).mappings().fetchone()
+
+        print("ROW:", row)
+
+        if not row:
+            return {}
+
+        return dict(row)
+    
+# =====================================================
+# FECHAS CON DATA
+# =====================================================
+
+@app.get("/api/reportextema/fechas")
+def obtener_fechas():
+
+    with engine.connect() as conn:
+
+        rows = conn.execute(text("""
+
+            SELECT DISTINCT fecha
+
+            FROM reportes_tema
+
+        """)).fetchall()
+
+        return [
+
+            r[0]
+
+            for r in rows
+        ]

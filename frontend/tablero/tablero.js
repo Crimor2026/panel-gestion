@@ -1,10 +1,23 @@
-const filasContainer = document.getElementById("filas");
-const addColBtn = document.getElementById("addCol");
-const encabezado = document.getElementById("encabezado");
+/* =======================================================
+   VARIABLES GLOBALES
+======================================================= */
 
-let columnas = 1;
-let filas = 0;
+// 🔥 CONTENEDORES PRINCIPALES
+const tabsContent = document.getElementById("tabsContent");
+const tabsContainer = document.getElementById("tabsContainer");
+
+// 🔥 TAB ACTIVA
+let tabActual = "principal";
+
+// 🔥 CONTROL GENERAL
+let ultimaCargaId = 0;
+
+// 🔥 LEADER LINES
 let lineas = [];
+let lineasMap = new Map();
+
+// 🔥 OBSERVER
+let observer;
 
 // 🔥 COLORES
 const colores = [
@@ -30,290 +43,1003 @@ const colores = [
     "#1F618D", // azul profundo
     "#566573"  // gris moderno
 ];
+
 let colorIndex = 0;
 
-function irTablero() {
-    window.location.href = "/tablero";
+/* =======================================================
+   HELPERS TAB ACTIVA
+======================================================= */
+
+// 🔥 PANEL ACTIVO
+function getTabPanel() {
+
+    return document.querySelector(
+        `.tab-panel[data-tab="${tabActual}"]`
+    );
 }
 
-/* ================= AGREGAR FILA ================= */
-function agregarFila() {
-    filas++;
+// 🔥 FILAS DE TAB ACTIVA
+function getFilasContainer() {
 
-    const fila = document.createElement("div");
-    fila.className = "fila";
-
-    // 🔥 HEREDAR ESTADO DE CARGA
-    if (filasContainer.dataset.cargando === "true") {
-        fila.dataset.cargando = "true";
-    }
-
-    const num = document.createElement("div");
-    num.className = "celda numero";
-    num.innerText = filas;
-    fila.appendChild(num);
-
-    for (let i = 0; i < columnas; i++) {
-        fila.appendChild(crearCelda(i, fila));
-    }
-
-    filasContainer.appendChild(fila);
-    actualizarColumnasGrid();
+    return getTabPanel().querySelector(".filas");
 }
 
-/* ================= CREAR CELDA ================= */
-function crearCelda(colIndex, filaDOM) {
-    const celda = document.createElement("div");
-    celda.className = "celda";
+// 🔥 ENCABEZADO TAB ACTIVA
+function getEncabezado() {
 
-    const container = document.createElement("div");
-    container.className = "nodos-container";
-
-   if (colIndex === 0) {
-        container.appendChild(crearNodo(colIndex, filaDOM));
-    }
-
-    celda.appendChild(container);
-    return celda;
+    return getTabPanel().querySelector(".fila.encabezado");
 }
 
-/* ================= CREAR NODO ================= */
-function crearNodo(colIndex, filaDOM) {
+// 🔥 BOTÓN ADD COL TAB ACTIVA
+function getAddColBtn() {
 
-    const filasContainer = document.getElementById("filas");
+    return getTabPanel().querySelector(".addCol");
+}
 
-    // 🔥 BLOQUEAR CREACIÓN AUTOMÁTICA EN CARGA
-    if (filasContainer.dataset.cargando === "true") {
-        // SOLO crear nodo base, sin lógica adicional
+// 🔥 COLUMNAS TAB ACTIVA
+function getColumnas() {
+
+    return getTabPanel()
+        .querySelectorAll(".celda.columna");
+}
+
+// 🔥 FILAS TAB ACTIVA
+function getFilas() {
+
+    return getTabPanel()
+        .querySelectorAll(".fila");
+}
+
+// 🔥 NODOS TAB ACTIVA
+function getNodos() {
+
+    return getTabPanel()
+        .querySelectorAll(".nodo-wrapper");
+}
+
+/* ================= PESTAÑAS ================= */
+
+document.getElementById("addTab").onclick = () => {
+
+    const nombre = prompt("Nombre de la pestaña");
+
+    if (!nombre) return;
+
+    crearTab(nombre);
+};
+
+function crearTab(
+    nombre,
+    id = null,
+    activar = true
+) {
+
+    // 🔥 ID REAL TAB
+    const tabId = id || crypto.randomUUID();
+
+    /* =========================================
+       BOTÓN TAB
+    ========================================= */
+
+    const tab = document.createElement("div");
+
+    tab.className = "tab";
+
+    tab.innerText = nombre;
+
+    tab.dataset.nombre = nombre;
+
+    tab.dataset.tab = tabId;
+
+    tab.onclick = () => cambiarTab(tab);
+
+    tabsContainer.appendChild(tab);
+
+    /* =========================================
+    🔥 GUARDAR TAB EN BD
+    ========================================= */
+
+    // 🔥 SOLO GUARDAR SI ES NUEVA
+    if (
+        !window.cargandoTabs &&
+        !window.inicializando
+    ) {
+
+        fetch("/api/tablero/tab", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+
+                id: tabId,
+
+                nombre: nombre,
+
+                proyecto_id: 1
+
+            })
+
+        })
+        .then(r => r.json())
+        .then(data => {
+
+            console.log(
+                "💾 TAB GUARDADA",
+                data
+            );
+
+        })
+        .catch(err => {
+
+            console.error(
+                "❌ ERROR GUARDANDO TAB",
+                err
+            );
+
+        });
+
     }
-        
-    const wrapper = document.createElement("div");
-    wrapper.className = "nodo-wrapper";
 
-    // 🔥 ID + COLOR
-    wrapper.dataset.id = Math.random().toString(36).substr(2, 9);
-    wrapper.dataset.color = colores[colorIndex % colores.length];
-    colorIndex++;
+    /* =========================================
+       PANEL REAL TAB
+    ========================================= */
 
-    const input = document.createElement("textarea");
-    input.className = "nodo-input";
+    const panel = document.createElement("div");
 
-    // 🔥 aplicar color
-    aplicarColor(wrapper, input);
+    panel.className = "tab-panel";
 
-    input.addEventListener("input", () => {
-        input.style.height = "auto";
-        input.style.height = input.scrollHeight + "px";
-        lineas.forEach(l => l.position());
+    panel.dataset.tab = tabId;
+
+    panel.style.display = "none";
+
+    panel.innerHTML = `
+        <div class="tabla">
+
+            <div class="fila encabezado">
+
+                <div class="celda numero">
+                    N°
+                </div>
+
+                <div class="celda columna">
+
+                    <div class="header-col">
+
+                        <input
+                            class="titulo-col"
+                            placeholder="Campo A">
+
+                        <input
+                            class="filtro-col"
+                            placeholder="Filtrar...">
+
+                    </div>
+
+                </div>
+
+                <div class="celda control-columnas">
+
+                    <div class="agregar-columna addCol">
+                        +
+                    </div>
+
+                    <div class="eliminar-columna removeCol">
+                        -
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="filas"></div>
+
+            <div class="control-filas">
+
+                <div class="agregar-fila addFila">
+                    +
+                </div>
+
+                <div class="eliminar-fila removeFila">
+                    -
+                </div>
+
+            </div>
+
+        </div>
+    `;
+
+    tabsContent.appendChild(panel);
+
+    // 🔥 SOLO SI ES NECESARIO
+    if (activar) {
+
+        agregarFila(panel);
+
+        // 🔥 SOLO ACTIVAR SI NO ESTÁ INICIALIZANDO
+        if (
+            !window.inicializando &&
+            !window.cargandoTabs
+        ) {
+
+            window.creandoTab = true;
+
+            cambiarTab(tab)
+                .finally(() => {
+
+                    window.creandoTab = false;
+
+                });
+
+        }
+
+    }
+
+    return tab;
+}
+
+async function cambiarTab(tab) {
+
+    console.error("========== cambiarTab ==========");
+
+    console.log("TAB RECIBIDA:", tab);
+
+    console.log("DATASET TAB:", tab?.dataset?.tab);
+
+    console.log("TAB ACTUAL ANTES:", tabActual);
+
+    console.warn("🟡 CAMBIANDO TAB");
+
+    /* ========================================= */
+    /* 🔥 GUARDAR TAB ACTUAL ANTES DE CAMBIAR */
+    /* ========================================= */
+
+    try {
+
+        const fechaInput =
+            document.getElementById("fecha");
+
+        let fechaActual =
+            fechaInput.value;
+
+        if (
+            fechaActual &&
+            tabActual &&
+            !window.creandoTab &&
+            !window.cargandoTabs &&
+            !window.inicializando
+        ) {
+
+            fechaActual = fechaActual
+                .split("/")
+                .reverse()
+                .join("-");
+
+            console.log(
+                "💾 AUTO GUARDADO:",
+                tabActual,
+                fechaActual
+            );
+
+            const oldTab = tabActual;
+
+            const oldPanel = document.querySelector(
+                `.tab-panel[data-tab="${oldTab}"]`
+            );
+
+            await guardarTablero(
+                fechaActual,
+                oldPanel,
+                oldTab
+            );
+
+        }
+
+    } catch (e) {
+
+        console.error(
+            "❌ ERROR AUTOGUARDADO",
+            e
+        );
+
+    }
+
+    // 🔥 DESACTIVAR TABS
+    document.querySelectorAll(".tab")
+        .forEach(t => t.classList.remove("activo"));
+
+    // 🔥 OCULTAR TODOS LOS PANELES
+    document.querySelectorAll(".tab-panel")
+        .forEach(p => {
+
+            p.style.display = "none";
+
+            p.classList.remove("activo");
+
+        });
+
+    // 🔥 ACTIVAR TAB
+    tab.classList.add("activo");
+
+    tabActual = tab.dataset.tab;
+
+    console.log("✅ TAB ACTUAL NUEVA:", tabActual);
+
+    console.log(
+        "TAB ACTUAL:",
+        tabActual
+    );
+
+    // 🔥 PANEL ACTUAL
+    const panel = document.querySelector(
+        `.tab-panel[data-tab="${tabActual}"]`
+    );
+
+    if (!panel) {
+
+        console.error(
+            "❌ PANEL NO EXISTE"
+        );
+
+        return;
+    }
+
+    // 🔥 MOSTRAR PANEL
+    panel.style.display = "block";
+
+    panel.classList.add("activo");
+
+    // 🔥 OBSERVER SOLO TAB ACTIVA
+    //activarObserver(panel);
+
+    // 🔥 LIMPIAR LÍNEAS VISUALES
+    document.querySelectorAll(".leader-line")
+        .forEach(el => {
+
+            el.remove();
+
+        });
+
+    lineasMap.forEach((l, key) => {
+
+        try {
+
+            l.remove();
+
+        } catch {}
+
     });
 
-    /* ================= CONTROLES ================= */
-    const controles = document.createElement("div");
-    controles.className = "nodo-controles";
+    // 🔥 NO BORRAR MAPA GLOBAL
 
-    // ➕ botón
-    const btnAdd = document.createElement("div");
-    btnAdd.className = "nodo";
-    btnAdd.innerText = "+";
+    /* ========================================= */
+    /* 🔥 CARGAR DATA REAL DE LA TAB */
+    /* ========================================= */
 
-    // ➖ botón
-    const btnRemove = document.createElement("div");
-    btnRemove.className = "nodo eliminar";
-    btnRemove.innerText = "-";
+    const fechaInput =
+        document.getElementById("fecha");
 
-    /* ================= ADD ================= */
-    btnAdd.onclick = () => {
+    let fecha = fechaInput.value;
 
-        const nextIndex = colIndex + 1;
+    if (fecha) {
 
-        if (nextIndex >= columnas) {
-            addColBtn.click();
-        }
+        fecha = fecha
+            .split("/")
+            .reverse()
+            .join("-");
 
-        const celdaDestino = filaDOM.children[nextIndex + 1];
-        const containerDestino = celdaDestino.querySelector(".nodos-container");
+        console.log(
+            "📥 CARGANDO TAB:",
+            tabActual,
+            fecha
+        );
 
-        const nuevoNodo = crearNodo(nextIndex, filaDOM);
+        await cargarTablero(
+            fecha,
+            tabActual,
+            panel
+        );
 
-        // 🔥 RELACIÓN + COLOR
-        wrapper.classList.add("padre");
-        nuevoNodo.classList.add("hijo");
+    }
 
-        nuevoNodo.dataset.parentId = wrapper.dataset.id;
+    // 🔥 RECALCULAR SOLO TAB ACTIVA
+    requestAnimationFrame(() => {
 
-        // 🔥 CLAVE: diferenciar ramas
-        if (!wrapper.dataset.parentId) {
-            nuevoNodo.dataset.color = colores[colorIndex % colores.length];
-            colorIndex++;
-        } else {
-            nuevoNodo.dataset.color = wrapper.dataset.color;
-        }
+        //recalcularTodo(panel);
 
-        const inputHijo = nuevoNodo.querySelector(".nodo-input");
-        aplicarColor(nuevoNodo, inputHijo);
+    });
 
-        containerDestino.classList.add("tiene-hijos");
+    console.warn("🟢 TAB LISTA");
+}
 
-        // 🔥 INSERTAR POR NIVEL (CLAVE)
-        const nivelNuevo = calcularNivel(nuevoNodo);
-        const parentIndex = Array.from(containerDestino.children)
-            .findIndex(n => n.dataset.id === wrapper.dataset.id);
+function exportarTableroActual() {
 
-        if (parentIndex !== -1) {
-            containerDestino.insertBefore(
-                nuevoNodo,
-                containerDestino.children[parentIndex + 1] || null
-            );
-        } else {
-            containerDestino.appendChild(nuevoNodo);
-        }
+    const panel = getTabPanel();
 
-        // 🔥 ORDEN CORRECTO (FIX REAL)
-        requestAnimationFrame(() => {
+    if (!panel) {
 
-            alinearFilasGlobal();
+        console.error("❌ PANEL NO ENCONTRADO");
 
-            requestAnimationFrame(() => {
+        return null;
+    }
 
-                recalcularTodo();
+    const data = {
+        columnas: [],
+        filas: []
+    };
 
-                // 🔥 LINEA CON COLOR (DESPUÉS de TODO)
-                const linea = new LeaderLine(
-                    input,
-                    nuevoNodo.querySelector(".nodo-input"),
-                    {
-                        path: "grid",
-                        startSocket: "right",
-                        endSocket: "left",
+    // 🔥 COLUMNAS SOLO DE ESTA TAB
+    panel.querySelectorAll(".titulo-col")
+        .forEach(col => {
 
-                        startSocketGravity: [0, 0],
-                        endSocketGravity: [0, 0],
+            data.columnas.push(col.value);
 
-                        color: padre.dataset.color,
-                        size: 2,
-                        dash: { len: 4, gap: 4 }
-                    }
+        });
+
+    // 🔥 FILAS SOLO DE ESTA TAB
+    panel.querySelectorAll(".filas .fila")
+        .forEach(fila => {
+
+            const filaData = [];
+
+            const celdas = fila.querySelectorAll(".celda");
+
+            celdas.forEach((celda, i) => {
+
+                if (i === 0) return;
+
+                const nodos = Array.from(
+                    celda.querySelectorAll(".nodo-wrapper")
+                ).filter(n =>
+                    !n.classList.contains("invisible")
                 );
 
-                linea.fila = filaDOM;
+                const nodosData = [];
 
-                linea.hide("none");
-                linea.show("draw");
+                nodos.forEach(nodo => {
 
-                lineas.push(linea);
+                    const input =
+                        nodo.querySelector(".nodo-input");
 
-                requestAnimationFrame(() => {
-                    lineas.forEach(l => l.position());
+                    nodosData.push({
+                        texto: input ? input.value : "",
+                        color: nodo.dataset.color,
+                        parentId:
+                            nodo.dataset.parentId || null,
+                        id: nodo.dataset.id
+                    });
+
                 });
+
+                filaData.push(nodosData);
+
+            });
+
+            data.filas.push(filaData);
+
+        });
+
+    return data;
+}
+
+function restaurarTablero(data, panel = null) {
+
+    panel = panel || getTabPanel();
+
+    if (!panel) {
+        console.error("❌ PANEL NO ENCONTRADO");
+        return;
+    }
+
+    const filasContainer =
+        panel.querySelector(".filas");
+
+    filasContainer.innerHTML = "";
+
+    // 🔥 limpiar líneas
+    lineasMap.forEach(l => {
+        try { l.remove(); } catch {}
+    });
+
+    lineasMap.clear();
+
+    document.querySelectorAll(".leader-line")
+        .forEach(el => {
+            el.remove();
+        });
+
+    // 🔥 columnas actuales
+    let columnasActuales =
+        panel.querySelectorAll(".celda.columna").length;
+
+    // 🔥 crear columnas faltantes
+    const encabezado =
+        panel.querySelector(".fila.encabezado");
+
+    while (columnasActuales < data.columnas.length) {
+
+        const nuevaCol = document.createElement("div");
+
+        nuevaCol.className = "celda columna";
+
+        nuevaCol.innerHTML = `
+            <div class="header-col">
+
+                <input
+                    class="titulo-col"
+                    placeholder="Campo">
+
+                <input
+                    class="filtro-col"
+                    placeholder="Filtrar...">
+
+            </div>
+        `;
+
+        encabezado.insertBefore(
+            nuevaCol,
+            encabezado.querySelector(".control-columnas")
+        );
+
+        columnasActuales++;
+    }
+
+    // 🔥 restaurar nombres columnas
+    panel.querySelectorAll(".titulo-col")
+        .forEach((col, i) => {
+
+            col.value = data.columnas[i] || "";
+
+        });
+
+    // 🔥 filas
+    data.filas.forEach(filaData => {
+
+        agregarFila(panel);
+
+        const filasDOM =
+            panel.querySelectorAll(".filas .fila");
+
+        const filaDOM =
+            filasDOM[filasDOM.length - 1];
+
+        filaData.forEach((celdaData, colIndex) => {
+
+            const celda = filaDOM.children[colIndex + 1];
+
+            if (!celda) return;
+
+            const container =
+                celda.querySelector(".nodos-container");
+
+            if (!container) return;
+
+            container.innerHTML = "";
+
+            celdaData.forEach(nodoData => {
+
+                const nodo =
+                    crearNodo(colIndex, filaDOM, panel);
+
+                nodo.dataset.id = nodoData.id;
+
+                nodo.dataset.color =
+                    nodoData.color || "#52BE80";
+
+                if (nodoData.parentId) {
+
+                    nodo.dataset.parentId =
+                        nodoData.parentId;
+                }
+
+                const input =
+                    nodo.querySelector(".nodo-input");
+
+                input.value =
+                    nodoData.texto || "";
+
+                aplicarColor(nodo, input);
+
+                container.appendChild(nodo);
 
             });
 
         });
 
-    };
-    /* ================= REMOVE ================= */
-    btnRemove.onclick = () => {
+    });
 
-        const inputActual = wrapper.querySelector(".nodo-input");
+    requestAnimationFrame(() => {
 
-        // 🔥 eliminar líneas relacionadas
-        lineas = lineas.filter(linea => {
+        alinearFilasGlobal(panel);
 
-            const eliminar =
-                linea.start === inputActual ||
-                linea.end === inputActual;
+        requestAnimationFrame(() => {
 
-            if (eliminar) linea.remove();
+            recalcularTodo(panel);
 
-            return !eliminar;
         });
 
-        // 🔥 eliminar nodo
-        wrapper.remove();
-        recalcularTodo();
+    });
+}
 
-        // 🔥 reajustar líneas
-        setTimeout(() => {
-            lineas.forEach(l => l.position());
-        }, 50);
+/* ================= IR TABLERO ================= */
+
+function irTablero() {
+
+    window.location.href = "/tablero";
+}
+
+/* ================= AGREGAR FILA ================= */
+
+function agregarFila(panel = null) {
+
+    panel = panel || getTabPanel();
+
+    if (!panel) {
+        console.error("❌ PANEL NO ENCONTRADO");
+        return;
+    }
+
+    const filasContainer =
+        panel.querySelector(".filas");
+
+    const columnas =
+        panel.querySelectorAll(".celda.columna").length;
+
+    const totalFilas =
+        filasContainer.querySelectorAll(".fila").length;
+
+    const filaNumero = totalFilas + 1;
+
+    const fila = document.createElement("div");
+
+    fila.className = "fila";
+
+    // 🔥 número
+    const num = document.createElement("div");
+
+    num.className = "celda numero";
+
+    num.innerText = filaNumero;
+
+    fila.appendChild(num);
+
+    // 🔥 columnas
+    for (let i = 0; i < columnas; i++) {
+
+        fila.appendChild(
+            crearCelda(i, fila, panel)
+        );
+    }
+
+    filasContainer.appendChild(fila);
+
+    actualizarColumnasGrid(panel);
+
+    return fila;
+}
+
+/* ================= CREAR CELDA ================= */
+
+function crearCelda(colIndex, filaDOM, panel = null) {
+
+    const celda = document.createElement("div");
+
+    celda.className = "celda";
+
+    const container = document.createElement("div");
+
+    container.className = "nodos-container";
+
+    // 🔥 primera columna crea nodo raíz
+    if (colIndex === 0) {
+
+        container.appendChild(
+            crearNodo(colIndex, filaDOM, panel)
+        );
+    }
+
+    celda.appendChild(container);
+
+    return celda;
+}
+
+/* ================= CREAR NODO ================= */
+
+function crearNodo(colIndex, filaDOM, panel = null) {
+
+    panel = panel || getTabPanel();
+
+    const wrapper = document.createElement("div");
+
+    wrapper.className = "nodo-wrapper";
+
+    wrapper.dataset.id =
+        Math.random().toString(36).substr(2, 9);
+
+    wrapper.dataset.color =
+        colores[colorIndex % colores.length];
+
+    colorIndex++;
+
+    const input = document.createElement("textarea");
+
+    input.className = "nodo-input";
+
+    aplicarColor(wrapper, input);
+
+    // 🔥 autosize
+    input.addEventListener("input", () => {
+
+        input.style.height = "auto";
+
+        input.style.height =
+            input.scrollHeight + "px";
+
+        recalcularTodo(panel);
+
+    });
+
+    /* ================= CONTROLES ================= */
+
+    const controles = document.createElement("div");
+
+    controles.className = "nodo-controles";
+
+    // ➕
+    const btnAdd = document.createElement("div");
+
+    btnAdd.className = "nodo";
+
+    btnAdd.innerText = "+";
+
+    // ➖
+    const btnRemove = document.createElement("div");
+
+    btnRemove.className = "nodo eliminar";
+
+    btnRemove.innerText = "-";
+
+    /* ================= ADD ================= */
+
+    btnAdd.onclick = () => {
+
+        const columnas =
+            panel.querySelectorAll(".celda.columna").length;
+
+        const nextIndex = colIndex + 1;
+
+        // 🔥 crear columna si falta
+        if (nextIndex >= columnas) {
+
+            const addBtn =
+                panel.querySelector(".addCol");
+
+            if (addBtn) {
+                addBtn.click();
+            }
+        }
+
+        const celdaDestino =
+            filaDOM.children[nextIndex + 1];
+
+        if (!celdaDestino) return;
+
+        const containerDestino =
+            celdaDestino.querySelector(".nodos-container");
+
+        if (!containerDestino) return;
+
+        const nuevoNodo =
+            crearNodo(nextIndex, filaDOM, panel);
+
+        // 🔥 relación
+        nuevoNodo.dataset.parentId =
+            wrapper.dataset.id;
+
+        // 🔥 color rama
+        if (!wrapper.dataset.parentId) {
+
+            nuevoNodo.dataset.color =
+                colores[colorIndex % colores.length];
+
+            colorIndex++;
+
+        } else {
+
+            nuevoNodo.dataset.color =
+                wrapper.dataset.color;
+        }
+
+        const inputHijo =
+            nuevoNodo.querySelector(".nodo-input");
+
+        aplicarColor(nuevoNodo, inputHijo);
+
+        containerDestino.appendChild(nuevoNodo);
+
+        requestAnimationFrame(() => {
+
+            alinearFilasGlobal(panel);
+
+            requestAnimationFrame(() => {
+
+                recalcularTodo(panel);
+
+            });
+
+        });
     };
 
-    /* ================= APPEND ================= */
+    /* ================= REMOVE ================= */
+
+    btnRemove.onclick = () => {
+
+        wrapper.remove();
+
+        requestAnimationFrame(() => {
+
+            alinearFilasGlobal(panel);
+
+            requestAnimationFrame(() => {
+
+                recalcularTodo(panel);
+
+            });
+
+        });
+    };
+
     controles.appendChild(btnAdd);
+
     controles.appendChild(btnRemove);
 
     wrapper.appendChild(input);
+
     wrapper.appendChild(controles);
 
     return wrapper;
 }
 
 /* ================= COLOR ================= */
-function aplicarColor(nodo, input) {
-    const color = nodo.dataset.color;
 
-    // ❌ quitar borde
+function aplicarColor(nodo, input) {
+
+    const color =
+        nodo.dataset.color || "#52BE80";
+
+    // 🔥 limpiar estilos viejos
     input.style.border = "none";
 
-    // ✅ dejar solo color limpio
-    input.style.boxShadow = "0 0 0 2px transparent";
+    input.style.outline = "none";
 
-    // opcional fondo suave
-    input.style.background = color + "15";
+    // 🔥 borde elegante
+    input.style.boxShadow =
+        `0 0 0 2px ${color}`;
+
+    // 🔥 fondo suave transparente
+    input.style.background =
+        color + "15";
+
+    // 🔥 transición suave
+    input.style.transition =
+        "all 0.15s ease";
 }
 
 /* ================= AGREGAR COLUMNA ================= */
-addColBtn.onclick = () => {
-    columnas++;
+
+function agregarColumna(panel = null) {
+
+    panel = panel || getTabPanel();
+
+    if (!panel) {
+
+        console.error("❌ PANEL NO ENCONTRADO");
+
+        return;
+    }
+
+    const encabezado =
+        panel.querySelector(".fila.encabezado");
+
+    const filas =
+        panel.querySelectorAll(".filas .fila");
+
+    const columnasActuales =
+        encabezado.querySelectorAll(".columna").length;
 
     const nuevaCol = document.createElement("div");
+
     nuevaCol.className = "celda columna";
 
     nuevaCol.innerHTML = `
         <div class="header-col">
-            <input class="titulo-col" placeholder="Campo ${columnas}">
-            <input class="filtro-col" placeholder="Filtrar...">
+
+            <input
+                class="titulo-col"
+                placeholder="Campo ${columnasActuales + 1}">
+
+            <input
+                class="filtro-col"
+                placeholder="Filtrar...">
+
         </div>
     `;
 
-    encabezado.insertBefore(nuevaCol, document.querySelector(".control-columnas"));
+    encabezado.insertBefore(
+        nuevaCol,
+        encabezado.querySelector(".control-columnas")
+    );
 
-    document.querySelectorAll("#filas .fila").forEach(fila => {
-        fila.appendChild(crearCelda(columnas - 1, fila));
+    filas.forEach(fila => {
+
+        fila.appendChild(
+            crearCelda(columnasActuales, fila, panel)
+        );
+
     });
 
-    actualizarColumnasGrid();
-    activarFiltros();
+    actualizarColumnasGrid(panel);
 
-    // 🔥 🔥 🔥 AGREGA ESTO
-    setTimeout(() => {
-        recalcularTodo();
-    }, 80);
-};
+    activarFiltros(panel);
+
+    requestAnimationFrame(() => {
+
+        recalcularTodo(panel);
+
+    });
+}
 
 /* ================= ORDEN COLOR ================= */
 
 function ordenarPorColor(container) {
 
+    if (!container) return;
+
     const nodos = Array.from(container.children);
 
     nodos.sort((a, b) => {
-        return (a.dataset.color || "").localeCompare(b.dataset.color || "");
+
+        return (a.dataset.color || "")
+            .localeCompare(b.dataset.color || "");
+
     });
 
-    nodos.forEach(n => container.appendChild(n));
+    nodos.forEach(n => {
+
+        container.appendChild(n);
+
+    });
 }
 
 /* ================= FILTRO ================= */
-function aplicarFiltro() {
 
-    // 🔥 resetear TODO antes de filtrar
-    document.querySelectorAll(".nodo-wrapper").forEach(n => {
-        n.style.display = "flex";
-    });
-    
-    const filtros = document.querySelectorAll(".filtro-col");
-    const filas = document.querySelectorAll("#filas .fila");
+function aplicarFiltro(panel = null) {
+
+    panel = panel || getTabPanel();
+
+    if (!panel) {
+
+        console.error("❌ PANEL NO ENCONTRADO");
+
+        return;
+    }
+
+    // 🔥 resetear visibilidad SOLO de esta tab
+    panel.querySelectorAll(".nodo-wrapper")
+        .forEach(n => {
+
+            n.style.display = "flex";
+
+        });
+
+    const filtros =
+        panel.querySelectorAll(".filtro-col");
+
+    const filas =
+        panel.querySelectorAll(".filas .fila");
 
     filas.forEach(fila => {
 
@@ -321,693 +1047,1851 @@ function aplicarFiltro() {
 
         filtros.forEach((inputFiltro, colIndex) => {
 
-            const textoFiltro = inputFiltro.value.toLowerCase().trim();
+            const textoFiltro =
+                inputFiltro.value
+                    .toLowerCase()
+                    .trim();
 
-            const celda = fila.children[colIndex + 1];
+            const celda =
+                fila.children[colIndex + 1];
+
             if (!celda) return;
 
-            const nodos = celda.querySelectorAll(".nodo-wrapper");
+            const nodos =
+                celda.querySelectorAll(".nodo-wrapper");
 
+            // 🔥 filtro vacío
             if (textoFiltro === "") {
-                return; // 🔥 NO tocar visibilidad aquí
+
+                nodos.forEach(n => {
+
+                    n.style.display = "flex";
+
+                });
+
+                return;
             }
 
             let matchEnColumna = false;
 
             nodos.forEach(nodo => {
 
-                const input = nodo.querySelector(".nodo-input");
+                const input =
+                    nodo.querySelector(".nodo-input");
 
                 if (!input) {
-                    nodo.style.display = "none"; // 🔥 o "flex" si quieres ignorarlo
+
+                    nodo.style.display = "none";
+
                     return;
                 }
 
-                const texto = input.value.toLowerCase();
+                const texto =
+                    input.value.toLowerCase();
 
-                if (texto.includes(textoFiltro)) {
-                    nodo.style.display = "flex";
+                const coincide =
+                    texto.includes(textoFiltro);
+
+                nodo.style.display =
+                    coincide ? "flex" : "none";
+
+                if (coincide) {
+
                     matchEnColumna = true;
-                } else {
-                    nodo.style.display = "none";
+
                 }
+
             });
 
             if (!matchEnColumna) {
+
                 cumpleTodos = false;
-            }
-        });
 
-        // 🔥 ocultar fila completa
-        fila.style.display = cumpleTodos ? "grid" : "none";
-
-    });
-
-    // 🔥 🔥 FIX REAL: controlar visibilidad + posición de líneas
-    setTimeout(() => {
-
-        lineas.forEach(linea => {
-
-            const origenVisible = linea.start?.offsetParent !== null;
-            const destinoVisible = linea.end?.offsetParent !== null;
-
-            if (origenVisible && destinoVisible) {
-                linea.show("none");
-                linea.position();
-            } else {
-                linea.hide("none");
             }
 
         });
 
-    }, 50);
-}
+        // 🔥 mostrar/ocultar fila
+        fila.style.display =
+            cumpleTodos ? "grid" : "none";
 
-function activarFiltros() {
-    document.querySelectorAll(".filtro-col").forEach(input => {
-        input.removeEventListener("input", aplicarFiltro); // evitar duplicados
-        input.addEventListener("input", aplicarFiltro);
+    });
+
+    // 🔥 refrescar líneas SOLO visualmente
+    requestAnimationFrame(() => {
+
+        lineasMap.forEach((linea, key) => {
+
+            try {
+
+                const origenVisible =
+                    linea.start?.offsetParent !== null;
+
+                const destinoVisible =
+                    linea.end?.offsetParent !== null;
+
+                if (
+                    origenVisible &&
+                    destinoVisible
+                ) {
+
+                    linea.show("none");
+
+                    linea.position();
+
+                } else {
+
+                    linea.hide("none");
+
+                }
+
+            } catch (e) {
+
+                console.warn(
+                    "💀 línea inválida removida",
+                    key
+                );
+
+                try { linea.remove(); } catch {}
+
+                lineasMap.delete(key);
+            }
+
+        });
+
     });
 }
 
-const removeFilaBtn = document.getElementById("removeFila");
+/* ================= ACTIVAR FILTROS ================= */
 
-removeFilaBtn.onclick = () => {
+function activarFiltros(panel = null) {
 
-    const filasDOM = document.querySelectorAll("#filas .fila");
+    panel = panel || getTabPanel();
+
+    if (!panel) {
+
+        console.error("❌ PANEL NO ENCONTRADO");
+
+        return;
+    }
+
+    panel.querySelectorAll(".filtro-col")
+        .forEach(input => {
+
+            // 🔥 evitar listeners duplicados
+            input.removeEventListener(
+                "input",
+                input._filtroHandler
+            );
+
+            // 🔥 guardar referencia handler
+            input._filtroHandler = () => {
+
+                aplicarFiltro(panel);
+
+            };
+
+            input.addEventListener(
+                "input",
+                input._filtroHandler
+            );
+
+        });
+}
+
+/* ================= ELIMINAR FILA ================= */
+
+function eliminarFila(panel = null) {
+
+    panel = panel || getTabPanel();
+
+    if (!panel) {
+
+        console.error("❌ PANEL NO ENCONTRADO");
+
+        return;
+    }
+
+    const filasDOM =
+        panel.querySelectorAll(".filas .fila");
 
     if (filasDOM.length === 0) return;
 
-    const ultimaFila = filasDOM[filasDOM.length - 1];
+    const ultimaFila =
+        filasDOM[filasDOM.length - 1];
 
-    // 🔥 eliminar líneas actuales
-    lineas.forEach(l => l.remove());
-    lineas = [];
+    // 🔥 limpiar líneas reales
+    lineasMap.forEach((l, key) => {
+
+        try { l.remove(); } catch {}
+
+    });
+
+    lineasMap.clear();
+
+    document.querySelectorAll(".leader-line")
+        .forEach(el => el.remove());
 
     // 🔥 eliminar fila
     ultimaFila.remove();
-    filas--;
 
-    // 🔥 🔥 CLAVE: reconstruir layout + líneas
-    setTimeout(() => {
-        recalcularTodo();
-    }, 80);
-};
+    requestAnimationFrame(() => {
 
-const removeColBtn = document.getElementById("removeCol");
+        document.body.offsetHeight;
 
-removeColBtn.onclick = () => {
+        alinearFilasGlobal(panel);
 
-    if (columnas <= 1) return; // 🔥 evitar borrar la última
+        requestAnimationFrame(() => {
 
-    columnas--;
+            recalcularTodo(panel);
 
-    // 🔥 eliminar encabezado (antes del +)
-    const cols = document.querySelectorAll("#encabezado .columna");
-    const ultimaCol = cols[cols.length - 1];
-    if (ultimaCol) ultimaCol.remove();
+        });
 
-    // 🔥 eliminar celdas de cada fila
-    document.querySelectorAll("#filas .fila").forEach(fila => {
-        if (fila.children.length > 1) {
-            fila.removeChild(fila.lastChild);
-        }
     });
+}
 
-    // 🔥 limpiar líneas actuales
-    lineas.forEach(l => l.remove());
-    lineas = [];
+/* ================= ELIMINAR COLUMNA ================= */
 
-    // 🔥 recalcular grid
-    actualizarColumnasGrid();
+function eliminarColumna(panel = null) {
 
-    // 🔥 🔥 🔥 RECONSTRUIR TODO (CLAVE)
-    setTimeout(() => {
-        recalcularTodo();
-    }, 100);
-};
+    panel = panel || getTabPanel();
 
-const addFilaBtn = document.getElementById("addFila");
+    if (!panel) {
 
-addFilaBtn.onclick = () => {
-    agregarFila();
-    activarFiltros(); // 🔥 importante
-};
+        console.error("❌ PANEL NO ENCONTRADO");
 
-/* ================= CALENDARIO BONITO ================= */
-document.addEventListener("DOMContentLoaded", () => {
+        return;
+    }
 
-    flatpickr("#fecha", {
-        dateFormat: "d/m/Y",
-        locale: "es",
-        allowInput: true,
+    const encabezado =
+        panel.querySelector(".fila.encabezado");
 
-        // 🔥 FIX DEFINITIVO
-        onReady: async function (selectedDates, dateStr, instance) {
+    const columnas =
+        encabezado.querySelectorAll(".columna");
 
-            actualizarFechasConData();
+    // 🔥 evitar borrar la última
+    if (columnas.length <= 1) return;
 
-            try {
-                const res = await fetch("/api/tablero/fechas");
-                const fechas = await res.json();
+    const ultimaCol =
+        columnas[columnas.length - 1];
 
-                console.log("FECHAS BACK:", fechas);
+    if (ultimaCol) {
 
-                if (fechas && fechas.length > 0) {
+        ultimaCol.remove();
 
-                    const ultima = fechas.sort((a, b) => new Date(b) - new Date(a))[0];
+    }
 
-                    console.log("USANDO:", ultima);
+    // 🔥 eliminar celdas de filas
+    panel.querySelectorAll(".filas .fila")
+        .forEach(fila => {
 
-                    if (ultima) {
-                        instance.setDate(ultima, true);
-                    } else {
-                        agregarFila();
-                    }
+            if (fila.children.length > 1) {
 
-                } else {
-                    agregarFila();
-                }
+                fila.removeChild(
+                    fila.lastChild
+                );
 
-            } catch (err) {
-                console.error("Error cargando fechas:", err);
-                agregarFila();
             }
-        },
 
-        onMonthChange: function () {
-            actualizarFechasConData();
-        },
+        });
 
-        onOpen: function () {
-            actualizarFechasConData();
-        },
+    // 🔥 limpiar líneas
+    lineasMap.forEach((l, key) => {
 
-        onYearChange: function () {
-            actualizarFechasConData();
-        },
+        try { l.remove(); } catch {}
 
-        onChange: function(selectedDates) {
-
-            const fecha = selectedDates[0];
-            if (!fecha) return;
-
-            // 🔥 FIX timezone
-            const fechaKey = fecha.getFullYear() + "-" +
-                String(fecha.getMonth() + 1).padStart(2, "0") + "-" +
-                String(fecha.getDate()).padStart(2, "0");
-
-            cargarTablero(fechaKey);
-        }
     });
+
+    lineasMap.clear();
+
+    document.querySelectorAll(".leader-line")
+        .forEach(el => el.remove());
+
+    actualizarColumnasGrid(panel);
+
+    requestAnimationFrame(() => {
+
+        document.body.offsetHeight;
+
+        alinearFilasGlobal(panel);
+
+        requestAnimationFrame(() => {
+
+            recalcularTodo(panel);
+
+        });
+
+    });
+}
+
+/* ================= EVENTOS GLOBALES ================= */
+
+document.addEventListener("click", e => {
+
+    const panel = getTabPanel();
+
+    if (!panel) return;
+
+    // ➕ agregar fila
+    if (
+        e.target.classList.contains("addFila")
+    ) {
+
+        agregarFila(panel);
+
+        activarFiltros(panel);
+
+        requestAnimationFrame(() => {
+
+            recalcularTodo(panel);
+
+        });
+    }
+
+    // ➖ eliminar fila
+    if (
+        e.target.classList.contains("removeFila")
+    ) {
+
+        eliminarFila(panel);
+
+    }
+
+    // ➕ agregar columna
+    if (
+        e.target.classList.contains("addCol")
+    ) {
+
+        agregarColumna(panel);
+
+    }
+
+    // ➖ eliminar columna
+    if (
+        e.target.classList.contains("removeCol")
+    ) {
+
+        eliminarColumna(panel);
+
+    }
 
 });
 
+/* ================= CALENDARIO ================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        flatpickr("#fecha", {
+
+            dateFormat: "d/m/Y",
+
+            locale: "es",
+
+            allowInput: true,
+
+            /* ================= READY ================= */
+
+            onReady: async function (
+                selectedDates,
+                dateStr,
+                instance
+            ) {
+
+                try {
+
+                    await actualizarFechasConData();
+
+                    const res =
+                        await fetch(
+                            "/api/tablero/fechas"
+                        );
+
+                    const fechas =
+                        await res.json();
+
+                    console.log(
+                        "FECHAS BACK:",
+                        fechas
+                    );
+
+                    if (
+                        fechas &&
+                        fechas.length > 0
+                    ) {
+
+                        const ultima =
+                            fechas.sort(
+                                (a, b) =>
+                                    new Date(b)
+                                    - new Date(a)
+                            )[0];
+
+                        console.log(
+                            "USANDO:",
+                            ultima
+                        );
+
+                        if (ultima) {
+
+                            instance.setDate(
+                                ultima,
+                                false
+                            );
+
+                        }
+
+                    } else {
+
+                        agregarFila(
+                            getTabPanel()
+                        );
+
+                    }
+
+                } catch (err) {
+
+                    console.error(
+                        "❌ Error fechas:",
+                        err
+                    );
+
+                    agregarFila(
+                        getTabPanel()
+                    );
+
+                }
+
+            },
+
+            /* ================= OPEN ================= */
+
+            onOpen() {
+
+                actualizarFechasConData();
+
+            },
+
+            /* ================= CHANGE ================= */
+
+            onChange: async function(selectedDates) {
+
+                if (window.inicializando) {
+                    return;
+                }
+
+                const fecha =
+                    selectedDates[0];
+
+                if (!fecha) return;
+
+                const fechaKey =
+                    fecha.getFullYear() + "-" +
+                    String(
+                        fecha.getMonth() + 1
+                    ).padStart(2, "0") + "-" +
+                    String(
+                        fecha.getDate()
+                    ).padStart(2, "0");
+
+                console.warn(
+                    "📅 CAMBIO FECHA:",
+                    fechaKey
+                );
+
+                await cargarTablero(
+                    fechaKey,
+                    tabActual,
+                    getTabPanel()
+                );
+
+            }
+
+        });
+
+    }
+);
+
 /* ================= GUARDAR TABLERO ================= */
-function guardarTablero(fecha) {
+
+async function guardarTablero(
+    fecha,
+    panel = null,
+    tabId = null
+) {
+
+    panel = panel || getTabPanel();
+
+    /* =========================================
+       🔥 VALIDAR PANEL REAL
+    ========================================= */
+
+    const tabObjetivo =
+        tabId || tabActual;
+
+    console.error(
+        "======== VALIDACION TAB ========"
+    );
+
+    console.log({
+
+        tabActual,
+
+        tabIdRecibido: tabId,
+
+        panelDataset:
+            panel?.dataset?.tab,
+
+        mismoPanel:
+            tabObjetivo ===
+            panel?.dataset?.tab
+    });
+
+    // 🔥 FIX REAL
+    if (
+        !panel ||
+        panel.dataset.tab !== tabObjetivo
+    ) {
+
+        console.error(
+            "💀 PANEL INCORRECTO"
+        );
+
+        console.log({
+
+            esperado:
+                tabObjetivo,
+
+            recibido:
+                panel?.dataset?.tab
+        });
+
+        panel = document.querySelector(
+            `.tab-panel[data-tab="${tabObjetivo}"]`
+        );
+
+        console.warn(
+            "🔥 PANEL CORREGIDO:",
+            panel
+        );
+    }
+
+    if (!panel) {
+
+        console.error(
+            "❌ PANEL NO ENCONTRADO"
+        );
+
+        return;
+    }
+
+    console.error(
+        "======== DEBUG GUARDAR ========"
+    );
+
+    console.log(
+        "TAB ACTUAL:",
+        tabActual
+    );
+
+    console.log(
+        "TAB OBJETIVO:",
+        tabObjetivo
+    );
+
+    console.log(
+        "PANEL:",
+        panel
+    );
+
+    console.log(
+        "FILAS:",
+        panel.querySelectorAll(".fila").length
+    );
+
+    console.log(
+        "NODOS:",
+        panel.querySelectorAll(".nodo-wrapper").length
+    );
+
+    console.log(
+        "HTML:",
+        panel.innerHTML.slice(0, 1000)
+    );
 
     const data = {
         columnas: [],
         filas: []
     };
-    console.log("NODOS:", document.querySelectorAll(".nodo-wrapper").length);
-    // 🔥 COLUMNAS
-    document.querySelectorAll(".titulo-col").forEach(col => {
-        data.columnas.push(col.value);
-    });
 
-    // 🔥 FILAS
-    document.querySelectorAll("#filas .fila").forEach(fila => {
+    // 🔥 DEBUG
+    console.log(
+        "💾 GUARDANDO TAB:",
+        tabObjetivo
+    );
+
+    console.log(
+        "📦 NODOS:",
+        panel.querySelectorAll(".nodo-wrapper").length
+    );
+
+    /* ================= COLUMNAS ================= */
+
+    panel.querySelectorAll(".titulo-col")
+        .forEach(col => {
+
+            data.columnas.push(
+                col.value
+            );
+
+        });
+
+    /* ================= FILAS ================= */
+
+    // 🔥 FIX FILAS OCULTAS
+    const filas = Array.from(
+        panel.querySelectorAll(
+            ".filas .fila"
+        )
+    ).filter(fila =>
+        fila.style.display !== "none"
+    );
+
+    filas.forEach(fila => {
 
         const filaData = [];
-        const celdas = fila.querySelectorAll(".celda");
+
+        const celdas =
+            fila.querySelectorAll(
+                ".celda"
+            );
 
         celdas.forEach((celda, i) => {
+
             if (i === 0) return;
 
-            const nodos = Array.from(celda.querySelectorAll(".nodo-wrapper"))
-                .filter(n => !n.classList.contains("invisible"));
+            const nodos = Array.from(
+                celda.querySelectorAll(
+                    ".nodo-wrapper"
+                )
+            ).filter(n =>
+
+                !n.classList.contains(
+                    "invisible"
+                ) &&
+
+                n.style.display !== "none"
+            );
 
             const nodosData = [];
 
             nodos.forEach(nodo => {
 
-                const input = nodo.querySelector(".nodo-input");
+                const input =
+                    nodo.querySelector(
+                        ".nodo-input"
+                    );
 
                 nodosData.push({
-                    texto: input ? input.value : "",
-                    color: nodo.dataset.color,
-                    parentId: nodo.dataset.parentId || null,
-                    id: nodo.dataset.id
+
+                    texto:
+                        input
+                            ? input.value
+                            : "",
+
+                    color:
+                        nodo.dataset.color,
+
+                    parentId:
+                        nodo.dataset.parentId || null,
+
+                    id:
+                        nodo.dataset.id
+
                 });
+
             });
 
-            filaData.push(nodosData);
+            filaData.push(
+                nodosData
+            );
+
         });
 
-        data.filas.push(filaData);
-    });
-    console.log("GUARDADO JSON LIMPIO:");
-    console.log(JSON.stringify(data, null, 2));
-    console.log("FECHA:", fecha);
-    console.log("ENVIANDO:", data);
+        data.filas.push(
+            filaData
+        );
 
-    return fetch("/api/tablero/guardar", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            fecha: fecha,   // 🔥 CORRECTO
-            data: data      // 🔥 CORRECTO
-        })
-    })
-    .then(async res => {
-        if (!res.ok) {
-            const text = await res.text();
-            console.error("ERROR BACK:", text);
-            throw new Error("Error al guardar");
-        }
-        return res.json();
-    })
-    .then(() => {
-        console.log("GUARDADO OK");
-        actualizarFechasConData();
-    })
-    .catch(err => {
-        console.error("ERROR GUARDANDO:", err);
     });
+
+    console.log(
+        "📄 JSON:",
+        JSON.stringify(
+            data,
+            null,
+            2
+        )
+    );
+
+    try {
+
+        const res = await fetch(
+            "/api/tablero/guardar",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body: JSON.stringify({
+
+                    fecha,
+
+                    data,
+
+                    proyecto_id: 1,
+
+                    // 🔥 FIX TAB REAL
+                    tab: tabObjetivo
+                })
+            }
+        );
+
+        if (!res.ok) {
+
+            const text =
+                await res.text();
+
+            console.error(
+                "❌ ERROR BACK:",
+                text
+            );
+
+            throw new Error(
+                "Error guardando tablero"
+            );
+        }
+
+        const json =
+            await res.json();
+
+        console.log(
+            "✅ GUARDADO OK",
+            json
+        );
+
+        actualizarFechasConData();
+
+        return json;
+
+    } catch (err) {
+
+        console.error(
+            "🔥 ERROR GUARDANDO:",
+            err
+        );
+
+        throw err;
+    }
 }
 
 /* ================= MARCAR FECHAS ================= */
+
 function actualizarFechasConData() {
 
-    fetch("/api/tablero/fechas")
+    fetch(`/api/tablero/fechas`)
         .then(res => res.json())
-        .then(fechas => {
+        .then(response => {
 
-            const fp = document.getElementById("fecha")._flatpickr;
+            // 🔥 FIX REAL
+            const fechas = Array.isArray(response)
+                ? response
+                : [];
+
+            console.log("📅 FECHAS:", fechas);
+
+            const fp =
+                document.getElementById(
+                    "fecha"
+                )._flatpickr;
 
             if (!fp) return;
 
-            // 🔥 ESPERAR a que flatpickr termine de dibujar
-            setTimeout(() => {
+            requestAnimationFrame(() => {
 
-                const days = fp.calendarContainer.querySelectorAll(".flatpickr-day");
+                const days =
+                    fp.calendarContainer
+                        .querySelectorAll(
+                            ".flatpickr-day"
+                        );
 
                 days.forEach(day => {
 
-                    day.classList.remove("tiene-data");
+                    day.classList.remove(
+                        "tiene-data"
+                    );
 
                     if (!day.dateObj) return;
 
-                    // 🔥 FIX FINAL (NO usar toISOString)
-                    const f = day.dateObj.getFullYear() + "-" +
-                        String(day.dateObj.getMonth() + 1).padStart(2, "0") + "-" +
-                        String(day.dateObj.getDate()).padStart(2, "0");
+                    const f =
+                        day.dateObj.getFullYear()
+                        + "-"
+                        + String(
+                            day.dateObj.getMonth() + 1
+                        ).padStart(2, "0")
+                        + "-"
+                        + String(
+                            day.dateObj.getDate()
+                        ).padStart(2, "0");
 
                     if (fechas.includes(f)) {
-                        day.classList.add("tiene-data");
+
+                        day.classList.add(
+                            "tiene-data"
+                        );
+
                     }
 
                 });
 
-            }, 150);
+            });
+
+        })
+        .catch(err => {
+
+            console.error(
+                "❌ ERROR FECHAS:",
+                err
+            );
 
         });
 }
 
-
 /* ================= BOTÓN GUARDAR ================= */
-document.getElementById("guardar").onclick = async () => {
 
-    try {
+document.getElementById("guardar")
+    .onclick = async () => {
 
-        const fecha = await pedirFecha();
-        if (!fecha) return;
+        try {
 
-        // 🔥 SOLO bloquear durante guardado
-        modoCarga = true;
+            const fecha =
+                await pedirFecha();
 
-        await guardarTablero(fecha);
+            if (!fecha) return;
 
-        modoCarga = false; // 🔥 liberar antes de cargar
+            modoCarga = true;
 
-        console.log("✔ Guardado correcto");
+            await guardarTablero(
+                fecha,
+                getTabPanel()
+            );
 
-        const fp = document.getElementById("fecha")._flatpickr;
-        if (fp) {
-            fp.setDate(fecha, false);
+            modoCarga = false;
+
+            console.log(
+                "✔ Guardado correcto"
+            );
+
+            const fp =
+                document.getElementById(
+                    "fecha"
+                )._flatpickr;
+
+            if (fp) {
+
+                fp.setDate(
+                    fecha,
+                    false
+                );
+
+            }
+
+            await cargarTablero(
+                fecha,
+                tabActual,
+                getTabPanel()
+            );
+
+            actualizarFechasConData();
+
+        } catch (e) {
+
+            console.error(
+                "❌ Error guardar:",
+                e
+            );
+
+            modoCarga = false;
         }
 
-        await cargarTablero(fecha);
-        await actualizarFechasConData();
-
-    } catch (e) {
-        console.error("❌ Error en guardar:", e);
-        modoCarga = false;
-    }
-};
+    };
 
 let cargandoTablero = false;
+
 let modoCarga = false;
 
 /* ================= CARGAR TABLERO ================= */
-async function cargarTablero(fecha) {
 
-    // 🔥 EVITAR LLAMADAS DUPLICADAS
-    if (cargandoTablero) return;
-    cargandoTablero = true;
+async function cargarTablero(
+    fecha,
+    tabId,
+    panel = null
+) {
+
+    panel = panel || getTabPanel();
+
+    if (!panel) {
+
+        console.error(
+            "❌ PANEL NO ENCONTRADO"
+        );
+
+        return;
+    }
+
+    /* ================= TOKEN CARGA ================= */
+
+    const cargaId = ++ultimaCargaId;
 
     modoCarga = true;
 
+    cargandoTablero = true;
+
+    const filasContainer =
+        panel.querySelector(".filas");
+
+    filasContainer.dataset.cargando =
+        "true";
+
     try {
 
-        const res = await fetch(`/api/tablero/${fecha}?proyecto_id=1`);
+        const res = await fetch(
+            `/api/tablero/${fecha}?proyecto_id=1&tab=${tabId}`
+        );
 
-        console.log("STATUS:", res.status);
+        if (cargaId !== ultimaCargaId)
+            return;
 
         if (!res.ok) {
-            throw new Error("Error HTTP: " + res.status);
+
+            throw new Error(
+                "HTTP " + res.status
+            );
         }
 
-        const text = await res.text();
-        console.log("RESPUESTA BACK (RAW):", text);
+        const resp =
+            await res.json();
 
-        let resp;
-
-        try {
-            resp = JSON.parse(text);
-        } catch (e) {
-            console.error("ERROR PARSEANDO JSON:", e);
+        if (cargaId !== ultimaCargaId)
             return;
-        }
 
-        console.log("RESPUESTA BACK:", resp);
+        console.log(
+            "📥 RESPUESTA:",
+            resp
+        );
 
         let data = resp.data;
-        const filasContainer = document.getElementById("filas");
 
-        // 🔥 NO BORRAR SI VIENE VACÍO
+        /* ================= DATA VACÍA ================= */
+
         if (!data) {
-            console.warn("DATA VACÍA IGNORADA");
 
-            if (document.querySelectorAll(".nodo-wrapper").length > 0) {
-                return;
-            }
+            console.warn("⚠️ DATA VACÍA");
 
+            // 🔥 limpiar filas
             filasContainer.innerHTML = "";
-            filas = 0;
-            columnas = 1;
 
-            agregarFila();
+            // 🔥 limpiar líneas
+            lineasMap.forEach((l) => {
+
+                try { l.remove(); } catch {}
+
+            });
+
+            lineasMap.clear();
+
+            document.querySelectorAll(".leader-line")
+                .forEach(el => el.remove());
+
+            // 🔥 crear estructura mínima
+            agregarFila(panel);
+
+            actualizarColumnasGrid(panel);
+
+            requestAnimationFrame(() => {
+
+                recalcularTodo(panel);
+
+            });
+
             return;
         }
 
-        // 🔥 parse seguro
+        /* ================= PARSE ================= */
+
         try {
+
             if (typeof data === "string") {
+
                 data = JSON.parse(data);
+
             }
+
             if (typeof data === "string") {
+
                 data = JSON.parse(data);
+
             }
+
         } catch (e) {
-            console.error("❌ ERROR PARSEANDO DATA:", e);
+
+            console.error(
+                "❌ ERROR JSON:",
+                e
+            );
+
             return;
         }
 
-        console.log("DATA FINAL:", data);
-        console.log("CARGADO JSON LIMPIO:");
-        console.log(JSON.stringify(data, null, 2));
+        console.log(
+            "📦 DATA FINAL:",
+            data
+        );
 
         /* ================= LIMPIAR ================= */
+
         filasContainer.innerHTML = "";
-        lineas.forEach(l => l.remove());
-        lineas = [];
-        filas = 0;
+
+        lineasMap.forEach((l, key) => {
+
+            try { l.remove(); } catch {}
+
+        });
+
+        lineasMap.clear();
+
+        document.querySelectorAll(
+            ".leader-line"
+        ).forEach(el => {
+
+            el.remove();
+
+        });
+
+        colorIndex = 0;
 
         /* ================= COLUMNAS ================= */
-        columnas = (data.columnas && data.columnas.length > 0)
-            ? data.columnas.length
-            : document.querySelectorAll(".columna").length;
 
-        const columnasGuardadas = columnas;
+        const encabezado =
+            panel.querySelector(
+                ".fila.encabezado"
+            );
 
-        while (document.querySelectorAll(".columna").length > columnasGuardadas) {
-            const cols = document.querySelectorAll(".columna");
-            if (cols.length <= 1) break;
-            cols[cols.length - 1].remove();
+        const columnasGuardadas =
+            data.columnas?.length || 1;
+
+        // 🔥 limpiar columnas extras
+        while (
+            encabezado.querySelectorAll(
+                ".columna"
+            ).length > columnasGuardadas
+        ) {
+
+            const cols =
+                encabezado.querySelectorAll(
+                    ".columna"
+                );
+
+            if (cols.length <= 1)
+                break;
+
+            cols[
+                cols.length - 1
+            ].remove();
         }
 
-        while (document.querySelectorAll(".columna").length < columnasGuardadas) {
-            addColBtn.click();
+        // 🔥 agregar columnas faltantes
+        while (
+            encabezado.querySelectorAll(
+                ".columna"
+            ).length < columnasGuardadas
+        ) {
+
+            agregarColumna(panel);
         }
 
-        document.querySelectorAll(".titulo-col").forEach((input, i) => {
-            input.value = data.columnas[i] || `Campo ${i + 1}`;
+        // 🔥 títulos
+        panel.querySelectorAll(
+            ".titulo-col"
+        ).forEach((input, i) => {
+
+            input.value =
+                data.columnas[i]
+                || `Campo ${i + 1}`;
+
         });
 
         /* ================= FILAS ================= */
-        console.log("FILAS A RENDERIZAR:", data.filas);
+
         data.filas.forEach(filaData => {
 
-            agregarFila();
+            agregarFila(panel);
 
-            const filaDOM = document.querySelectorAll("#filas .fila")[filas - 1];
+            const filasDOM =
+                panel.querySelectorAll(
+                    ".filas .fila"
+                );
 
-            filaData.forEach((celdaData, colIndex) => {
+            const filaDOM =
+                filasDOM[
+                    filasDOM.length - 1
+                ];
 
-                const celda = filaDOM.children[colIndex + 1];
+            filaData.forEach(
+                (celdaData, colIndex) => {
+
+                const celda =
+                    filaDOM.children[
+                        colIndex + 1
+                    ];
+
                 if (!celda) return;
 
-                const container = celda.querySelector(".nodos-container");
+                const container =
+                    celda.querySelector(
+                        ".nodos-container"
+                    );
+
                 if (!container) return;
 
                 container.innerHTML = "";
 
-                if (!celdaData || celdaData.length === 0) {
-                    return; // ❌ NO crear nada
+                if (
+                    !celdaData ||
+                    celdaData.length === 0
+                ) {
+                    return;
                 }
-                celdaData.forEach(nodoData => {
 
-                    if (!nodoData.id) {
-                        console.error("❌ NODO SIN ID:", nodoData);
+                celdaData.forEach(
+                    nodoData => {
+
+                    const nodo =
+                        crearNodo(
+                            colIndex,
+                            filaDOM,
+                            panel
+                        );
+
+                    nodo.dataset.id =
+                        String(
+                            nodoData.id
+                        );
+
+                    nodo.dataset.color =
+                        nodoData.color
+                        || "#52BE80";
+
+                    if (
+                        nodoData.parentId !==
+                        null &&
+                        nodoData.parentId !==
+                        undefined
+                    ) {
+
+                        nodo.dataset.parentId =
+                            String(
+                                nodoData.parentId
+                            );
+
                     }
 
-                    if (nodoData.parentId && typeof nodoData.parentId !== "string") {
-                        console.error("❌ parentId inválido:", nodoData);
+                    const input =
+                        nodo.querySelector(
+                            ".nodo-input"
+                        );
+
+                    if (input) {
+
+                        input.value =
+                            nodoData.texto || "";
+
                     }
 
-                    console.log("NODO:", nodoData);
+                    aplicarColor(
+                        nodo,
+                        input
+                    );
 
-                    const nodo = document.createElement("div");
-                    nodo.className = "nodo-wrapper";
-                    nodo.style.height = "40px";
+                    container.appendChild(
+                        nodo
+                    );
 
-                    const input = document.createElement("textarea");
-                    input.className = "nodo-input";
-                    input.value = nodoData.texto || "";
-
-                    nodo.appendChild(input);
-
-                    nodo.dataset.id = nodoData.id;
-                    nodo.dataset.color = nodoData.color;
-                    if (nodoData.parentId) {
-                        nodo.dataset.parentId = nodoData.parentId;
-                    } else {
-                        delete nodo.dataset.parentId; // 🔥 CLAVE
-                    }
-
-                    aplicarColor(nodo, input);
-
-                    container.appendChild(nodo); // 🔥 SOLO UNA VEZ
                 });
 
             });
 
-            alinearFilasGlobal();
         });
 
-        setTimeout(() => {
-            recalcularTodo();
-        }, 150);
+        /* ================= FINAL ================= */
+
+        requestAnimationFrame(() => {
+
+            alinearFilasGlobal(panel);
+
+            limpiarFilasVacias(panel);
+
+            requestAnimationFrame(() => {
+
+                recalcularTodo(panel);
+
+            });
+
+        });
 
     } catch (err) {
-        console.error("🔥 ERROR EN CARGA:", err);
+
+        console.error(
+            "🔥 ERROR CARGA:",
+            err
+        );
+
     } finally {
+
         modoCarga = false;
+
         cargandoTablero = false;
+
+        delete filasContainer.dataset.cargando;
     }
 }
 
 /* ================= PEDIR FECHA ================= */
+
 function pedirFecha() {
 
     return new Promise(resolve => {
 
-        const overlay = document.createElement("div");
-        overlay.className = "modal-overlay";
+        const overlay =
+            document.createElement("div");
 
-        const modal = document.createElement("div");
-        modal.className = "modal-box";
+        overlay.className =
+            "modal-overlay";
+
+        const modal =
+            document.createElement("div");
+
+        modal.className =
+            "modal-box";
 
         modal.innerHTML = `
             <div class="modal-title">
                 ¿En qué fecha deseas guardar este reporte?
             </div>
 
-            <input type="date" class="modal-input">
+            <input
+                type="date"
+                class="modal-input">
 
             <div class="modal-actions">
-                <button class="btn-cancel">Cancelar</button>
-                <button class="btn-ok">Aceptar</button>
+
+                <button class="btn-cancel">
+                    Cancelar
+                </button>
+
+                <button class="btn-ok">
+                    Aceptar
+                </button>
+
             </div>
         `;
 
         overlay.appendChild(modal);
+
         document.body.appendChild(overlay);
 
-        const input = modal.querySelector(".modal-input");
+        const input =
+            modal.querySelector(".modal-input");
 
-        // 🔥 fecha hoy por defecto
-        input.value = new Date().toISOString().split("T")[0];
+        // 🔥 fecha actual
+        input.value =
+            new Date()
+                .toISOString()
+                .split("T")[0];
 
-        modal.querySelector(".btn-cancel").onclick = () => {
-            overlay.remove();
-            resolve(null);
-        };
+        // 🔥 cancelar
+        modal.querySelector(".btn-cancel")
+            .onclick = () => {
 
-        modal.querySelector(".btn-ok").onclick = () => {
+                overlay.remove();
 
-            if (!input.value) {
-                alert("Selecciona una fecha");
-                return;
-            }
+                resolve(null);
 
-            overlay.remove();
-            resolve(input.value);
-        };
+            };
 
-    });
-}
+        // 🔥 aceptar
+        modal.querySelector(".btn-ok")
+            .onclick = () => {
 
-function actualizarColumnasGrid() {
-    const total = document.querySelectorAll(".columna").length;
+                if (!input.value) {
 
-    document.querySelectorAll(".fila").forEach(fila => {
-        fila.style.setProperty("--cols", total);
-    });
-}
+                    alert(
+                        "Selecciona una fecha"
+                    );
 
-function recalcularTodo() {
-
-    // 🔥 eliminar líneas actuales
-    lineas.forEach(l => l.remove());
-    lineas = [];
-
-    // 🔥 reconstruir líneas
-    requestAnimationFrame(() => {
-
-        const nodos = document.querySelectorAll(".nodo-wrapper");
-
-        nodos.forEach(nodo => {
-
-            const parentId = nodo.dataset.parentId;
-            if (!parentId) return;
-
-            const padre = document.querySelector(`[data-id="${parentId}"]`);
-            if (!padre) return;
-
-            const linea = new LeaderLine(
-                padre.querySelector(".nodo-input"),
-                nodo.querySelector(".nodo-input"),
-                {
-                    path: "grid",
-                    startSocket: "right",
-                    endSocket: "left",
-
-                    startSocketGravity: [0, 0],
-                    endSocketGravity: [0, 0],
-
-                    color: padre.dataset.color,
-                    size: 2,
-                    dash: { len: 4, gap: 4 }
+                    return;
                 }
+
+                overlay.remove();
+
+                resolve(input.value);
+
+            };
+
+    });
+}
+
+/* ================= GRID COLUMNAS ================= */
+
+function actualizarColumnasGrid(
+    panel = null
+) {
+
+    panel = panel || getTabPanel();
+
+    if (!panel) {
+
+        console.error(
+            "❌ PANEL NO ENCONTRADO"
+        );
+
+        return;
+    }
+
+    const total =
+        panel.querySelectorAll(
+            ".columna"
+        ).length;
+
+    panel.querySelectorAll(".fila")
+        .forEach(fila => {
+
+            fila.style.setProperty(
+                "--cols",
+                total
             );
 
-            linea.fila = nodo.closest(".fila");
-            lineas.push(linea);
+        });
+}
+
+/* ================= DEBUG NODOS ================= */
+
+function debugNodos(panel = null) {
+
+    panel = panel || getTabPanel();
+
+    if (!panel) return;
+
+    console.log(
+        "===== DEBUG NODOS ====="
+    );
+
+    panel.querySelectorAll(
+        ".nodo-wrapper"
+    ).forEach(n => {
+
+        console.log({
+
+            id:
+                n.dataset.id,
+
+            parent:
+                n.dataset.parentId,
+
+            color:
+                n.dataset.color,
+
+            visible:
+                n.offsetParent !== null,
+
+            conectado:
+                n.isConnected
 
         });
 
-        // 🔥 reajuste final de líneas (IMPORTANTE)
-        setTimeout(() => {
-            lineas.forEach(l => l.position());
-        }, 100);
+    });
+}
+
+/* ================= DEBUG LINEAS ================= */
+
+window.debugRecalcular = 0;
+
+/* ================= RECALCULAR ================= */
+
+function recalcularTodo(
+    panel = null,
+    intento = 0
+) {
+
+    panel = panel || getTabPanel();
+
+    if (!panel) {
+
+        console.error(
+            "❌ PANEL NO ENCONTRADO"
+        );
+
+        return;
+    }
+
+    window.debugRecalcular++;
+
+    console.warn(
+        "🔄 RECALCULAR #" +
+        window.debugRecalcular,
+        {
+            tab: tabActual,
+            intento
+        }
+    );
+
+    const filasContainer =
+        panel.querySelector(".filas");
+
+    if (
+        !filasContainer ||
+        filasContainer.children.length === 0
+    ) {
+
+        console.warn(
+            "⛔ DOM VACÍO"
+        );
+
+        return;
+    }
+
+    /* ================= LIMPIEZA ================= */
+
+    document.querySelectorAll(
+        ".leader-line"
+    ).forEach(el => {
+
+        el.remove();
+
+    });
+
+    lineasMap.forEach((l, key) => {
+
+        try {
+
+            l.remove();
+
+        } catch {}
+
+    });
+
+    lineasMap.clear();
+
+    /* ================= RAF ================= */
+
+    requestAnimationFrame(() => {
+
+        const usadas = new Set();
+
+        const nodos =
+            panel.querySelectorAll(
+                ".nodo-wrapper:not(.invisible)"
+            );
+
+        nodos.forEach(nodo => {
+
+            let parentId =
+                nodo.dataset.parentId;
+
+            if (
+                !parentId ||
+                parentId === "null"
+            ) {
+                return;
+            }
+
+            parentId = String(parentId);
+
+            const padre =
+                panel.querySelector(
+                    `.nodo-wrapper[data-id="${parentId}"]:not(.invisible)`
+                );
+
+            if (!padre) {
+
+                console.warn(
+                    "⚠️ PADRE NO EXISTE",
+                    {
+                        hijo:
+                            nodo.dataset.id,
+                        parentId
+                    }
+                );
+
+                if (intento < 2) {
+
+                    requestAnimationFrame(
+                        () =>
+                            recalcularTodo(
+                                panel,
+                                intento + 1
+                            )
+                    );
+                }
+
+                return;
+            }
+
+            const inputPadre =
+                padre.querySelector(
+                    ".nodo-input"
+                );
+
+            const inputHijo =
+                nodo.querySelector(
+                    ".nodo-input"
+                );
+
+            if (
+                !inputPadre ||
+                !inputHijo
+            ) {
+
+                console.warn(
+                    "⚠️ INPUTS NO ENCONTRADOS"
+                );
+
+                return;
+            }
+
+            // 🔥 validar conexión DOM
+            if (
+                !inputPadre.isConnected ||
+                !inputHijo.isConnected
+            ) {
+
+                console.error(
+                    "💀 NODOS DESCONECTADOS"
+                );
+
+                return;
+            }
+
+            // 🔥 forzar layout
+            padre.offsetHeight;
+
+            nodo.offsetHeight;
+
+            const r1 =
+                inputPadre
+                    .getBoundingClientRect();
+
+            const r2 =
+                inputHijo
+                    .getBoundingClientRect();
+
+            // 🔥 validar tamaño
+            if (
+                r1.width === 0 ||
+                r2.width === 0
+            ) {
+
+                console.warn(
+                    "⚠️ NODO SIN TAMAÑO"
+                );
+
+                if (intento < 2) {
+
+                    requestAnimationFrame(
+                        () =>
+                            recalcularTodo(
+                                panel,
+                                intento + 1
+                            )
+                    );
+                }
+
+                return;
+            }
+
+            const key =
+                parentId
+                + "->"
+                + nodo.dataset.id;
+
+            usadas.add(key);
+
+            const colorLinea =
+                padre.dataset.color
+                || nodo.dataset.color
+                || "#4CAF50";
+
+            /* ================= CREAR LINEA ================= */
+
+            let linea;
+
+            try {
+
+                console.log(
+                    "🟢 CREANDO LINEA",
+                    key
+                );
+
+                linea = new LeaderLine(
+                    inputPadre,
+                    inputHijo,
+                    {
+                        path: "grid",
+
+                        startSocket:
+                            "right",
+
+                        endSocket:
+                            "left",
+
+                        startSocketGravity:
+                            [20, 0],
+
+                        endSocketGravity:
+                            [0, 0],
+
+                        color:
+                            colorLinea,
+
+                        size: 2,
+
+                        dash: {
+                            len: 4,
+                            gap: 4
+                        },
+
+                        appendTo:
+                            document.body
+                    }
+                );
+
+            } catch (e) {
+
+                console.error(
+                    "❌ ERROR LINEA",
+                    {
+                        key,
+                        error: e
+                    }
+                );
+
+                return;
+            }
+
+            linea.fila =
+                nodo.closest(".fila");
+
+            lineasMap.set(
+                key,
+                linea
+            );
+
+        });
+
+        /* ================= POSITION ================= */
+
+        requestAnimationFrame(() => {
+
+            lineasMap.forEach(
+                (l, key) => {
+
+                // 🔥 validar
+                if (
+                    !l.start ||
+                    !l.end ||
+                    !l.start.isConnected ||
+                    !l.end.isConnected
+                ) {
+
+                    console.error(
+                        "💀 LINEA INVÁLIDA",
+                        key
+                    );
+
+                    try {
+
+                        l.remove();
+
+                    } catch {}
+
+                    lineasMap.delete(key);
+
+                    return;
+                }
+
+                try {
+
+                    l.position();
+
+                } catch (e) {
+
+                    console.error(
+                        "❌ ERROR POSITION",
+                        {
+                            key,
+                            error: e
+                        }
+                    );
+
+                    try {
+
+                        l.remove();
+
+                    } catch {}
+
+                    lineasMap.delete(key);
+                }
+
+            });
+
+        });
 
     });
 }
 
-/* ================= CARGAR LO ULTIMO ================= */
+/* ================= CARGAR ÚLTIMA FECHA ================= */
+
 function cargarUltimaFecha() {
 
     fetch("/api/tablero/fechas")
+
         .then(res => res.json())
+
         .then(fechas => {
 
-            if (!fechas || fechas.length === 0) return;
+            if (
+                !fechas ||
+                fechas.length === 0
+            ) {
+                return;
+            }
 
             const ultima = fechas[0];
 
-            // 🔥 setear en el calendario
-            const fp = document.getElementById("fecha")._flatpickr;
+            const fp =
+                document.getElementById(
+                    "fecha"
+                )._flatpickr;
 
+            // 🔥 usar calendario
             if (fp) {
-                fp.setDate(ultima, true); // 🔥 true = dispara onChange
+
+                fp.setDate(
+                    ultima,
+                    true
+                );
+
             } else {
-                cargarTablero(ultima);
+
+                cargarTablero(
+                    ultima,
+                    getTabPanel()
+                );
+
             }
 
         })
-        .catch(err => console.error("Error cargando fechas:", err));
+
+        .catch(err => {
+
+            console.error(
+                "❌ Error fechas:",
+                err
+            );
+
+        });
 }
 
-function calcularNivel(nodo) {
+/* ================= CALCULAR NIVEL ================= */
+
+function calcularNivel(
+    nodo,
+    panel = null
+) {
+
+    panel = panel || getTabPanel();
+
+    if (!panel || !nodo) return 0;
+
     let nivel = 0;
+
     let actual = nodo;
 
-    while (actual.dataset.parentId) {
-        const padre = document.querySelector(`[data-id="${actual.dataset.parentId}"]`);
+    while (
+        actual &&
+        actual.dataset.parentId
+    ) {
+
+        const padre =
+            panel.querySelector(
+                `[data-id="${actual.dataset.parentId}"]`
+            );
+
         if (!padre) break;
+
         nivel++;
+
         actual = padre;
     }
 
     return nivel;
 }
 
-function obtenerFilaPadre(nodo) {
+/* ================= OBTENER PADRE ================= */
 
-    if (!nodo.dataset.parentId) return null;
+function obtenerFilaPadre(
+    nodo,
+    panel = null
+) {
 
-    const padre = document.querySelector(
+    panel = panel || getTabPanel();
+
+    if (
+        !panel ||
+        !nodo ||
+        !nodo.dataset.parentId
+    ) {
+        return null;
+    }
+
+    return panel.querySelector(
         `[data-id="${nodo.dataset.parentId}"]`
     );
-
-    return padre;
 }
+
+/* ================= CONSTRUIR FILAS ================= */
 
 function construirFilas(fila) {
 
-    const todos = Array.from(fila.querySelectorAll(".nodo-wrapper"))
-        .filter(n => n.dataset.id);
+    const todos = Array.from(
+        fila.querySelectorAll(
+            ".nodo-wrapper"
+        )
+    ).filter(n => n.dataset.id);
 
-    console.log("TODOS LOS NODOS:");
-    console.table(todos.map(n => ({
-        id: n.dataset.id,
-        parentId: n.dataset.parentId
-    })));
+    console.log(
+        "📦 TODOS LOS NODOS"
+    );
+
+    console.table(
+        todos.map(n => ({
+            id: n.dataset.id,
+            parentId: n.dataset.parentId
+        }))
+    );
 
     const mapa = new Map();
 
@@ -1017,133 +2901,555 @@ function construirFilas(fila) {
 
         if (!nodo) return;
 
-        if (mapa.has(nodo.dataset.id)) return;
+        if (
+            mapa.has(nodo.dataset.id)
+        ) {
+            return;
+        }
 
-        mapa.set(nodo.dataset.id, filaIndex++);
+        mapa.set(
+            nodo.dataset.id,
+            filaIndex++
+        );
 
-        const hijos = todos.filter(n => n.dataset.parentId === nodo.dataset.id);
+        const hijos = todos.filter(
+            n =>
+                n.dataset.parentId ===
+                nodo.dataset.id
+        );
 
-        hijos.forEach(h => recorrer(h));
+        hijos.forEach(h => {
+
+            recorrer(h);
+
+        });
     }
 
-    const raices = todos.filter(n => !n.dataset.parentId);
+    /* ================= RAÍCES ================= */
 
+    let raices = todos.filter(n => {
+
+        const p =
+            n.dataset.parentId;
+
+        return (
+            !p ||
+            p === "null"
+        );
+
+    });
+
+    // 🔥 nodos huérfanos
     if (raices.length === 0) {
-        console.error("NO HAY RAICES → TODO SE VA A ROMPER");
+
+        raices = todos.filter(n => {
+
+            const p =
+                n.dataset.parentId;
+
+            if (!p) return true;
+
+            const existePadre =
+                todos.some(
+                    x => x.dataset.id === p
+                );
+
+            return !existePadre;
+
+        });
     }
 
-    raices.forEach(r => recorrer(r));
+    raices.forEach(r => {
 
-    console.log("MAPA FINAL:", mapa);
+        recorrer(r);
+
+    });
+
+    console.log(
+        "🗺️ MAPA FINAL:",
+        mapa
+    );
 
     return mapa;
 }
 
-function alinearFilasGlobal() {
+/* ================= ALINEAR FILAS ================= */
 
-    document.querySelectorAll(".fila").forEach(fila => {
+function alinearFilasGlobal(
+    panel = null
+) {
 
-        const columnas = fila.querySelectorAll(".nodos-container");
+    panel = panel || getTabPanel();
 
-        // limpiar
-        columnas.forEach(col => {
-            col.querySelectorAll(".invisible").forEach(e => e.remove());
-        });
+    if (!panel) {
 
-        const mapa = construirFilas(fila);
-        if (mapa.size === 0) {
-            console.warn("mapa vacío, no alineo");
-            return;
-        }
+        console.error(
+            "❌ PANEL NO ENCONTRADO"
+        );
 
-        const maxFilas = Math.max(...mapa.values()) + 1;
+        return;
+    }
 
-        columnas.forEach(col => {
+    panel.querySelectorAll(".fila")
+        .forEach((fila, filaIdx) => {
 
-            const nuevaLista = new Array(maxFilas).fill(null);
+            const columnas =
+                fila.querySelectorAll(
+                    ".nodos-container"
+                );
 
-            Array.from(col.children).forEach(nodo => {
-                const index = mapa.get(nodo.dataset.id);
-                if (index !== undefined) {
-                    nuevaLista[index] = nodo;
-                }
+            // 🔥 limpiar invisibles viejos
+            columnas.forEach(col => {
+
+                col.querySelectorAll(
+                    ".invisible"
+                ).forEach(e => {
+
+                    e.remove();
+
+                });
+
             });
 
-            // llenar vacíos
-            for (let i = 0; i < maxFilas; i++) {
-                if (!nuevaLista[i]) {
-                    const spacer = document.createElement("div");
-                    spacer.className = "nodo-wrapper invisible";
-                    nuevaLista[i] = spacer;
-                }
+            const mapa =
+                construirFilas(fila);
+
+            /* ================= FALLBACK ================= */
+
+            if (mapa.size === 0) {
+
+                console.warn(
+                    "⚠️ mapa vacío"
+                );
+
+                const nodos = Array.from(
+                    fila.querySelectorAll(
+                        ".nodo-wrapper"
+                    )
+                ).filter(
+                    n =>
+                        !n.classList.contains(
+                            "invisible"
+                        )
+                );
+
+                nodos.forEach((n, i) => {
+
+                    mapa.set(
+                        n.dataset.id,
+                        i
+                    );
+
+                });
             }
 
-            col.innerHTML = "";
-            nuevaLista.forEach(n => col.appendChild(n));
-        });
+            const valores =
+                Array.from(
+                    mapa.values()
+                );
 
-    });
+            // 🔥 altura real
+            let maxFilas =
+                valores.length > 0
+                    ? Math.max(...valores) + 1
+                    : 1;
+
+            /* ================= COLUMNAS ================= */
+
+            columnas.forEach(col => {
+
+                const nuevaLista =
+                    new Array(maxFilas)
+                        .fill(null);
+
+                Array.from(col.children)
+                    .forEach(nodo => {
+
+                    const index =
+                        mapa.get(
+                            nodo.dataset.id
+                        );
+
+                    if (
+                        index !== undefined
+                    ) {
+
+                        nuevaLista[index] =
+                            nodo;
+
+                    }
+
+                });
+
+                // 🔥 llenar huecos
+                for (
+                    let i = 0;
+                    i < maxFilas;
+                    i++
+                ) {
+
+                    if (!nuevaLista[i]) {
+
+                        const spacer =
+                            document.createElement(
+                                "div"
+                            );
+
+                        spacer.className =
+                            "nodo-wrapper invisible";
+
+                        nuevaLista[i] =
+                            spacer;
+                    }
+
+                }
+
+                // 🔥 limpiar orden viejo
+                col.innerHTML = "";
+
+                nuevaLista.forEach(n => {
+
+                    if (n) {
+
+                        col.appendChild(n);
+
+                    }
+
+                });
+
+            });
+
+        });
 }
 
-function layoutDagre() {
+/* ================= DAGRE ================= */
 
-    const g = new dagre.graphlib.Graph();
+function layoutDagre(
+    panel = null
+) {
+
+    panel = panel || getTabPanel();
+
+    if (!panel) return;
+
+    const g =
+        new dagre.graphlib.Graph();
 
     g.setGraph({
-        rankdir: "LR", // izquierda → derecha
+
+        rankdir: "LR",
+
         nodesep: 50,
+
         ranksep: 120
+
     });
 
-    g.setDefaultEdgeLabel(() => ({}));
+    g.setDefaultEdgeLabel(
+        () => ({})
+    );
 
-    const nodos = Array.from(document.querySelectorAll(".nodo-wrapper"))
-        .filter(n => n.dataset.id);
+    const nodos = Array.from(
+        panel.querySelectorAll(
+            ".nodo-wrapper"
+        )
+    ).filter(n => n.dataset.id);
 
-    // 🔥 registrar nodos
+    /* ================= NODOS ================= */
+
     nodos.forEach(n => {
-        g.setNode(n.dataset.id, {
-            width: 220,
-            height: 70
-        });
+
+        g.setNode(
+            n.dataset.id,
+            {
+                width: 220,
+                height: 70
+            }
+        );
+
     });
 
-    // 🔥 registrar relaciones
+    /* ================= RELACIONES ================= */
+
     nodos.forEach(n => {
+
         if (n.dataset.parentId) {
-            g.setEdge(n.dataset.parentId, n.dataset.id);
+
+            g.setEdge(
+                n.dataset.parentId,
+                n.dataset.id
+            );
+
         }
+
     });
 
     dagre.layout(g);
 
-    // 🔥 aplicar posiciones
+    /* ================= POSICIONES ================= */
+
     nodos.forEach(n => {
 
-        const pos = g.node(n.dataset.id);
+        const pos =
+            g.node(n.dataset.id);
 
-        n.style.left = (pos.x - 110) + "px"; // centro
-        n.style.top = (pos.y - 35) + "px";
+        if (!pos) return;
+
+        n.style.left =
+            (pos.x - 110) + "px";
+
+        n.style.top =
+            (pos.y - 35) + "px";
 
     });
+}
 
+/* ================= LIMPIAR FILAS ================= */
+
+function limpiarFilasVacias(
+    panel = null
+) {
+
+    panel = panel || getTabPanel();
+
+    if (!panel) return;
+
+    panel.querySelectorAll(
+        ".filas .fila"
+    ).forEach(fila => {
+
+        const nodosReales =
+            fila.querySelectorAll(
+                ".nodo-wrapper:not(.invisible)"
+            );
+
+        if (
+            nodosReales.length === 0
+        ) {
+
+            fila.remove();
+
+        }
+
+    });
+}
+
+/* ================= OBSERVER ================= */
+
+observer = new MutationObserver(
+    () => {
+
+    clearTimeout(
+        window._llTimeout
+    );
+
+    window._llTimeout =
+        setTimeout(() => {
+
+        recalcularTodo(
+            getTabPanel()
+        );
+
+    }, 50);
+
+});
+
+/* ================= ACTIVAR OBSERVER ================= */
+
+function activarObserver(
+    panel = null
+) {
+
+    panel = panel || getTabPanel();
+
+    if (!panel) return;
+
+    const filasContainer =
+        panel.querySelector(".filas");
+
+    if (!filasContainer) return;
+
+    observer.disconnect();
+
+    observer.observe(
+        filasContainer,
+        {
+            childList: true,
+            subtree: true
+        }
+    );
 }
 
 /* ================= INIT ================= */
-document.addEventListener("DOMContentLoaded", () => {
 
-    // 🔥 calendario
-    actualizarFechasConData();
+window.inicializando = true;
 
-    // 🔥 inicial tablero
-    activarFiltros();
+document.addEventListener(
+    "DOMContentLoaded",
+    async () => {
 
-    // 🔥 layout columnas
-    actualizarColumnasGrid();
+        await actualizarFechasConData();
 
-    // 🔥 🔥 REDIBUJAR LÍNEAS (IMPORTANTE)
-    setTimeout(() => {
-        recalcularTodo();
-    }, 150);
+        await cargarTabsGuardadas();
+
+        // 🔥 TAB PRINCIPAL
+        const tabPrincipal =
+            document.querySelector(
+                '.tab[data-tab="principal"]'
+            );
+
+        // 🔥 ASIGNAR CLICK
+        if (tabPrincipal) {
+
+            tabPrincipal.onclick = () =>
+                cambiarTab(tabPrincipal);
+
+        }
+
+        activarFiltros(
+            getTabPanel()
+        );
+
+        actualizarColumnasGrid(
+            getTabPanel()
+        );
+
+        alinearFilasGlobal(
+            getTabPanel()
+        );
+
+        activarObserver(
+            getTabPanel()
+        );
+
+        // 🔥 ACTIVAR TAB PRINCIPAL
+        if (tabPrincipal) {
+
+            await cambiarTab(
+                tabPrincipal
+            );
+
+        }
+
+        // 🔥 FIN CARGA INICIAL
+        window.inicializando = false;
+
+        console.warn(
+            "🟢 APP INICIALIZADA"
+        );
+
+    }
+);
+
+async function cargarTabsGuardadas() {
+
+    try {
+
+        const res = await fetch("/api/tablero/tabs");
+
+        const tabs = await res.json();
+
+        console.log("📂 TABS BD:", tabs);
+
+        /* =========================================
+           🔥 LIMPIAR SOLO TABS DINÁMICAS
+        ========================================= */
+
+        // 🔥 BORRAR SOLO TABS DINÁMICAS
+        document.querySelectorAll(".tab")
+            .forEach(el => {
+
+                if (
+                    el.dataset.tab !== "principal"
+                ) {
+
+                    el.remove();
+
+                }
+
+            });
+
+        // 🔥 BORRAR SOLO PANELES DINÁMICOS
+        document.querySelectorAll(".tab-panel")
+            .forEach(el => {
+
+                if (
+                    el.dataset.tab !== "principal"
+                ) {
+
+                    el.remove();
+
+                }
+
+            });
+
+        /* =========================================
+           🔥 RECONSTRUIR TABS
+        ========================================= */
+
+        window.cargandoTabs = true;
+
+        tabs.forEach(tab => {
+
+            console.log("TAB:", tab);
+
+            // 🔥 VALIDAR TAB
+            if (
+                !tab ||
+                !tab.id ||
+                !tab.nombre
+            ) {
+                return;
+            }
+
+            if (tab.id === "principal") {
+                return;
+            }
+
+            crearTab(
+                tab.nombre,
+                tab.id,
+                false
+            );
+
+        });
+
+        window.cargandoTabs = false;
+
+    } catch (e) {
+
+        window.cargandoTabs = false;
+
+        console.error(
+            "❌ ERROR CARGANDO TABS",
+            e
+        );
+
+    }
+}
+
+document.addEventListener("click", e => {
+
+    const tab = e.target.closest(".tab");
+
+    if (!tab) return;
+
+    console.error("========== CLICK TAB ==========");
+
+    console.log("INNER:", tab.innerText);
+
+    console.log("DATASET:", tab.dataset.tab);
+
+    console.log("TAB ACTUAL ANTES:", tabActual);
 
 });
+
+/* ================= REPORTEXTEMA ================= */
+
+document.getElementById("reporte")
+.onclick = () => {
+
+    window.location.href =
+        "/reportextema";
+
+};
