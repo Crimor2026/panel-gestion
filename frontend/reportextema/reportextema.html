@@ -28,186 +28,199 @@ href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_blue.css">
 
 <script src="https://npmcdn.com/flatpickr/dist/l10n/es.js"></script>
 
+<!-- PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 </head>
 
 <body>
 
-<div class="contenedor">
+<!-- ================= PDF ================= -->
 
-    <!-- ================= HEADER ================= -->
+<div id="contenidoPDF">
 
-    <div class="header">
+    <div class="contenedor">
 
-        <!-- LOGO -->
-        <div class="logo-box">
+        <!-- ================= HEADER ================= -->
 
-            <img
-                src="/static/landing/Logotipo_ATU.svg"
-                alt="ATU">
+        <div class="header">
 
-            <div class="texto-entidad">
+            <!-- LOGO -->
+            <div class="logo-box">
 
-                <div class="titulo-entidad">
-                    AUTORIDAD DE TRANSPORTE URBANO
-                    PARA LIMA Y CALLAO
+                <img
+                    src="/static/landing/Logotipo_ATU.svg"
+                    alt="ATU">
+
+                <div class="texto-entidad">
+
+                    <div class="titulo-entidad">
+                        AUTORIDAD DE TRANSPORTE URBANO
+                        PARA LIMA Y CALLAO
+                    </div>
+
+                    <div class="subtitulo-entidad">
+                        DIRECCIÓN DE SUPERVISIÓN
+                        DE PROYECTOS
+                    </div>
+
                 </div>
 
-                <div class="subtitulo-entidad">
-                    DIRECCIÓN DE SUPERVISIÓN
-                    DE PROYECTOS
-                </div>
+            </div>
+
+            <!-- TITULO -->
+            <div class="titulo-reporte">
+
+                REPORTE TEMÁTICO
+
+            </div>
+
+            <!-- FECHA -->
+            <div class="fecha-box">
+
+                <input
+                    type="text"
+                    id="fecha">
 
             </div>
 
         </div>
 
-        <!-- TITULO -->
-        <div class="titulo-reporte">
+        <!-- ================= FILTRO ================= -->
 
-            INFORME TEMÁTICO
-
-        </div>
-
-        <!-- FECHA -->
-        <div class="fecha-box">
-
-            <input
-                type="text"
-                id="fecha">
-
-        </div>
-
-    </div>
-
-    <!-- ================= FILTRO ================= -->
-
-    <div class="bloque">
-
-        <div class="label">
-            Tema
-        </div>
-
-        <select id="tema">
-
-            <option value="">
-                Seleccionar tema
-            </option>
-
-        </select>
-
-    </div>
-
-    <!-- ================= DESCRIPCION ================= -->
-
-    <div class="bloque">
-
-        <div class="label">
-            Descripción
-        </div>
-
-        <textarea
-            id="descripcion"
-            rows="6"></textarea>
-
-    </div>
-
-    <!-- ================= DIRECCIONES ================= -->
-
-    <div class="fila-grid">
-
-        <!-- ENCARGADAS -->
         <div class="bloque">
 
             <div class="label">
-                Direcciones Encargadas
+                Tema
             </div>
 
-            <textarea
-                id="encargadas"
-                rows="8"></textarea>
+            <select id="tema">
+
+                <option value="">
+                    Seleccionar tema
+                </option>
+
+            </select>
 
         </div>
 
-        <!-- APOYO -->
+        <!-- ================= DESCRIPCION ================= -->
+
         <div class="bloque">
 
             <div class="label">
-                Direcciones de Apoyo
+                Descripción
             </div>
 
             <textarea
-                id="apoyo"
-                rows="8"></textarea>
+                id="descripcion"
+                rows="6"></textarea>
+
+        </div>
+
+        <!-- ================= DIRECCIONES ================= -->
+
+        <div class="fila-grid">
+
+            <!-- ENCARGADAS -->
+            <div class="bloque">
+
+                <div class="label">
+                    Direcciones Encargadas
+                </div>
+
+                <textarea
+                    id="encargadas"
+                    rows="8"></textarea>
+
+            </div>
+
+            <!-- APOYO -->
+            <div class="bloque">
+
+                <div class="label">
+                    Direcciones de Apoyo
+                </div>
+
+                <textarea
+                    id="apoyo"
+                    rows="8"></textarea>
+
+            </div>
+
+        </div>
+
+        <!-- ================= ESTADO ================= -->
+
+        <div class="bloque">
+
+            <div class="label">
+                Estado Situacional
+            </div>
+
+            <textarea
+                id="estado"
+                rows="6"></textarea>
+
+        </div>
+
+        <!-- ================= PROYECTOS ================= -->
+
+        <div class="bloque">
+
+            <div class="label">
+                Listado de Proyectos
+            </div>
+
+            <textarea
+                id="proyectos"
+                rows="6"></textarea>
+
+        </div>
+
+        <!-- ================= DECISIONES ================= -->
+
+        <div class="bloque">
+
+            <div class="label">
+                Toma de Decisiones
+            </div>
+
+            <textarea
+                id="decisiones"
+                rows="6"></textarea>
 
         </div>
 
     </div>
 
-    <!-- ================= ESTADO ================= -->
+</div>
 
-    <div class="bloque">
+<!-- ================= BOTONES ================= -->
 
-        <div class="label">
-            Estado Situacional
-        </div>
+<div class="acciones">
 
-        <textarea
-            id="estado"
-            rows="6"></textarea>
+    <input
+        type="file"
+        id="excelFile"
+        accept=".xlsx,.xls,.csv"
+        hidden>
 
-    </div>
+    <button id="cargarData">
+        Cargar Data
+    </button>
 
-    <!-- ================= PROYECTOS ================= -->
+    <button id="exportarPdf">
+        Exportar PDF
+    </button>
 
-    <div class="bloque">
+    <button id="guardar">
+        Guardar
+    </button>
 
-        <div class="label">
-            Listado de Proyectos
-        </div>
-
-        <textarea
-            id="proyectos"
-            rows="6"></textarea>
-
-    </div>
-
-    <!-- ================= DECISIONES ================= -->
-
-    <div class="bloque">
-
-        <div class="label">
-            Toma de Decisiones
-        </div>
-
-        <textarea
-            id="decisiones"
-            rows="6"></textarea>
-
-    </div>
-
-    <!-- ================= BOTONES ================= -->
-
-    <div class="acciones">
-
-        <input
-            type="file"
-            id="excelFile"
-            accept=".xlsx,.xls,.csv"
-            hidden>
-
-        <button id="cargarData">
-            Cargar Data
-        </button>
-        
-        <button id="guardar">
-            Guardar
-        </button>
-
-        <button id="volver">
-            Volver
-        </button>
-
-    </div>
+    <button id="volver">
+        Volver
+    </button>
 
 </div>
 

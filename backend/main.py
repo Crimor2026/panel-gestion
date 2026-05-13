@@ -780,6 +780,48 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class TabRequest(BaseModel):
+
+    id: str
+    nombre: str
+    proyecto_id: int
+
+@app.post("/api/tablero/tab")
+def guardar_tab(tab: TabRequest):
+
+    with engine.begin() as conn:
+
+        conn.execute(text("""
+
+            INSERT INTO tabs (
+                id,
+                nombre,
+                proyecto_id
+            )
+            VALUES (
+                :id,
+                :nombre,
+                :proyecto_id
+            )
+
+            ON CONFLICT (id)
+            DO UPDATE SET
+
+                nombre = EXCLUDED.nombre,
+                proyecto_id = EXCLUDED.proyecto_id
+
+        """), {
+
+            "id": tab.id,
+            "nombre": tab.nombre,
+            "proyecto_id": tab.proyecto_id
+
+        })
+
+    return {
+        "ok": True
+    }
+
 # =====================================================
 # LOGIN
 # =====================================================
@@ -3025,7 +3067,7 @@ def generar_pdf(proyecto_id: int, fecha: str):
 
     except Exception as e:
         return {"error": str(e)}
-    
+
 # ================= ROUTER =================
 app.include_router(router)
 
@@ -3046,41 +3088,6 @@ def fechas_tablero():
         """)).fetchall()
 
     return [f[0].strftime("%Y-%m-%d") for f in fechas if f[0]]
-
-@app.get("/api/tablero/tabs")
-def obtener_tabs():
-
-    try:
-
-        with engine.connect() as conn:
-
-            result = conn.execute(text("""
-
-                SELECT DISTINCT tab
-                FROM tablero
-                WHERE tab IS NOT NULL
-                ORDER BY tab
-
-            """))
-
-            tabs = [
-                row[0]
-                for row in result.fetchall()
-                if row[0]
-            ]
-
-            print("📂 TABS EN BD:", tabs)
-
-            return tabs
-
-    except Exception as e:
-
-        print("🔥 ERROR TABS:", e)
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
 
 @app.get("/api/tablero/{fecha}")
 def obtener_tablero(
@@ -3118,6 +3125,82 @@ def obtener_tablero(
         print("ERROR:", e)
         return {"data": None}
 
+@app.get("/api/tablero/tabs-proyecto/{proyecto_id}")
+def listar_tabs(proyecto_id: int):
+
+    with engine.connect() as conn:
+
+        rows = conn.execute(text("""
+
+            SELECT
+                id,
+                nombre,
+                proyecto_id
+            FROM tabs
+            WHERE proyecto_id = :proyecto_id
+            ORDER BY nombre
+
+        """), {
+            "proyecto_id": proyecto_id
+        }).fetchall()
+
+    return [
+        dict(r._mapping)
+        for r in rows
+    ]
+
+@app.get("/api/tablero/tabs/{fecha}")
+def obtener_tabs(fecha: str):
+
+    with engine.connect() as conn:
+
+        rows = conn.execute(text("""
+
+            SELECT DISTINCT tab
+            FROM tablero
+            WHERE fecha = CAST(:fecha AS DATE)
+            ORDER BY tab
+
+        """), {
+            "fecha": fecha
+        }).fetchall()
+
+        resultado = []
+
+        for r in rows:
+
+            nombre = r.tab
+
+            # 🔥 PRINCIPAL
+            if r.tab == "principal":
+
+                nombre = "Principal"
+
+            else:
+
+                tab_nombre = conn.execute(text("""
+
+                    SELECT nombre
+                    FROM tabs
+                    WHERE id = :id
+                    LIMIT 1
+
+                """), {
+                    "id": r.tab
+                }).fetchone()
+
+                if tab_nombre and tab_nombre[0]:
+
+                    nombre = tab_nombre[0]
+
+            resultado.append({
+
+                "id": r.tab,
+                "nombre": nombre
+
+            })
+
+    return resultado
 
 @app.post("/api/tablero/guardar")
 def guardar_tablero(payload: dict):
@@ -3292,88 +3375,6 @@ def ultima_fecha():
         return {"fecha": None}
 
     return {"fecha": result[0].strftime("%Y-%m-%d")}
-
-@app.post("/api/tablero/tab")
-def guardar_tab(payload: dict):
-
-    try:
-
-        tab_id = payload.get("id")
-        nombre = payload.get("nombre")
-        proyecto_id = payload.get("proyecto_id", 1)
-
-        if not tab_id or not nombre:
-
-            raise HTTPException(
-                status_code=400,
-                detail="Faltan datos tab"
-            )
-
-        with engine.begin() as conn:
-
-            conn.execute(text("""
-
-                INSERT INTO tabs (
-                    id,
-                    nombre,
-                    proyecto_id
-                )
-
-                VALUES (
-                    :id,
-                    :nombre,
-                    :proyecto_id
-                )
-
-                ON CONFLICT (id)
-
-                DO UPDATE SET
-                    nombre = EXCLUDED.nombre
-
-            """), {
-
-                "id": tab_id,
-                "nombre": nombre,
-                "proyecto_id": proyecto_id
-
-            })
-
-        return {
-            "ok": True
-        }
-
-    except Exception as e:
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
-
-
-@app.get("/api/tablero/tabs")
-def obtener_tabs():
-
-    with engine.connect() as conn:
-
-        rows = conn.execute(text("""
-
-            SELECT
-                id,
-                nombre
-
-            FROM tabs
-
-            ORDER BY nombre
-
-        """)).fetchall()
-
-    return [
-        {
-            "id": r.id,
-            "nombre": r.nombre
-        }
-        for r in rows
-    ]
 
 # =====================================================
 # TEMAS REPORTEXTEMA

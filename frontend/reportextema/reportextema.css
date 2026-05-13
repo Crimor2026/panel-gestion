@@ -119,11 +119,25 @@ body{
     display:flex;
 
     justify-content:flex-end;
+
+    align-items:center;
+
 }
 
 .fecha-box input{
 
-    width:180px;
+    width:220px;
+
+    min-width:220px;
+
+    max-width:220px;
+
+    font-size:18px;
+
+    text-align:center;
+
+    flex:none;
+
 }
 
 /* ================================================= */
@@ -182,8 +196,6 @@ input{
     background:white;
 
     box-sizing:border-box;
-
-    resize:vertical;
 
     transition:
         border-color 0.2s,
@@ -434,6 +446,12 @@ button:hover{
     transform:translateX(-50%);
 }
 
+#contenidoPDF {
+
+    width: 100%;
+
+}
+
 /* ================= CELULAR ================= */
 
 @media(max-width:600px){
@@ -567,3 +585,236 @@ button:hover{
 
 }
 
+@media print {
+
+    body{
+
+        padding:0;
+    }
+
+    .header{
+
+        display:grid;
+
+        grid-template-columns:
+            180px
+            1fr
+            120px;
+
+        gap:8px;
+
+        align-items:center;
+
+    }
+
+    /* 🔥 LOGO MÁS PEQUEÑO */
+    .logo-box{
+
+        gap:8px;
+    }
+
+    .logo-box img{
+
+        width:60px !important;
+
+        height:auto;
+
+    }
+
+    .titulo-entidad{
+
+        font-size:10px;
+    }
+
+    .subtitulo-entidad{
+
+        font-size:9px;
+    }
+
+    /* 🔥 TÍTULO CENTRADO */
+    .titulo-reporte{
+
+        font-size:18px;
+
+        text-align:center;
+
+        justify-self:center;
+
+        width:100%;
+
+    }
+
+    /* 🔥 FECHA MÁS PEQUEÑA */
+    .fecha-box{
+
+        display:flex;
+
+        justify-content:flex-end;
+
+        align-items:center;
+
+    }
+
+    .fecha-box input{
+
+        width:110px !important;
+
+        min-width:110px !important;
+
+        max-width:110px !important;
+
+        font-size:11px !important;
+
+        padding:6px !important;
+
+        text-align:center;
+
+    }
+
+}
+
+/* ================= PDF ================= */
+
+.bloque{
+
+    break-inside: avoid;
+
+    page-break-inside: avoid;
+
+}
+
+.fila-grid{
+
+    break-inside: avoid;
+
+    page-break-inside: avoid;
+
+}
+
+textarea{
+
+    overflow:hidden;
+
+    resize:none;
+
+    height:auto;
+
+    min-height:0;
+
+    white-space:pre-wrap !important;
+
+    word-wrap:break-word !important;
+
+    overflow-wrap:break-word !important;
+
+    word-break:break-word;
+
+}
+
+.pdf-textarea{
+
+    width:100%;
+
+    border:1px solid #c9d5e3;
+
+    border-radius:10px;
+
+    padding:12px 14px;
+
+    font-size:14px;
+
+    line-height:1.5;
+
+    white-space:pre-wrap;
+
+    overflow-wrap:break-word;
+
+    word-break:break-word;
+
+    box-sizing:border-box;
+
+    background:white;
+
+}
+
+/* ====================================== */
+/* MODO PDF */
+/* ====================================== */
+
+.modo-pdf .header{
+
+    display:grid;
+
+    grid-template-columns:
+        160px
+        1fr
+        90px;
+
+    gap:6px;
+
+    align-items:center;
+
+}
+
+.modo-pdf .logo-box{
+
+    gap:6px;
+}
+
+.modo-pdf .logo-box img{
+
+    width:50px !important;
+
+    height:auto;
+
+}
+
+.modo-pdf .titulo-entidad{
+
+    font-size:9px;
+}
+
+.modo-pdf .subtitulo-entidad{
+
+    font-size:8px;
+}
+
+.modo-pdf .titulo-reporte{
+
+    font-size:16px;
+
+    text-align:center;
+
+    justify-self:center;
+
+    width:100%;
+
+    line-height:1.1;
+
+}
+
+.modo-pdf .fecha-box{
+
+    display:flex;
+
+    justify-content:flex-end;
+
+    align-items:center;
+
+}
+
+.modo-pdf .fecha-box input{
+
+    width:90px !important;
+
+    min-width:90px !important;
+
+    max-width:90px !important;
+
+    font-size:10px !important;
+
+    padding:5px !important;
+
+    text-align:center;
+
+}

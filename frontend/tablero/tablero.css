@@ -348,6 +348,71 @@ body {
     border-radius: 6px;
 }
 
+/* ====================================== */
+/* BOTONES HEADER */
+/* ====================================== */
+
+.right button{
+
+    background:#153f7a;
+
+    color:white;
+
+    border:none;
+
+    border-radius:12px;
+
+    padding:10px 18px;
+
+    font-size:14px;
+
+    font-weight:600;
+
+    cursor:pointer;
+
+    transition:0.2s ease;
+
+    box-shadow:
+        0 4px 10px rgba(0,0,0,0.15);
+
+}
+
+/* hover */
+.right button:hover{
+
+    background:#1d4f99;
+
+    transform:translateY(-1px);
+
+}
+
+/* click */
+.right button:active{
+
+    transform:scale(0.98);
+
+}
+
+
+
+/* responsive */
+@media (max-width:768px){
+
+    .right{
+
+        flex-wrap:wrap;
+
+        justify-content:center;
+
+    }
+
+    .right button{
+
+        width:100%;
+
+    }
+}
+
 /* ================= RESPONSIVE ================= */
 
 @media (max-width: 1024px) {
@@ -590,6 +655,49 @@ body {
     padding: 6px 12px;
     cursor: pointer;
     border-radius: 6px;
+}
+
+/* ====================================== */
+/* INPUT FECHA */
+/* ====================================== */
+
+#fecha{
+
+    width:220px;
+
+    height:52px;
+
+    padding:0 18px;
+
+    border:1.5px solid #bfc9d9;
+
+    border-radius:14px;
+
+    background:white;
+
+    font-size:18px;
+
+    color:#243041;
+
+    text-align:center;
+
+    outline:none;
+
+    transition:0.2s ease;
+
+    box-shadow:
+        0 2px 6px rgba(0,0,0,0.04);
+
+}
+
+/* focus */
+#fecha:focus{
+
+    border-color:#153f7a;
+
+    box-shadow:
+        0 0 0 3px rgba(21,63,122,0.12);
+
 }
 
 /* ================= RESPONSIVE ================= */
@@ -1018,6 +1126,136 @@ body {
     color: #1565c0;
 
     font-size: 18px;
+}
+
+.header{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:14px;
+
+}
+
+/* ====================================== */
+/* HEADER */
+/* ====================================== */
+
+.header{
+
+    display:grid;
+
+    grid-template-columns:
+        240px
+        1fr
+        auto;
+
+    align-items:center;
+
+    gap:14px;
+
+    padding:12px;
+
+    grid-template-areas:
+        "fecha titulo botones";
+}
+
+/* fecha */
+#fecha{
+
+    grid-area:fecha;
+
+    justify-self:start;
+}
+
+/* titulo */
+#titulo{
+
+    grid-area:titulo;
+
+    text-align:center;
+
+    width:100%;
+}
+
+/* botones */
+.right{
+
+    grid-area:botones;
+
+    display:flex;
+
+    gap:10px;
+
+    justify-self:end;
+}
+
+.header{
+
+    display:flex;
+    align-items:center;
+    gap:20px;
+
+    padding:10px 20px;
+}
+
+/* ================= ATU ================= */
+
+.atu-box{
+
+    display:flex;
+    align-items:center;
+    gap: 8px;
+}
+
+.atu-logo{
+
+    width:55px;
+    height:auto;
+}
+
+.atu-texto{
+
+    display:flex;
+    flex-direction:column;
+
+    line-height:0.8;
+
+    gap:2px;
+
+    min-width:140px;
+}
+
+.atu-titulo{
+
+    font-size:7px;
+    font-weight:700;
+
+    color:#111;
+}
+
+.atu-sub{
+
+    font-size:6px;
+    color:#555;
+}
+
+/* ================= FECHA ================= */
+
+#fecha{
+
+    margin-left:20px;
+}
+
+/* ================= BOTONES ================= */
+
+.right{
+
+    margin-left:auto;
+
+    display:flex;
+    gap:10px;
 }
 
 /* ================= RESPONSIVE ================= */

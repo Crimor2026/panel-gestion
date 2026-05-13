@@ -137,23 +137,79 @@ async function cargarReporte(){
 
     const data = await res.json();
 
-    document.getElementById("descripcion")
-    .value = data.descripcion || "";
+    /* ================= TEXTAREAS ================= */
 
-    document.getElementById("encargadas")
-    .value = data.encargadas || "";
+    const descripcion =
+        document.getElementById(
+            "descripcion"
+        );
 
-    document.getElementById("apoyo")
-    .value = data.apoyo || "";
+    descripcion.value =
+        data.descripcion || "";
 
-    document.getElementById("estado")
-    .value = data.estado || "";
+    ajustarTextarea(
+        descripcion
+    );
 
-    document.getElementById("proyectos")
-    .value = data.proyectos || "";
+    const encargadas =
+        document.getElementById(
+            "encargadas"
+        );
 
-    document.getElementById("decisiones")
-    .value = data.decisiones || "";
+    encargadas.value =
+        data.encargadas || "";
+
+    ajustarTextarea(
+        encargadas
+    );
+
+    const apoyo =
+        document.getElementById(
+            "apoyo"
+        );
+
+    apoyo.value =
+        data.apoyo || "";
+
+    ajustarTextarea(
+        apoyo
+    );
+
+    const estado =
+        document.getElementById(
+            "estado"
+        );
+
+    estado.value =
+        data.estado || "";
+
+    ajustarTextarea(
+        estado
+    );
+
+    const proyectos =
+        document.getElementById(
+            "proyectos"
+        );
+
+    proyectos.value =
+        data.proyectos || "";
+
+    ajustarTextarea(
+        proyectos
+    );
+
+    const decisiones =
+        document.getElementById(
+            "decisiones"
+        );
+
+    decisiones.value =
+        data.decisiones || "";
+
+    ajustarTextarea(
+        decisiones
+    );
 }
 
 /* ================================================= */
@@ -179,40 +235,61 @@ document.getElementById("guardar")
 
     try{
 
-        let fecha =
-            document.getElementById("fecha").value;
-
         const tema =
-            document.getElementById("tema");
-
-        if(!fecha){
-
-            alert("Seleccione una fecha");
-
-            return;
-        }
+            document.getElementById(
+                "tema"
+            );
 
         if(!tema.value){
 
-            alert("Seleccione un tema");
+            alert(
+                "Seleccione un tema"
+            );
 
             return;
         }
 
-        /* yyyy-mm-dd → dd/mm/yyyy */
+        /* ====================================== */
+        /* FECHA A GUARDAR */
+        /* ====================================== */
 
-        const partes =
-            fecha.split("-");
+        let fecha =
+            document.getElementById(
+                "fecha"
+            ).value;
 
-        fecha =
-            `${partes[2]}/${partes[1]}/${partes[0]}`;
+        if(fecha){
+
+            const partes =
+                fecha.split("-");
+
+            fecha =
+                `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
+
+        let fechaGuardar = prompt(
+
+            "¿En qué fecha deseas guardar?\n\nFormato: DD/MM/YYYY",
+
+            fecha
+
+        );
+
+        if(!fechaGuardar){
+            return;
+        }
+
+        fechaGuardar =
+            fechaGuardar.trim();
 
         const temaTexto =
-            tema.options[tema.selectedIndex].text;
+            tema.options[
+                tema.selectedIndex
+            ].text;
 
         const confirmar = confirm(
 
-            `¿Guardar reporte?\n\nTema: ${temaTexto}\nFecha: ${fecha}`
+            `¿Guardar reporte?\n\nTema: ${temaTexto}\nFecha: ${fechaGuardar}`
 
         );
 
@@ -220,31 +297,47 @@ document.getElementById("guardar")
             return;
         }
 
+        /* ====================================== */
+        /* PAYLOAD */
+        /* ====================================== */
+
         const payload = {
 
             tema_id:
                 tema.value,
 
             fecha:
-                fecha,
+                fechaGuardar,
 
             descripcion:
-                document.getElementById("descripcion").value,
+                document.getElementById(
+                    "descripcion"
+                ).value,
 
             encargadas:
-                document.getElementById("encargadas").value,
+                document.getElementById(
+                    "encargadas"
+                ).value,
 
             apoyo:
-                document.getElementById("apoyo").value,
+                document.getElementById(
+                    "apoyo"
+                ).value,
 
             estado:
-                document.getElementById("estado").value,
+                document.getElementById(
+                    "estado"
+                ).value,
 
             proyectos:
-                document.getElementById("proyectos").value,
+                document.getElementById(
+                    "proyectos"
+                ).value,
 
             decisiones:
-                document.getElementById("decisiones").value
+                document.getElementById(
+                    "decisiones"
+                ).value
         };
 
         const res =
@@ -258,16 +351,20 @@ document.getElementById("guardar")
                         "application/json"
                     },
 
-                    body:JSON.stringify(payload)
+                    body:JSON.stringify(
+                        payload
+                    )
                 }
             );
 
         const data =
             await res.json();
 
-        alert("Reporte guardado");
-
         console.log(data);
+
+        /* ====================================== */
+        /* RECARGAR */
+        /* ====================================== */
 
         cargarReporte();
 
@@ -275,7 +372,9 @@ document.getElementById("guardar")
 
         console.error(err);
 
-        alert("Error al guardar");
+        alert(
+            "Error al guardar"
+        );
     }
 };
 
@@ -355,3 +454,155 @@ async function cargarFechasConData(){
     fechasConData =
         await res.json();
 }
+
+/* ====================================== */
+/* EXPORTAR PDF */
+/* ====================================== */
+
+document.getElementById("exportarPdf")
+.onclick = async () => {
+
+    const elemento =
+        document.getElementById(
+            "contenidoPDF"
+        );
+
+    // 🔥 ACTIVAR MODO PDF
+    elemento.classList.add(
+        "modo-pdf"
+    );
+
+    // 🔥 textarea -> div temporal
+    const textareas =
+        elemento.querySelectorAll(
+            "textarea"
+        );
+
+    const reemplazos = [];
+
+    textareas.forEach(textarea => {
+
+        const div =
+            document.createElement("div");
+
+        div.className =
+            "pdf-textarea";
+
+        div.innerText =
+            textarea.value;
+
+        div.style.minHeight =
+            textarea.scrollHeight + "px";
+
+        reemplazos.push({
+
+            original: textarea,
+
+            reemplazo: div
+
+        });
+
+        textarea.parentNode.replaceChild(
+            div,
+            textarea
+        );
+
+    });
+
+    const opciones = {
+
+        margin:[10,10,10,10],
+
+        filename:
+            "informe-tematico.pdf",
+
+        image:{
+            type:"jpeg",
+            quality:1
+        },
+
+        html2canvas:{
+
+            scale:2,
+
+            useCORS:true,
+
+            scrollY:0
+
+        },
+
+        jsPDF:{
+
+            unit:"mm",
+
+            format:"a4",
+
+            orientation:"portrait"
+
+        },
+
+        pagebreak:{
+
+            mode:[
+                "avoid-all",
+                "css",
+                "legacy"
+            ],
+
+            avoid:[
+                ".bloque",
+                ".fila-grid",
+                ".pdf-textarea"
+            ]
+
+        }
+
+    };
+
+    await html2pdf()
+        .set(opciones)
+        .from(elemento)
+        .save();
+
+    // 🔥 DESACTIVAR MODO PDF
+    elemento.classList.remove(
+        "modo-pdf"
+    );
+
+    // 🔥 restaurar textarea
+    reemplazos.forEach(item => {
+
+        item.reemplazo.parentNode
+            .replaceChild(
+                item.original,
+                item.reemplazo
+            );
+
+    });
+
+};
+
+/* ====================================== */
+/* AUTO HEIGHT TEXTAREA */
+/* ====================================== */
+
+function ajustarTextarea(textarea){
+
+    textarea.style.height = "0px";
+
+    textarea.style.height =
+        textarea.scrollHeight + "px";
+}
+
+document
+.querySelectorAll("textarea")
+.forEach(textarea => {
+
+    ajustarTextarea(textarea);
+
+    textarea.addEventListener(
+        "input",
+        () => ajustarTextarea(textarea)
+    );
+
+});

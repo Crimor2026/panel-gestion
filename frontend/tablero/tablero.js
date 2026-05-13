@@ -99,15 +99,6 @@ function getNodos() {
 
 /* ================= PESTAÑAS ================= */
 
-document.getElementById("addTab").onclick = () => {
-
-    const nombre = prompt("Nombre de la pestaña");
-
-    if (!nombre) return;
-
-    crearTab(nombre);
-};
-
 function crearTab(
     nombre,
     id = null,
@@ -116,6 +107,24 @@ function crearTab(
 
     // 🔥 ID REAL TAB
     const tabId = id || crypto.randomUUID();
+
+    /* =========================================
+       🔥 EVITAR DUPLICADOS
+    ========================================= */
+
+    const existe = document.querySelector(
+        `.tab[data-tab="${tabId}"]`
+    );
+
+    if (existe) {
+
+        console.warn(
+            "⚠️ TAB DUPLICADA:",
+            tabId
+        );
+
+        return existe;
+    }
 
     /* =========================================
        BOTÓN TAB
@@ -136,14 +145,22 @@ function crearTab(
     tabsContainer.appendChild(tab);
 
     /* =========================================
-    🔥 GUARDAR TAB EN BD
+       🔥 GUARDAR TAB EN BD
     ========================================= */
 
-    // 🔥 SOLO GUARDAR SI ES NUEVA
     if (
         !window.cargandoTabs &&
         !window.inicializando
     ) {
+
+        console.error("🔥 GUARDANDO TAB");
+
+        console.log({
+            nombre,
+            tabId,
+            cargandoTabs: window.cargandoTabs,
+            inicializando: window.inicializando
+        });
 
         fetch("/api/tablero/tab", {
 
@@ -254,12 +271,14 @@ function crearTab(
 
     tabsContent.appendChild(panel);
 
-    // 🔥 SOLO SI ES NECESARIO
+    /* =========================================
+       🔥 INICIALIZAR TAB
+    ========================================= */
+
     if (activar) {
 
         agregarFila(panel);
 
-        // 🔥 SOLO ACTIVAR SI NO ESTÁ INICIALIZANDO
         if (
             !window.inicializando &&
             !window.cargandoTabs
@@ -330,11 +349,15 @@ async function cambiarTab(tab) {
                 `.tab-panel[data-tab="${oldTab}"]`
             );
 
-            await guardarTablero(
-                fechaActual,
-                oldPanel,
-                oldTab
-            );
+            if (oldPanel) {
+
+                await guardarTablero(
+                    fechaActual,
+                    oldPanel,
+                    oldTab
+                );
+
+            }
 
         }
 
@@ -347,11 +370,27 @@ async function cambiarTab(tab) {
 
     }
 
-    // 🔥 DESACTIVAR TABS
-    document.querySelectorAll(".tab")
-        .forEach(t => t.classList.remove("activo"));
+    /* ========================================= */
+    /* 🔥 TAB ANTERIOR */
+    /* ========================================= */
 
-    // 🔥 OCULTAR TODOS LOS PANELES
+    const tabAnterior = tabActual;
+
+    /* ========================================= */
+    /* 🔥 DESACTIVAR TABS */
+    /* ========================================= */
+
+    document.querySelectorAll(".tab")
+        .forEach(t => {
+
+            t.classList.remove("activo");
+
+        });
+
+    /* ========================================= */
+    /* 🔥 OCULTAR PANELES */
+    /* ========================================= */
+
     document.querySelectorAll(".tab-panel")
         .forEach(p => {
 
@@ -361,19 +400,18 @@ async function cambiarTab(tab) {
 
         });
 
-    // 🔥 ACTIVAR TAB
+    /* ========================================= */
+    /* 🔥 ACTIVAR TAB */
+    /* ========================================= */
+
     tab.classList.add("activo");
 
     tabActual = tab.dataset.tab;
 
-    console.log("✅ TAB ACTUAL NUEVA:", tabActual);
+    /* ========================================= */
+    /* 🔥 VALIDAR PANEL */
+    /* ========================================= */
 
-    console.log(
-        "TAB ACTUAL:",
-        tabActual
-    );
-
-    // 🔥 PANEL ACTUAL
     const panel = document.querySelector(
         `.tab-panel[data-tab="${tabActual}"]`
     );
@@ -381,21 +419,68 @@ async function cambiarTab(tab) {
     if (!panel) {
 
         console.error(
-            "❌ PANEL NO EXISTE"
+            "❌ PANEL NO EXISTE:",
+            tabActual
         );
+
+        /* =====================================
+           🔥 RESTAURAR TAB ANTERIOR
+        ===================================== */
+
+        const tabRestaurar = document.querySelector(
+            `.tab[data-tab="${tabAnterior}"]`
+        );
+
+        if (tabRestaurar) {
+
+            tabRestaurar.classList.add(
+                "activo"
+            );
+
+            const panelAnterior =
+                document.querySelector(
+                    `.tab-panel[data-tab="${tabAnterior}"]`
+                );
+
+            if (panelAnterior) {
+
+                panelAnterior.style.display =
+                    "block";
+
+                panelAnterior.classList.add(
+                    "activo"
+                );
+
+            }
+
+            tabActual = tabAnterior;
+
+        } else {
+
+            tabActual = "principal";
+
+        }
 
         return;
     }
 
-    // 🔥 MOSTRAR PANEL
+    console.log(
+        "✅ TAB ACTUAL NUEVA:",
+        tabActual
+    );
+
+    /* ========================================= */
+    /* 🔥 MOSTRAR PANEL */
+    /* ========================================= */
+
     panel.style.display = "block";
 
     panel.classList.add("activo");
 
-    // 🔥 OBSERVER SOLO TAB ACTIVA
-    //activarObserver(panel);
+    /* ========================================= */
+    /* 🔥 LIMPIAR LINEAS */
+    /* ========================================= */
 
-    // 🔥 LIMPIAR LÍNEAS VISUALES
     document.querySelectorAll(".leader-line")
         .forEach(el => {
 
@@ -403,7 +488,7 @@ async function cambiarTab(tab) {
 
         });
 
-    lineasMap.forEach((l, key) => {
+    lineasMap.forEach((l) => {
 
         try {
 
@@ -413,16 +498,15 @@ async function cambiarTab(tab) {
 
     });
 
-    // 🔥 NO BORRAR MAPA GLOBAL
-
     /* ========================================= */
-    /* 🔥 CARGAR DATA REAL DE LA TAB */
+    /* 🔥 CARGAR DATA TAB */
     /* ========================================= */
 
     const fechaInput =
         document.getElementById("fecha");
 
-    let fecha = fechaInput.value;
+    let fecha =
+        fechaInput.value;
 
     if (fecha) {
 
@@ -445,12 +529,15 @@ async function cambiarTab(tab) {
 
     }
 
-    // 🔥 RECALCULAR SOLO TAB ACTIVA
-    requestAnimationFrame(() => {
+    /* ========================================= */
+    /* 🔥 RECALCULAR */
+    /* ========================================= */
 
-        //recalcularTodo(panel);
+    setTimeout(() => {
 
-    });
+        recalcularTodo(panel);
+
+    }, 50);
 
     console.warn("🟢 TAB LISTA");
 }
@@ -655,11 +742,11 @@ function restaurarTablero(data, panel = null) {
 
         alinearFilasGlobal(panel);
 
-        requestAnimationFrame(() => {
+        setTimeout(() => {
 
             recalcularTodo(panel);
 
-        });
+        }, 0);
 
     });
 }
@@ -864,11 +951,11 @@ function crearNodo(colIndex, filaDOM, panel = null) {
 
             alinearFilasGlobal(panel);
 
-            requestAnimationFrame(() => {
+            setTimeout(() => {
 
                 recalcularTodo(panel);
 
-            });
+            }, 0);
 
         });
     };
@@ -883,11 +970,11 @@ function crearNodo(colIndex, filaDOM, panel = null) {
 
             alinearFilasGlobal(panel);
 
-            requestAnimationFrame(() => {
+            setTimeout(() => {
 
                 recalcularTodo(panel);
 
-            });
+            }, 0);
 
         });
     };
@@ -985,11 +1072,11 @@ function agregarColumna(panel = null) {
 
     activarFiltros(panel);
 
-    requestAnimationFrame(() => {
+    setTimeout(() => {
 
         recalcularTodo(panel);
 
-    });
+    }, 0);
 }
 
 /* ================= ORDEN COLOR ================= */
@@ -1341,11 +1428,11 @@ document.addEventListener("click", e => {
 
         activarFiltros(panel);
 
-        requestAnimationFrame(() => {
+        setTimeout(() => {
 
             recalcularTodo(panel);
 
-        });
+        }, 0);
     }
 
     // ➖ eliminar fila
@@ -1401,8 +1488,6 @@ document.addEventListener(
 
                 try {
 
-                    await actualizarFechasConData();
-
                     const res =
                         await fetch(
                             "/api/tablero/fechas"
@@ -1416,39 +1501,79 @@ document.addEventListener(
                         fechas
                     );
 
-                    if (
-                        fechas &&
-                        fechas.length > 0
+                    // 🔥 NO CARGAR ÚLTIMA FECHA
+                    // 🔥 INICIAR VACÍO
+
+                    instance.clear();
+
+                    // 🔥 LIMPIAR FILAS
+                    const panel =
+                        getTabPanel();
+
+                    const filasContainer =
+                        panel.querySelector(".filas");
+
+                    filasContainer.innerHTML = "";
+
+                    // 🔥 LIMPIAR LINEAS
+                    lineasMap.forEach((l) => {
+
+                        try {
+
+                            l.remove();
+
+                        } catch {}
+
+                    });
+
+                    lineasMap.clear();
+
+                    document.querySelectorAll(".leader-line")
+                        .forEach(el => {
+
+                            el.remove();
+
+                        });
+
+                    // 🔥 DEJAR SOLO 1 COLUMNA
+                    const encabezado =
+                        panel.querySelector(
+                            ".fila.encabezado"
+                        );
+
+                    while (
+                        encabezado.querySelectorAll(
+                            ".columna"
+                        ).length > 1
                     ) {
 
-                        const ultima =
-                            fechas.sort(
-                                (a, b) =>
-                                    new Date(b)
-                                    - new Date(a)
-                            )[0];
-
-                        console.log(
-                            "USANDO:",
-                            ultima
-                        );
-
-                        if (ultima) {
-
-                            instance.setDate(
-                                ultima,
-                                false
-                            );
-
-                        }
-
-                    } else {
-
-                        agregarFila(
-                            getTabPanel()
-                        );
+                        encabezado.querySelectorAll(
+                            ".columna"
+                        )[
+                            encabezado.querySelectorAll(
+                                ".columna"
+                            ).length - 1
+                        ].remove();
 
                     }
+
+                    actualizarColumnasGrid(panel);
+
+                    // 🔥 CREAR FILA VACÍA
+                    agregarFila(panel);
+
+                    // 🔥 MARCADORES ROJOS
+                    setTimeout(() => {
+
+                        instance.redraw();
+
+                        requestAnimationFrame(() => {
+
+                            actualizarFechasConData();
+
+                        });
+
+                    }, 300);
 
                 } catch (err) {
 
@@ -1467,9 +1592,67 @@ document.addEventListener(
 
             /* ================= OPEN ================= */
 
-            onOpen() {
+            onOpen(
+                selectedDates,
+                dateStr,
+                instance
+            ) {
 
-                actualizarFechasConData();
+                setTimeout(() => {
+
+                    instance.redraw();
+
+                    requestAnimationFrame(() => {
+
+                        actualizarFechasConData();
+
+                    });
+
+                }, 50);
+
+            },
+
+            /* ================= MONTH CHANGE ================= */
+
+            onMonthChange(
+                selectedDates,
+                dateStr,
+                instance
+            ) {
+
+                setTimeout(() => {
+
+                    instance.redraw();
+
+                    requestAnimationFrame(() => {
+
+                        actualizarFechasConData();
+
+                    });
+
+                }, 50);
+
+            },
+
+            /* ================= YEAR CHANGE ================= */
+
+            onYearChange(
+                selectedDates,
+                dateStr,
+                instance
+            ) {
+
+                setTimeout(() => {
+
+                    instance.redraw();
+
+                    requestAnimationFrame(() => {
+
+                        actualizarFechasConData();
+
+                    });
+
+                }, 50);
 
             },
 
@@ -1500,11 +1683,22 @@ document.addEventListener(
                     fechaKey
                 );
 
+                await cargarTabsGuardadas(
+                    fechaKey
+                );
+
                 await cargarTablero(
                     fechaKey,
                     tabActual,
                     getTabPanel()
                 );
+
+                // 🔥 REFRESCAR MARCADORES ROJOS
+                setTimeout(() => {
+
+                    actualizarFechasConData();
+
+                }, 100);
 
             }
 
@@ -1873,61 +2067,96 @@ function actualizarFechasConData() {
 /* ================= BOTÓN GUARDAR ================= */
 
 document.getElementById("guardar")
-    .onclick = async () => {
+.onclick = async () => {
 
-        try {
+    try {
 
-            const fecha =
-                await pedirFecha();
+        const fecha =
+            await pedirFecha();
 
-            if (!fecha) return;
+        if (!fecha) return;
 
-            modoCarga = true;
+        modoCarga = true;
+
+        /* =====================================
+           🔥 GUARDAR TODAS LAS TABS
+        ===================================== */
+
+        const tabs =
+            document.querySelectorAll(".tab");
+
+        for (const tab of tabs) {
+
+            const tabId =
+                tab.dataset.tab;
+
+            const panel =
+                document.querySelector(
+                    `.tab-panel[data-tab="${tabId}"]`
+                );
+
+            if (!panel) {
+
+                console.warn(
+                    "⚠️ PANEL NO EXISTE",
+                    tabId
+                );
+
+                continue;
+            }
+
+            console.log(
+                "💾 GUARDANDO TAB:",
+                tabId
+            );
 
             await guardarTablero(
                 fecha,
-                getTabPanel()
+                panel,
+                tabId
             );
 
-            modoCarga = false;
-
-            console.log(
-                "✔ Guardado correcto"
-            );
-
-            const fp =
-                document.getElementById(
-                    "fecha"
-                )._flatpickr;
-
-            if (fp) {
-
-                fp.setDate(
-                    fecha,
-                    false
-                );
-
-            }
-
-            await cargarTablero(
-                fecha,
-                tabActual,
-                getTabPanel()
-            );
-
-            actualizarFechasConData();
-
-        } catch (e) {
-
-            console.error(
-                "❌ Error guardar:",
-                e
-            );
-
-            modoCarga = false;
         }
 
-    };
+        modoCarga = false;
+
+        console.log(
+            "✔ TODAS LAS TABS GUARDADAS"
+        );
+
+        const fp =
+            document.getElementById(
+                "fecha"
+            )._flatpickr;
+
+        if (fp) {
+
+            fp.setDate(
+                fecha,
+                false
+            );
+
+        }
+
+        await cargarTablero(
+            fecha,
+            tabActual,
+            getTabPanel()
+        );
+
+        actualizarFechasConData();
+
+    } catch (e) {
+
+        console.error(
+            "❌ Error guardar:",
+            e
+        );
+
+        modoCarga = false;
+    }
+
+};
 
 let cargandoTablero = false;
 
@@ -2001,29 +2230,72 @@ async function cargarTablero(
 
             console.warn("⚠️ DATA VACÍA");
 
-            // 🔥 limpiar filas
+            // 🔥 LIMPIAR FILAS
             filasContainer.innerHTML = "";
 
-            // 🔥 limpiar líneas
+            // 🔥 LIMPIAR LINEAS
             lineasMap.forEach((l) => {
 
-                try { l.remove(); } catch {}
+                try {
+
+                    l.remove();
+
+                } catch {}
 
             });
 
             lineasMap.clear();
 
             document.querySelectorAll(".leader-line")
-                .forEach(el => el.remove());
+                .forEach(el => {
 
-            // 🔥 crear estructura mínima
-            agregarFila(panel);
+                    el.remove();
 
+                });
+
+            // 🔥 RESETEAR COLORES
+            colorIndex = 0;
+
+            // 🔥 RESET COLUMNAS
+            columnasActuales = 1;
+
+            const encabezado =
+                panel.querySelector(
+                    ".fila.encabezado"
+                );
+
+            // 🔥 ELIMINAR COLUMNAS SOBRANTES
+            while (
+                encabezado.querySelectorAll(
+                    ".columna"
+                ).length > 1
+            ) {
+
+                encabezado.querySelectorAll(
+                    ".columna"
+                )[
+                    encabezado.querySelectorAll(
+                        ".columna"
+                    ).length - 1
+                ].remove();
+
+            }
+
+            // 🔥 GRID RESET
             actualizarColumnasGrid(panel);
+
+            // 🔥 CREAR FILA VACÍA
+            agregarFila(panel);
 
             requestAnimationFrame(() => {
 
-                recalcularTodo(panel);
+                alinearFilasGlobal(panel);
+
+                setTimeout(() => {
+
+                    recalcularTodo(panel);
+
+                }, 0);
 
             });
 
@@ -2316,11 +2588,19 @@ function pedirFecha() {
         const input =
             modal.querySelector(".modal-input");
 
-        // 🔥 fecha actual
-        input.value =
-            new Date()
-                .toISOString()
-                .split("T")[0];
+        const hoy = new Date();
+
+        const yyyy = hoy.getFullYear();
+
+        const mm = String(
+            hoy.getMonth() + 1
+        ).padStart(2, "0");
+
+        const dd = String(
+            hoy.getDate()
+        ).padStart(2, "0");
+
+        input.value = `${yyyy}-${mm}-${dd}`;
 
         // 🔥 cancelar
         modal.querySelector(".btn-cancel")
@@ -2585,6 +2865,19 @@ function recalcularTodo(
                 return;
             }
 
+            // 🔥 validar DOM REAL
+            if (
+                !document.body.contains(inputPadre) ||
+                !document.body.contains(inputHijo)
+            ) {
+
+                console.warn(
+                    "⚠️ ELEMENTOS FUERA DEL DOM"
+                );
+
+                return;
+            }
+
             // 🔥 forzar layout
             padre.offsetHeight;
 
@@ -2708,30 +3001,6 @@ function recalcularTodo(
             lineasMap.forEach(
                 (l, key) => {
 
-                // 🔥 validar
-                if (
-                    !l.start ||
-                    !l.end ||
-                    !l.start.isConnected ||
-                    !l.end.isConnected
-                ) {
-
-                    console.error(
-                        "💀 LINEA INVÁLIDA",
-                        key
-                    );
-
-                    try {
-
-                        l.remove();
-
-                    } catch {}
-
-                    lineasMap.delete(key);
-
-                    return;
-                }
-
                 try {
 
                     l.position();
@@ -2764,13 +3033,13 @@ function recalcularTodo(
 
 /* ================= CARGAR ÚLTIMA FECHA ================= */
 
-function cargarUltimaFecha() {
+async function cargarUltimaFecha() {
 
     fetch("/api/tablero/fechas")
 
         .then(res => res.json())
 
-        .then(fechas => {
+        .then(async fechas => {
 
             if (
                 !fechas ||
@@ -2789,15 +3058,24 @@ function cargarUltimaFecha() {
             // 🔥 usar calendario
             if (fp) {
 
+                // 🔥 NO disparar onChange
                 fp.setDate(
                     ultima,
-                    true
+                    false
+                );
+
+                // 🔥 cargar manualmente
+                await cargarTablero(
+                    ultima,
+                    tabActual,
+                    getTabPanel()
                 );
 
             } else {
 
-                cargarTablero(
+                await cargarTablero(
                     ultima,
+                    tabActual,
                     getTabPanel()
                 );
 
@@ -3288,66 +3566,130 @@ document.addEventListener(
     "DOMContentLoaded",
     async () => {
 
-        await actualizarFechasConData();
+        try {
 
-        await cargarTabsGuardadas();
+            await actualizarFechasConData();
 
-        // 🔥 TAB PRINCIPAL
-        const tabPrincipal =
-            document.querySelector(
-                '.tab[data-tab="principal"]'
+            /* =========================
+            🔥 OBTENER FECHA ACTUAL
+            ========================= */
+
+            const fechaInput =
+                document.getElementById("fecha");
+
+            let fechaActual = null;
+
+            if (
+                fechaInput &&
+                fechaInput.value
+            ) {
+
+                fechaActual =
+                    fechaInput.value
+                        .split("/")
+                        .reverse()
+                        .join("-");
+
+            }
+
+            /* =========================
+               🔥 CARGAR TABS
+            ========================= */
+
+            if (fechaActual) {
+
+                await cargarTabsGuardadas(
+                    fechaActual
+                );
+
+            }
+
+            // 🔥 TAB PRINCIPAL
+            const tabPrincipal =
+                document.querySelector(
+                    '.tab[data-tab="principal"]'
+                );
+
+            // 🔥 ASIGNAR CLICK
+            if (tabPrincipal) {
+
+                tabPrincipal.onclick =
+                    () => cambiarTab(
+                        tabPrincipal
+                    );
+
+            }
+
+            activarFiltros(
+                getTabPanel()
             );
 
-        // 🔥 ASIGNAR CLICK
-        if (tabPrincipal) {
+            actualizarColumnasGrid(
+                getTabPanel()
+            );
 
-            tabPrincipal.onclick = () =>
-                cambiarTab(tabPrincipal);
+            alinearFilasGlobal(
+                getTabPanel()
+            );
 
-        }
+            activarObserver(
+                getTabPanel()
+            );
 
-        activarFiltros(
-            getTabPanel()
-        );
+            // 🔥 ACTIVAR TAB PRINCIPAL
+            if (tabPrincipal) {
 
-        actualizarColumnasGrid(
-            getTabPanel()
-        );
+                await cambiarTab(
+                    tabPrincipal
+                );
 
-        alinearFilasGlobal(
-            getTabPanel()
-        );
+            }
 
-        activarObserver(
-            getTabPanel()
-        );
+        } catch (e) {
 
-        // 🔥 ACTIVAR TAB PRINCIPAL
-        if (tabPrincipal) {
+            console.error(
+                "❌ ERROR INIT:",
+                e
+            );
 
-            await cambiarTab(
-                tabPrincipal
+        } finally {
+
+            // 🔥 FIN CARGA INICIAL
+            window.inicializando = false;
+
+            console.warn(
+                "🟢 APP INICIALIZADA"
             );
 
         }
-
-        // 🔥 FIN CARGA INICIAL
-        window.inicializando = false;
-
-        console.warn(
-            "🟢 APP INICIALIZADA"
-        );
 
     }
 );
 
-async function cargarTabsGuardadas() {
+async function cargarTabsGuardadas(fecha) {
 
     try {
 
-        const res = await fetch("/api/tablero/tabs");
+        const res = await fetch(`/api/tablero/tabs/${fecha}`);
 
         const tabs = await res.json();
+
+        tabs.sort((a, b) => {
+
+            if (a.nombre === "principal") {
+                return -1;
+            }
+
+            if (b.nombre === "principal") {
+                return 1;
+            }
+
+            return (
+                Number(a.nombre)
+                - Number(b.nombre)
+            );
+
+        });
 
         console.log("📂 TABS BD:", tabs);
 
@@ -3355,7 +3697,6 @@ async function cargarTabsGuardadas() {
            🔥 LIMPIAR SOLO TABS DINÁMICAS
         ========================================= */
 
-        // 🔥 BORRAR SOLO TABS DINÁMICAS
         document.querySelectorAll(".tab")
             .forEach(el => {
 
@@ -3369,7 +3710,6 @@ async function cargarTabsGuardadas() {
 
             });
 
-        // 🔥 BORRAR SOLO PANELES DINÁMICOS
         document.querySelectorAll(".tab-panel")
             .forEach(el => {
 
@@ -3402,6 +3742,7 @@ async function cargarTabsGuardadas() {
                 return;
             }
 
+            // 🔥 PRINCIPAL YA EXISTE EN HTML
             if (tab.id === "principal") {
                 return;
             }
@@ -3415,6 +3756,34 @@ async function cargarTabsGuardadas() {
         });
 
         window.cargandoTabs = false;
+
+        /* =========================================
+           🔥 ACTIVAR PRINCIPAL
+        ========================================= */
+
+        const principal = document.querySelector(
+            '.tab[data-tab="principal"]'
+        );
+
+        if (principal) {
+
+            tabActual = "principal";
+
+            principal.classList.add("activo");
+
+            const panelPrincipal = document.querySelector(
+                '.tab-panel[data-tab="principal"]'
+            );
+
+            if (panelPrincipal) {
+
+                panelPrincipal.style.display = "block";
+
+                panelPrincipal.classList.add("activo");
+
+            }
+
+        }
 
     } catch (e) {
 
@@ -3451,5 +3820,48 @@ document.getElementById("reporte")
 
     window.location.href =
         "/reportextema";
+
+};
+
+/* ================= BOTON ADD TAB ================= */
+
+const btnAddTab =
+    document.getElementById("addTab");
+
+if (btnAddTab) {
+
+    btnAddTab.addEventListener(
+        "click",
+        () => {
+
+            console.warn(
+                "➕ CLICK ADD TAB"
+            );
+
+            const nombre = prompt(
+                "Nombre de la pestaña"
+            );
+
+            if (!nombre) return;
+
+            crearTab(nombre);
+
+        }
+    );
+
+} else {
+
+    console.error(
+        "❌ BOTON addTab NO EXISTE"
+    );
+
+}
+
+/* ================= VOLVER ================= */
+
+document.getElementById("volver")
+.onclick = () => {
+
+    window.location.href = "/";
 
 };
