@@ -383,7 +383,7 @@ document.getElementById("guardar")
 document.getElementById("volver")
 .onclick = () => {
 
-    window.location.href = "/tablero";
+    window.location.href = "/reportes";
 
 };
 

@@ -83,10 +83,11 @@
             </div>
         </div>
 
-        <div class="card" onclick="irReporte('F')">
+        <!-- NUEVO BOTÓN -->
+        <div class="card" onclick="irReporte('TEMA')">
             <div>
-                <span>Formatos</span>
-                <span>BASE DE DATOS</span>
+                <span>Formato Tema</span>
+                <span>REPORTE TEMATICO</span>
             </div>
         </div>
 
@@ -113,6 +114,12 @@ function irReporte(tipo){
     if (!rol) {
         alert("Debes iniciar sesión");
         window.location.href = "/";
+        return;
+    }
+
+    // NUEVO
+    if(tipo === "TEMA"){
+        window.location.href = "/reportextema";
         return;
     }
 
@@ -183,6 +190,27 @@ draw();
 
 <!-- lógica extra -->
 <script src="/static/reportes/reportes.js"></script>
+
+<!-- ================= VOLVER ================= -->
+
+<div class="footer-volver">
+
+    <button id="volverInicio">
+        Volver
+    </button>
+
+</div>
+
+<script>
+
+document.getElementById("volverInicio")
+.onclick = () => {
+
+    window.location.href = "/";
+
+};
+
+</script>
 
 </body>
 </html>

@@ -133,6 +133,58 @@ font-size:14px;
 display:none;
 }
 
+.footer-volver {
+
+    width: 100%;
+
+    display: flex;
+
+    justify-content: center;
+
+    margin-top: 40px;
+
+    margin-bottom: 40px;
+
+    position: relative;
+
+    z-index: 5;
+
+}
+
+#volverInicio {
+
+    background: rgba(255,255,255,0.15);
+
+    color: white;
+
+    border: 1px solid rgba(255,255,255,0.2);
+
+    padding: 14px 40px;
+
+    border-radius: 14px;
+
+    font-size: 16px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    backdrop-filter: blur(8px);
+
+    transition: 0.25s;
+
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+
+}
+
+#volverInicio:hover {
+
+    transform: translateY(-2px);
+
+    background: rgba(255,255,255,0.22);
+
+}
+
 /* ================= RESPONSIVE ================= */
 @media(max-width:900px){
 

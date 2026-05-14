@@ -21,7 +21,7 @@ let dataGlobalIA = null;
     const btnSubirProyectos = document.getElementById("btnSubirProyectos");
     const btnSubirARC = document.getElementById("btnSubirARC");
     const btnLogout = document.getElementById("btnLogout");
-    const btnExportarPDF = document.getElementById("btnExportarPDF");
+    const btnVolver = document.getElementById("btnVolver");
 
     const excelProyectos = document.getElementById("excelProyectos");
     const excelARC = document.getElementById("excelARC");
@@ -36,7 +36,6 @@ let dataGlobalIA = null;
     if (rol === "admin") {
         btnSubirProyectos?.classList.remove("hidden");
         btnSubirARC?.classList.remove("hidden");
-        btnExportarPDF?.classList.remove("hidden");
     }
 
     // =====================================================
@@ -163,6 +162,12 @@ let dataGlobalIA = null;
     btnLogout?.addEventListener("click", () => {
         sessionStorage.clear();
         window.location.href = "/";
+    });
+
+    btnVolver?.addEventListener("click", () => {
+
+        window.location.href = "/";
+
     });
 
     // =====================================================
@@ -1858,52 +1863,6 @@ function generarRespuestaIA(pregunta){
 
     return "Prueba:";
 }
-
-    // =====================================================
-    // 📄 EXPORTAR PDF PRO (SIN IMPORT)
-    // =====================================================
-
-    btnExportarPDF?.addEventListener("click", () => {
-
-        const { jsPDF } = window.jspdf;
-
-        const doc = new jsPDF();
-
-        const fecha = document.getElementById("fechaCorte")?.value || "Sin fecha";
-
-        const kpis = dataGlobalIA?.kpis || {};
-        const proyectos = dataGlobalIA?.proyectos || [];
-
-        // 🧾 TÍTULO
-        doc.setFontSize(16);
-        doc.text("REPORTE DE PROYECTOS - ATU", 14, 20);
-
-        doc.setFontSize(10);
-        doc.text(`Fecha: ${fecha}`, 14, 28);
-
-        // 📊 KPIs
-        doc.text(`Total: ${kpis.total || 0}`, 14, 40);
-        doc.text(`En ejecución: ${kpis.en_ejecucion || 0}`, 14, 46);
-        doc.text(`Sin iniciar: ${kpis.sin_iniciar || 0}`, 14, 52);
-        doc.text(`Paralizados: ${kpis.paralizado || 0}`, 14, 58);
-        doc.text(`Concluidos: ${kpis.concluido || 0}`, 14, 64);
-
-        // 📋 TABLA PRO
-        doc.autoTable({
-            startY: 75,
-            head: [["Proyecto", "Estado"]],
-            body: proyectos.map(p => [
-                p.nombre || "-",
-                p.estado || "-"
-            ]),
-            styles: { fontSize: 9 },
-            headStyles: { fillColor: [41, 128, 185] }
-        });
-
-        doc.save("reporte_ATU.pdf");
-
-    });
-
 
     // =====================================================
     // 🧠 GENERAR CONTENIDO PDF (FILTRADO REAL)

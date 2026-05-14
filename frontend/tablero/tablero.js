@@ -3813,16 +3813,6 @@ document.addEventListener("click", e => {
 
 });
 
-/* ================= REPORTEXTEMA ================= */
-
-document.getElementById("reporte")
-.onclick = () => {
-
-    window.location.href =
-        "/reportextema";
-
-};
-
 /* ================= BOTON ADD TAB ================= */
 
 const btnAddTab =
@@ -3857,7 +3847,7 @@ if (btnAddTab) {
 
 }
 
-/* ================= VOLVER ================= */
+/* ================= BOTON VOLVER ================= */
 
 document.getElementById("volver")
 .onclick = () => {

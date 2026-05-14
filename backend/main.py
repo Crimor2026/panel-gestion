@@ -148,6 +148,7 @@ def ver_reporte(tipo: str):
         "D": "reporteD.html",
         "E": "reporteE.html",
         "F": "reporteF.html",
+        "TEMA": "reportextema.html",
         "LLENADO": "llenado.html"
     }
 
