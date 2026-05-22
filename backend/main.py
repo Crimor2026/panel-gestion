@@ -3745,6 +3745,13 @@ def obtener_detalle(
 
     fecha = fecha.strip()
 
+    # convertir 15/05/2026 -> 2026-05-15
+    partes = fecha.split("/")
+
+    fecha = (
+        f"{partes[2]}-{partes[1]}-{partes[0]}"
+    )
+
     with engine.connect() as conn:
 
         row = conn.execute(text("""
@@ -3753,7 +3760,7 @@ def obtener_detalle(
 
             FROM reportes_tema
 
-            WHERE TRIM(fecha) = :fecha
+            WHERE fecha::text = :fecha
             AND tema_id = :tema_id
 
             ORDER BY id DESC

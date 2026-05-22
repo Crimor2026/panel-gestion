@@ -45,7 +45,7 @@ document.addEventListener(
                 ).padStart(2,"0");
 
             const fecha =
-                `${day}/${month}/${year}`;
+                `${year}-${month}-${day}`;
 
             if(
                 fechasConData.includes(fecha)
