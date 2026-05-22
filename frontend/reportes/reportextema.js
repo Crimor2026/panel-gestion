@@ -187,17 +187,10 @@ async function cargarReporte(){
         estado
     );
 
-    const proyectos =
-        document.getElementById(
-            "proyectos"
-        );
-
-    proyectos.value =
+    document.getElementById(
+        "proyectos"
+    ).innerText =
         data.proyectos || "";
-
-    ajustarTextarea(
-        proyectos
-    );
 
     const decisiones =
         document.getElementById(

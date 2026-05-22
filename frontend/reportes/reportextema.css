@@ -818,3 +818,16 @@ textarea{
     text-align:center;
 
 }
+
+#proyectos {
+
+    column-count: 2;
+
+    column-gap: 40px;
+
+    white-space: pre-line;
+
+    padding: 10px;
+
+    min-height: 300px;
+}
