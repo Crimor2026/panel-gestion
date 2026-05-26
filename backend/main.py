@@ -329,17 +329,17 @@ def dashboard_global(fecha: Optional[str] = None):
 
             # ================= ESTADOS =================
             estados = conn.execute(text("""
-                SELECT fl.estado, COUNT(*) as cantidad
-                FROM proyectos p
-                LEFT JOIN LATERAL (
-                    SELECT *
-                    FROM ficha_llenado fl2
-                    WHERE fl2.proyecto_id = p.id
-                    AND (:fecha IS NULL OR fl2.fecha_corte = :fecha)
-                    ORDER BY fl2.fecha_corte DESC
-                    LIMIT 1
-                ) fl ON true
-                GROUP BY fl.estado
+                SELECT estado, COUNT(*) as cantidad
+                FROM (
+                    SELECT DISTINCT ON (proyecto_id)
+                        proyecto_id,
+                        estado
+                    FROM ficha_llenado
+                    WHERE (:fecha IS NULL OR fecha_corte = :fecha)
+                    ORDER BY proyecto_id, fecha_corte DESC
+                ) t
+                GROUP BY estado
+                ORDER BY cantidad DESC
             """), {"fecha": fecha_corte}).fetchall()
 
 
@@ -665,6 +665,7 @@ def obtener_historico(proyecto_id: int, fecha: str):
                 fin_programado,
                 inicio_ejecutado,
                 fin_ejecutado,
+                spi,
                 avance_percent,
                 fecha_corte
             FROM proyecto_arc
@@ -715,6 +716,7 @@ def obtener_historico(proyecto_id: int, fecha: str):
             "fin_programado": str(r.fin_programado) if r.fin_programado else None,
             "inicio_ejecutado": str(r.inicio_ejecutado) if r.inicio_ejecutado else None,
             "fin_ejecutado": str(r.fin_ejecutado) if r.fin_ejecutado else None,
+            "spi": r.spi,
             "avance": avance
         })
 
@@ -762,6 +764,7 @@ def obtener_historico(proyecto_id: int, fecha: str):
         "inicio_programado": str(version.fecha_inicio_programado) if version and version.fecha_inicio_programado else None,
         "inicio_ejecutado": str(version.fecha_inicio_ejecutado) if version and version.fecha_inicio_ejecutado else None,
         "fin_programado": str(version.fecha_fin_programado) if version and version.fecha_fin_programado else None,
+        "spi": float(version.spi) if version and version.spi is not None else None,
 
         # ================= CLASIFICACIÓN =================
         "dependencias": version.dependencias_externas if version else None,
@@ -1289,6 +1292,7 @@ def upload_excel(file: UploadFile = File(...)):
                         fecha_inicio_programado,
                         fecha_inicio_ejecutado,
                         fecha_fin_programado,
+                        spi,
                         dependencias_externas,
                         presupuesto_programado,
                         proyecto_inversion,
@@ -1307,6 +1311,7 @@ def upload_excel(file: UploadFile = File(...)):
                         :fecha_inicio_programado,
                         :fecha_inicio_ejecutado,
                         :fecha_fin_programado,
+                        :spi,
                         :dependencias_externas,
                         :presupuesto_programado,
                         :proyecto_inversion,
@@ -1324,6 +1329,7 @@ def upload_excel(file: UploadFile = File(...)):
                         fecha_inicio_programado = COALESCE(EXCLUDED.fecha_inicio_programado, ficha_llenado.fecha_inicio_programado),
                         fecha_inicio_ejecutado = COALESCE(EXCLUDED.fecha_inicio_ejecutado, ficha_llenado.fecha_inicio_ejecutado),
                         fecha_fin_programado = COALESCE(EXCLUDED.fecha_fin_programado, ficha_llenado.fecha_fin_programado),
+                        spi = COALESCE(EXCLUDED.spi, ficha_llenado.spi),
                         dependencias_externas = COALESCE(EXCLUDED.dependencias_externas, ficha_llenado.dependencias_externas),
                         presupuesto_programado = COALESCE(EXCLUDED.presupuesto_programado, ficha_llenado.presupuesto_programado),
                         proyecto_inversion = COALESCE(EXCLUDED.proyecto_inversion, ficha_llenado.proyecto_inversion),
@@ -1341,6 +1347,7 @@ def upload_excel(file: UploadFile = File(...)):
                         "fecha_corte": fecha_corte,
                         "estado": estado,
                         "fecha_inicio_programado": limpiar_fecha(row.get("fecha_inicio_programado")),
+                        "spi": float(row.get("spi") or 0) if str(row.get("spi")).strip() != "" else None,
                         "fecha_inicio_ejecutado": limpiar_fecha(row.get("fecha_inicio_ejecutado")),
                         "fecha_fin_programado": limpiar_fecha(row.get("fecha_fin_programado")),
                         "dependencias_externas": dependencias_externas,
@@ -1451,6 +1458,7 @@ def upload_excel(file: UploadFile = File(...)):
                                 fin_programado,
                                 inicio_ejecutado,
                                 fin_ejecutado,
+                                spi,
                                 avance_percent
                             )
                             VALUES (
@@ -1462,15 +1470,18 @@ def upload_excel(file: UploadFile = File(...)):
                                 :fin_programado,
                                 :inicio_ejecutado,
                                 :fin_ejecutado,
+                                :spi,
                                 :avance_percent
                             )
                             ON CONFLICT (proyecto_id, fecha_corte, codigo_arc)
                             DO UPDATE SET
                                 descripcion = COALESCE(EXCLUDED.descripcion, proyecto_arc.descripcion),
                                 inicio_programado = COALESCE(EXCLUDED.inicio_programado, proyecto_arc.inicio_programado),
+                                spi = COALESCE(EXCLUDED.spi, proyecto_arc.spi),
                                 fin_programado = COALESCE(EXCLUDED.fin_programado, proyecto_arc.fin_programado),
                                 inicio_ejecutado = COALESCE(EXCLUDED.inicio_ejecutado, proyecto_arc.inicio_ejecutado),
                                 fin_ejecutado = COALESCE(EXCLUDED.fin_ejecutado, proyecto_arc.fin_ejecutado),
+                                spi = COALESCE(EXCLUDED.spi, proyecto_arc.spi),
                                 avance_percent = COALESCE(EXCLUDED.avance_percent, proyecto_arc.avance_percent)
                         """), {
                             "proyecto_id": proyecto_id,
@@ -1495,6 +1506,10 @@ def upload_excel(file: UploadFile = File(...)):
                                 pd.to_datetime(row["fin_ejecutado_arc"]).date()
                                 if "fin_ejecutado_arc" in df.columns and pd.notna(row["fin_ejecutado_arc"])
                                 else None,
+                            "spi":
+                                float(row["spi"] or 0)
+                                if "spi" in df.columns and pd.notna(row["spi"])
+                                else 0,
                             "avance_percent":
                                 float(row["avance_arc"] or 0)
                                 if "avance_arc" in df.columns
@@ -1661,6 +1676,12 @@ def upload_arc(file: UploadFile = File(...)):
                     else None
                 )
 
+                spi = (
+                    float(row["spi"] or 0)
+                    if "spi" in df.columns and pd.notna(row["spi"])
+                    else 0
+                )
+
                 avance_percent = (
                     float(row["avance_arc"] or 0)
                     if "avance_arc" in df.columns
@@ -1680,6 +1701,7 @@ def upload_arc(file: UploadFile = File(...)):
                     fin_programado,
                     inicio_ejecutado,
                     fin_ejecutado,
+                    spi,
                     avance_percent
                 )
                 VALUES (
@@ -1691,6 +1713,7 @@ def upload_arc(file: UploadFile = File(...)):
                     :fin_programado,
                     :inicio_ejecutado,
                     :fin_ejecutado,
+                    :spi,
                     :avance_percent
                 )
                 ON CONFLICT (proyecto_id, fecha_corte, codigo_arc)
@@ -1698,6 +1721,7 @@ def upload_arc(file: UploadFile = File(...)):
                     descripcion = EXCLUDED.descripcion,
                     inicio_programado = EXCLUDED.inicio_programado,
                     fin_programado = EXCLUDED.fin_programado,
+                    spi = EXCLUDED.spi,
                     inicio_ejecutado = EXCLUDED.inicio_ejecutado,
                     fin_ejecutado = EXCLUDED.fin_ejecutado,
                     avance_percent = EXCLUDED.avance_percent
@@ -1710,6 +1734,7 @@ def upload_arc(file: UploadFile = File(...)):
                     "fin_programado": fin_programado,
                     "inicio_ejecutado": inicio_ejecutado,
                     "fin_ejecutado": fin_ejecutado,
+                    "spi": spi,
                     "avance_percent": avance_percent
                 })
 
@@ -1916,6 +1941,7 @@ def obtener_valor_actual(conn, proyecto_id, fecha_corte, codigo_arc, campo):
         "fin_programado",
         "inicio_ejecutado",
         "fin_ejecutado",
+        "spi",
         "avance_percent",
         "actividades_mes",
         "nueva_fecha_fin",
@@ -2014,6 +2040,8 @@ def guardar_todo(data: dict):
 
             presupuesto_prog = None if "presupuesto_programado" in clear_fields else ((float(reporte.get("presupuesto_programado")) if reporte.get("presupuesto_programado") not in [None, ""] else None) if reporte.get("presupuesto_programado") is not None else (base["presupuesto_programado"] if base else None))
 
+            spi = None if "spi" in clear_fields else ((float(reporte.get("spi")) if reporte.get("spi") not in [None, ""] else None) if reporte.get("spi") is not None else (base["spi"] if base else None))
+
             presupuesto_actualizado = None if "presupuesto_actualizado" in clear_fields else ((float(reporte.get("presupuesto_actualizado")) if reporte.get("presupuesto_actualizado") not in [None, ""] else None) if reporte.get("presupuesto_actualizado") is not None else (base["presupuesto_actualizado"] if base else None))
 
             avance_prog = None if "avance_programado" in clear_fields else ((float(reporte.get("avance_programado")) if reporte.get("avance_programado") not in [None, ""] else None) if reporte.get("avance_programado") is not None else (base["avance_programado"] if base else None))
@@ -2064,6 +2092,7 @@ def guardar_todo(data: dict):
                     avance_fisico,
                     avance_financiero_programado,
                     avance_financiero_real,
+                    spi,
                     proyecto_inversion,
                     clasificacion_id,
                     direccion_id,
@@ -2090,6 +2119,7 @@ def guardar_todo(data: dict):
                     :avance_fisico,
                     :avance_financiero_programado,
                     :avance_financiero_real,
+                    :spi,
                     :proyecto_inversion,
                     :clasificacion_id,
                     :direccion_id,
@@ -2121,6 +2151,7 @@ def guardar_todo(data: dict):
 
                     avance_financiero_programado = CASE WHEN 'avance_financiero_programado' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_financiero_programado, ficha_llenado.avance_financiero_programado) END,
                     avance_financiero_real = CASE WHEN 'avance_financiero_real' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.avance_financiero_real, ficha_llenado.avance_financiero_real) END,
+                    spi = CASE WHEN 'spi' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.spi, ficha_llenado.spi) END,
 
                     proyecto_inversion = CASE WHEN 'proyecto_inversion' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.proyecto_inversion, ficha_llenado.proyecto_inversion) END,
                     clasificacion_id = CASE WHEN 'clasificacion_id' = ANY(:clear_fields) THEN NULL ELSE COALESCE(EXCLUDED.clasificacion_id, ficha_llenado.clasificacion_id) END,
@@ -2149,6 +2180,7 @@ def guardar_todo(data: dict):
                 "avance_fisico": avance_real,
                 "avance_financiero_programado": avance_fin_prog,
                 "avance_financiero_real": avance_fin_real,
+                "spi": spi,
                 "proyecto_inversion": proyecto_inv,
                 "clasificacion_id": clasificacion_id,
                 "direccion_id": direccion_id,
@@ -2253,6 +2285,7 @@ def guardar_todo(data: dict):
                 inicio = limpiar(arc.get("inicio_programado"), "inicio_programado")
                 fin = limpiar(arc.get("fin_programado"), "fin_programado")
                 inicio_ejec = limpiar(arc.get("inicio_ejecutado"), "inicio_ejecutado")
+                spi = limpiar(arc.get("spi"), "spi")
                 fin_ejec = limpiar(arc.get("fin_ejecutado"), "fin_ejecutado")
                 nueva_fecha_fin = limpiar(arc.get("nueva_fecha_fin"), "nueva_fecha_fin")
                 riesgo = limpiar(arc.get("riesgo"), "riesgo")
@@ -2263,6 +2296,11 @@ def guardar_todo(data: dict):
                     avance = float(arc.get("avance_percent") or 0)
                 except:
                     avance = 0
+
+                try:
+                    spi = float(spi or 0)
+                except:
+                    spi = 0
                 
                 # ================= INSERT / UPDATE =================
                 conn.execute(text("""
@@ -2275,6 +2313,7 @@ def guardar_todo(data: dict):
                         fin_programado,
                         inicio_ejecutado,
                         fin_ejecutado,
+                        spi,
                         avance_percent,
                         actividades_mes,
                         no_realizado,
@@ -2292,6 +2331,7 @@ def guardar_todo(data: dict):
                         :fin,
                         :inicio_ejec,
                         :fin_ejec,
+                        :spi
                         :avance,
                         :actividad,
                         :no_realizado,
@@ -2320,6 +2360,12 @@ def guardar_todo(data: dict):
 
                         fin_ejecutado =
                             COALESCE(EXCLUDED.fin_ejecutado, proyecto_arc.fin_ejecutado),
+
+                        spi =
+                            CASE
+                                WHEN 'spi' = ANY(:clear_fields) THEN NULL
+                                ELSE COALESCE(EXCLUDED.spi, proyecto_arc.spi)
+                            END,
 
                         avance_percent =
                             COALESCE(EXCLUDED.avance_percent, proyecto_arc.avance_percent),
@@ -2362,6 +2408,7 @@ def guardar_todo(data: dict):
                     "fin": fin,
                     "inicio_ejec": inicio_ejec,
                     "fin_ejec": fin_ejec,
+                    "spi": spi,
                     "avance": avance,
                     "no_realizado": arc.get("no_realizado"),
                     "proximo": arc.get("proximo_mes"),
@@ -2572,6 +2619,7 @@ def obtener_arc(proyecto_id: int, fecha: str = None):
                 riesgo,
                 inicio_ejecutado,
                 fin_ejecutado,
+                spi,
                 avance_percent,
                 actividades_mes,
                 estado_arc
@@ -2631,9 +2679,13 @@ def obtener_arc(proyecto_id: int, fecha: str = None):
                 "fin_ejecutado": row["fin_ejecutado"].isoformat() if row["fin_ejecutado"] else None,
 
                 "nueva_fecha_fin": row["nueva_fecha_fin"].isoformat() if row["nueva_fecha_fin"] else None,
+
                 "riesgo": row["riesgo"],
 
                 "actividades_mes": row["actividades_mes"],
+
+                # 🔥 NUEVO
+                "spi": float(row["spi"]) if row["spi"] is not None else 0,
 
                 # 🔥 CLAVE
                 "estado": row["estado_arc"],
@@ -3041,6 +3093,7 @@ def generar_pdf(proyecto_id: int, fecha: str):
             estado=proyecto_data.get("estado", "") if proyecto_data else "",
             presupuesto_aprobado=proyecto_data.get("presupuesto", "") if proyecto_data else "",
             fin=proyecto_data.get("fin_programado", "") if proyecto_data else "",
+            spi=proyecto_data.get("spi", "") if proyecto_data else "",
             nombre1="",
             cargo1="",
             nombre2="",

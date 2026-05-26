@@ -704,6 +704,10 @@ async function cargarFechasDisponibles() {
     toggleCampo("plazoInicioEjecutado", data.inicio_ejecutado);
     toggleCampo("plazoFinProgramado", data.fin_programado);
     toggleCampo("plazoArc", data.arc_actual);
+    toggleCampo("plazoSpi", data.spi);
+
+    console.log("SPI:", data.spi);
+    console.log(data);
 
     // ================= CONTACTO =================
 
@@ -800,7 +804,12 @@ async function cargarFechasDisponibles() {
 
         const fila = el.parentElement;
 
-        if (!valor || valor === "-" || valor === "") {
+        if (
+            valor === null ||
+            valor === undefined ||
+            valor === "-" ||
+            valor === ""
+        ) {
             fila.style.display = "none";
         } else {
             fila.style.display = "block";
