@@ -704,7 +704,7 @@ async function cargarFechasDisponibles() {
     toggleCampo("plazoInicioEjecutado", data.inicio_ejecutado);
     toggleCampo("plazoFinProgramado", data.fin_programado);
     toggleCampo("plazoArc", data.arc_actual);
-    toggleCampo("plazoSpi", data.spi);
+    toggleCampo("plazoSpi", data.spi != null ? `${(Number(data.spi) * 100).toFixed(2)}%` : null);
 
     console.log("SPI:", data.spi);
     console.log(data);
