@@ -743,6 +743,9 @@ def obtener_historico(proyecto_id: int, fecha: str):
         "tipologia": identificacion.tipologia if identificacion else None,
         "entidad_formuladora": identificacion.entidad_formuladora if identificacion else None,
 
+        # ================= ESTADO =================
+        "estado": version.estado if version else None,
+
         # ================= ENTIDAD EJECUTORA =================
         "entidad_ejecutora": version.entidad_ejecutora if version else None,
 

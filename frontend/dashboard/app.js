@@ -697,6 +697,7 @@ async function cargarFechasDisponibles() {
     toggleCampo("fichaTipologia", data.tipologia);
     toggleCampo("fichaEntidadEjecutora", data.entidad_ejecutora);
     toggleCampo("fichaEntidadFormuladora", data.entidad_formuladora);
+    toggleCampo("fichaEstado", data.estado);
 
     // ================= CONTROL DE PLAZOS =================
 
